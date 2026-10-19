@@ -692,7 +692,7 @@ namespace cAlgo.Robots
             if (RequireExternalLiquidity && !s.LiquidityExternal) return NsRejB(mod, "pf:external_liquidity");
             string reason;
             if (!CanOpenNewTrade(t, s, false, out reason)) return NsRejB(mod, "pf:gate:" + reason);
-            var regime = GetAdaptiveRegime(t);
+            var regime = GetSetupRegime(s, t);   // v2.60-dev: same veto timing rule as the Parent order gate
             bool veto = BlockDeliveryVeto && regime.DeliveryVetoDirection == -s.Direction;
             if (veto && !(AllowAPlusCompositeAgainstDeliveryVeto && IsAPlusCompositeSetup(s))) return NsRejB(mod, "pf:delivery_veto");
             int score = ScoreSetup(s, i, atr, t, regime);
@@ -709,9 +709,9 @@ namespace cAlgo.Robots
             { NsFE(mod, "rej:pf:stop_distance", "dir=" + s.Direction + "|riskPips=" + Fi(risk) + "|max=" + Fi(EffectiveMaximumStopPips(s))); return false; }
             double tp1, tp2, p1, p2; string n1, n2;
             if (!TryBuildTradeTargets(s, entry, t, out tp1, out n1, out p1, out tp2, out n2, out p2)) return NsRejB(mod, "pf:no_target_room");
-            double rr = p1 / Math.Max(risk, .0001);
-            if (rr < EffectiveMinimumRewardRisk(s))
-            { NsFE(mod, "rej:pf:rr_floor", "dir=" + s.Direction + "|rr=" + Fi(rr) + "|req=" + Fi(EffectiveMinimumRewardRisk(s))); return false; }
+            double rr, rrRequired;   // v2.60-dev: one reward/risk rule (EvaluateRewardRisk) for preflight, order gate and post-fill
+            if (!EvaluateRewardRisk(s, entry, risk, ref tp1, ref p1, p2, n2, out rr, out rrRequired))
+            { NsFE(mod, "rej:pf:rr_floor", "dir=" + s.Direction + "|rr=" + Fi(rr) + "|req=" + Fi(rrRequired)); return false; }
             if (!(CalculateVolumeInUnits(risk, s.Direction > 0 ? TradeType.Buy : TradeType.Sell, true) >= Symbol.VolumeInUnitsMin)) return NsRejB(mod, "pf:volume");
             return true;
         }

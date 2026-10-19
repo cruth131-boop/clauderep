@@ -34,6 +34,42 @@ namespace cAlgo.Robots
         CloseAll
     }
 
+    // v2.60-dev: reward/risk basis. Tp1 = v2.59 (TP1 / risk >= Minimum R/R). StructuralTarget = TP2 must be a real
+    // liquidity objective and TP2 / risk >= Structural Minimum R/R; TP1 becomes the partial at >= TP1 Minimum R.
+    public enum SmcRrBasis
+    {
+        Tp1,
+        StructuralTarget
+    }
+
+    // v2.60-dev: entry mode. ConfirmationClose = v2.59 (market order after the reaction candle closed).
+    // FvgCeTouch = market order on the tick that trades into the PD array at its consequent encroachment (50 %).
+    public enum SmcEntryMode
+    {
+        ConfirmationClose,
+        FvgCeTouch
+    }
+
+    public enum SmcCeStopAnchor
+    {
+        SweepExtreme,
+        ZoneEdge
+    }
+
+    public enum SmcConsumedLiquidity
+    {
+        Off,
+        Sweeps,
+        Targets,
+        Both
+    }
+
+    public enum SmcHtfBias
+    {
+        Off,
+        H4Structure
+    }
+
     [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.FullAccess)]
     public partial class IctGoldV259Dev : Robot
     {
@@ -629,10 +665,73 @@ namespace cAlgo.Robots
         [Parameter("Verbose Log", DefaultValue = true, Group = "10 Dashboard")]
         public bool VerboseLog { get; set; }
 
+        // ========================= v2.60 LOGIC FIXES =========================
+        // Every switch defaults to the v2.59 behaviour, so a v2.59 parameter set trades identically.
+        // P1: search the FVG over the whole displacement leg (sweep -> MSS + 2), filter width / discount /
+        // freshness per candidate BEFORE selecting. v2.59 only looked at MSS..MSS+2 (the premium end of the
+        // leg) and picked the widest gap before the width check.
+        [Parameter("FVG Search Whole Displacement Leg", DefaultValue = false, Group = "15 v2.60 Logic")]
+        public bool FvgSearchWholeLeg { get; set; }
+
+        // P2: a counter M5 MSS counts as delivery veto only if it closed AFTER this setup's MSS. The bearish M5
+        // break that sweeps sell-side liquidity is the manipulation leg of the long, not a veto against it.
+        [Parameter("Delivery Veto Only After MSS", DefaultValue = false, Group = "15 v2.60 Logic")]
+        public bool DeliveryVetoAfterMssOnly { get; set; }
+
+        // P3: static gates that are already decided when the zone is known (M5 internal quality / CRT P/D) reset
+        // the setup at once instead of blocking the direction slot until the order gate.
+        [Parameter("Fail-Fast Static Gates", DefaultValue = false, Group = "15 v2.60 Logic")]
+        public bool FailFastStaticGates { get; set; }
+
+        // P4: a sweep of stronger external liquidity replaces a pending weaker/internal candidate (before touch).
+        [Parameter("Upgrade Slot On Stronger Sweep", DefaultValue = false, Group = "15 v2.60 Logic")]
+        public bool UpgradeSlotOnStrongerSweep { get; set; }
+
+        // P5: liquidity that was already traded through after it formed is not raided again (Sweeps) and/or is no TP
+        // draw (Targets).
+        [Parameter("Ignore Consumed Liquidity", DefaultValue = SmcConsumedLiquidity.Off, Group = "15 v2.60 Logic")]
+        public SmcConsumedLiquidity IgnoreConsumedLiquidity { get; set; }
+
+        // P6: a deep first touch (fill > Maximum Zone Fill) is kept when the touch candle closes back beyond the
+        // zone midpoint (rejection); v2.59 reset every deep wick.
+        [Parameter("Allow Deep Fill With Close Hold", DefaultValue = false, Group = "15 v2.60 Logic")]
+        public bool AllowDeepFillWithHold { get; set; }
+
+        // E1: reward/risk basis (see SmcRrBasis).
+        [Parameter("R/R Basis", DefaultValue = SmcRrBasis.Tp1, Group = "15 v2.60 Logic")]
+        public SmcRrBasis RrBasis { get; set; }
+
+        [Parameter("Structural Minimum R/R (TP2)", DefaultValue = 2.0, MinValue = 1.0, MaxValue = 6.0, Step = 0.1, Group = "15 v2.60 Logic")]
+        public double StructuralMinimumRewardRisk { get; set; }
+
+        [Parameter("TP1 Minimum R (structural basis)", DefaultValue = 1.0, MinValue = 0.5, MaxValue = 3.0, Step = 0.1, Group = "15 v2.60 Logic")]
+        public double Tp1MinimumR { get; set; }
+
+        // E2: entry mode (see SmcEntryMode). CE entries ignore the broad trade zone and use the true PD array.
+        [Parameter("Entry Mode", DefaultValue = SmcEntryMode.ConfirmationClose, Group = "15 v2.60 Logic")]
+        public SmcEntryMode EntryMode { get; set; }
+
+        [Parameter("CE Entry Stop Anchor", DefaultValue = SmcCeStopAnchor.SweepExtreme, Group = "15 v2.60 Logic")]
+        public SmcCeStopAnchor CeStopAnchor { get; set; }
+
+        // Quality counterweight: no trade against the H4 persistent structure (neutral H4 allowed).
+        [Parameter("HTF Bias Filter", DefaultValue = SmcHtfBias.Off, Group = "15 v2.60 Logic")]
+        public SmcHtfBias HtfBiasFilter { get; set; }
+
+        // K-Cont: trend-continuation lane (London / NY killzones, M15 + M5 + H1 structure aligned, displacement break of
+        // the last execution swing -> FVG of that leg). Uses the Parent zone, score, stop, target and R/R gates.
+        [Parameter("Enable Continuation Lane", DefaultValue = false, Group = "15 v2.60 Logic")]
+        public bool EnableContinuationLane { get; set; }
+
+        // 1 = every M5 pivot (v2.59), 2 = only equal highs/lows (two or more pivots).
+        [Parameter("M5 Internal Minimum Strength", DefaultValue = 1, MinValue = 1, MaxValue = 3, Group = "15 v2.60 Logic")]
+        public int M5InternalMinimumStrength { get; set; }
+
         private Bars _exec;
         private Bars _m5;
         private Bars _m15;
         private Bars _h1;
+        private Bars _h4;            // v2.60-dev: only loaded when the HTF bias filter is on
         private int _nsScope; // >0 while NsAdvance runs (NS-only closed-bar indexing)
         private SetupState _longState;
         private SetupState _shortState;
@@ -676,11 +775,15 @@ namespace cAlgo.Robots
             _m5 = MarketData.GetBars(TimeFrame.Minute5, SymbolName);
             _m15 = MarketData.GetBars(TimeFrame.Minute15, SymbolName);
             _h1 = MarketData.GetBars(TimeFrame.Hour, SymbolName);
+            if (HtfBiasFilter != SmcHtfBias.Off)
+                _h4 = MarketData.GetBars(TimeFrame.Hour4, SymbolName);
 
             EnsureHistory(_exec, 1200);
             EnsureHistory(_m5, 800);
             EnsureHistory(_m15, Math.Max(600, M15LiquidityLookback + 100));
             EnsureHistory(_h1, 300);
+            if (_h4 != null)
+                EnsureHistory(_h4, 200);
 
             _longState = new SetupState(1, NsF) { CandidateResetSink = CandReset };
             _shortState = new SetupState(-1, NsF) { CandidateResetSink = CandReset };
@@ -750,6 +853,9 @@ namespace cAlgo.Robots
                 ProcessClosedExecutionBar(closed);
             }
 
+            if (EntryMode == SmcEntryMode.FvgCeTouch)
+                ProcessCeEntries();
+
             RefreshDashboard(false);
         }
 
@@ -763,6 +869,38 @@ namespace cAlgo.Robots
             Positions.Closed -= OnPositionClosed;
             if (ShowDashboard && _safetyOnlyReason.Length == 0)
                 Chart.RemoveObject("SMC_SCALP_DASH");
+        }
+
+        // v2.60-dev (E2): the setup is still built on closed bars only; the entry itself is the first tick that trades
+        // into the PD array at its consequent encroachment (50 %), i.e. what a resting limit order at CE would fill.
+        // Outside the trading sessions nothing triggers and the setup keeps waiting until its normal expiry.
+        private void ProcessCeEntries()
+        {
+            int closed = _exec.Count - 2;
+            if (closed < 5)
+                return;
+            foreach (SetupState s in new[] { _longState, _shortState })
+            {
+                if (s == null || s.NsNew || s.Stage != SetupStage.WaitingEntry || s.Zone == null || closed < s.Zone.SourceIndex)
+                    continue;
+                double price = s.Direction > 0 ? Symbol.Ask : Symbol.Bid;
+                double ce = s.Zone.Midpoint;
+                bool atCe = s.Direction > 0 ? price <= ce && price >= s.Zone.Low : price >= ce && price <= s.Zone.High;
+                if (!atCe)
+                    continue;
+                DateTime now = Server.Time;
+                if (UseSessionFilter && !IsTradingSession(now))
+                    continue;
+                double atr = CalculateAtr(_exec, closed, 14);
+                if (atr <= 0)
+                    continue;
+                s.ZoneTouches = 1;
+                s.TouchIndex = closed + 1;
+                s.EntryTrigger = "CeTouch";
+                s.ConfirmationType = "CE";
+                NsF("PARENT", "ce_touch");
+                TryExecuteSetup(s, closed, atr, now);
+            }
         }
 
         private void ProcessClosedExecutionBar(int i)
@@ -812,53 +950,20 @@ namespace cAlgo.Robots
                         DirectionText(s.Direction), s.CrtH1.Low, s.CrtH1.High, s.CrtH1.Equilibrium);
                     _lastEvent = DirectionText(s.Direction) + " CRT invalidated";
                     RegisterFailedSetupFlip(s, timeUtc, "CRT range invalidation");
+                    NsF("PARENT", "reset:crt_invalidated");
                     s.Reset();
                     return;
                 }
             }
 
+            if (UpgradeSlotOnStrongerSweep && TryUpgradeSlot(s, i, atr, timeUtc))
+                return;
+
             if (s.Stage == SetupStage.Waiting)
             {
-                LiquidityLevel level;
-                bool reclaimed;
-                double extreme;
-                if (!TryDetectLiquidityTake(i, s.Direction, atr, timeUtc, out level, out reclaimed, out extreme))
-                    return;
-
-                if (RequireExternalLiquidity && !level.External && !IsM5InternalLiquidityLevel(level))
-                    return;
-
-                s.StartIndex = i;
-                s.TakenIndex = i;
-                s.LiquidityName = level.Name;
-                s.LiquidityPrice = level.Price;
-                s.LiquidityStrength = level.Strength;
-                s.LiquidityExternal = level.External;
-                s.SweepExtreme = extreme;
-                s.SameBarReclaim = reclaimed;
-                s.SetupType = ClassifySetupType(level.Name, reclaimed);
-                CaptureCrtContext(s, i, atr, timeUtc);
-                s.MssLevel = FindMssLevelBefore(i, s.Direction);
-                if (s.MssLevel <= 0)
-                {
-                    s.Reset();
-                    return;
-                }
-
-                if (reclaimed)
-                {
-                    s.ReclaimIndex = i;
-                    s.Stage = SetupStage.WaitingMss;
-                    s.ExpiryIndex = i + ScaleLogicBars(MaxReclaimToMssBars);
-                    _lastEvent = DirectionText(s.Direction) + " sweep " + level.Name + " reclaimed";
-                }
-                else
-                {
-                    s.Stage = SetupStage.LiquidityTaken;
-                    s.ExpiryIndex = i + ScaleLogicBars(ReclaimBars);
-                    _lastEvent = DirectionText(s.Direction) + " liquidity taken " + level.Name;
-                }
-                Log("{0}: {1} @ {2:F2}; MSS trigger {3:F2}.", DirectionText(s.Direction), level.Name, level.Price, s.MssLevel);
+                TryArmSetup(s, i, atr, timeUtc);
+                if (EnableContinuationLane && s.Stage == SetupStage.Waiting)
+                    TryArmContinuation(s, i, atr, timeUtc);
                 return;
             }
 
@@ -877,6 +982,7 @@ namespace cAlgo.Robots
                 if (i > s.ExpiryIndex || IsSweepInvalidated(s, i, atr))
                 {
                     _lastEvent = DirectionText(s.Direction) + " sweep failed reclaim";
+                    NsF("PARENT", "reset:no_reclaim");
                     s.Reset();
                 }
                 return;
@@ -888,6 +994,7 @@ namespace cAlgo.Robots
                 if (i > s.ExpiryIndex || IsSweepInvalidated(s, i, atr))
                 {
                     _lastEvent = DirectionText(s.Direction) + " MSS expired";
+                    NsF("PARENT", "reset:mss_expired");
                     s.Reset();
                     return;
                 }
@@ -922,6 +1029,7 @@ namespace cAlgo.Robots
                     if (s.Zone == null)
                     {
                         _lastEvent = DirectionText(s.Direction) + " no valid PD array";
+                        NsF("PARENT", "reset:no_pd_array");
                         s.Reset();
                     }
                     return;
@@ -939,9 +1047,13 @@ namespace cAlgo.Robots
                     if (zoneInvalid)
                         RegisterFailedSetupFlip(s, timeUtc, "pre-entry zone invalidation");
                     _lastEvent = DirectionText(s.Direction) + " entry zone expired/invalid";
+                    NsF("PARENT", zoneInvalid ? "reset:zone_invalidated_before_touch" : i > s.ExpiryIndex ? "reset:zone_expired_no_touch" : "reset:sweep_invalidated_before_touch");
                     s.Reset();
                     return;
                 }
+
+                if (EntryMode == SmcEntryMode.FvgCeTouch && !s.NsNew)
+                    return;   // v2.60-dev (E2): the entry is taken on the tick that reaches the CE (ProcessCeEntries)
 
                 if (!BarTouchesZone(i, s.Zone))
                 {
@@ -963,9 +1075,13 @@ namespace cAlgo.Robots
                 s.TouchIndex = i;
                 s.EntryTrigger = "ZoneRetest";
                 s.MaxFillRatio = Math.Max(s.MaxFillRatio, CalculateFillRatio(s.Zone, i, s.Direction));
-                if (s.ZoneTouches > 1 || s.MaxFillRatio > MaximumZoneFill)
+                // v2.60-dev (P6): a deep wick that closes back beyond the zone midpoint is a rejection, not over-mitigation.
+                bool deepFillHeld = AllowDeepFillWithHold && s.ZoneTouches == 1 &&
+                                    (s.Direction > 0 ? _exec.ClosePrices[i] >= s.Zone.Midpoint : _exec.ClosePrices[i] <= s.Zone.Midpoint);
+                if (s.ZoneTouches > 1 || (s.MaxFillRatio > MaximumZoneFill && !deepFillHeld))
                 {
                     _lastEvent = DirectionText(s.Direction) + " zone over-mitigated";
+                    NsF("PARENT", "reset:zone_over_mitigated");
                     s.Reset();
                     return;
                 }
@@ -994,6 +1110,7 @@ namespace cAlgo.Robots
                         s.Zone == null ? 0 : s.Zone.Quality, BuildConfirmationFailureReason(s));
                     RegisterFailedSetupFlip(s, timeUtc, "confirmation zone invalidation");
                     _lastEvent = DirectionText(s.Direction) + " zone invalidated after touch";
+                    NsF("PARENT", "reset:zone_invalidated_after_touch");
                     s.Reset();
                     return;
                 }
@@ -1004,6 +1121,7 @@ namespace cAlgo.Robots
                         DirectionText(s.Direction), ConfirmationTierName(s),
                         s.Zone == null ? 0 : s.Zone.Quality, BuildConfirmationFailureReason(s));
                     _lastEvent = DirectionText(s.Direction) + " reaction confirmation expired";
+                    NsF("PARENT", "reset:confirmation_expired");
                     s.Reset();
                     return;
                 }
@@ -1014,6 +1132,7 @@ namespace cAlgo.Robots
                     {
                         Log("{0}: parked confirmation expired via {1}.", DirectionText(s.Direction), s.ConfirmationType);
                         _lastEvent = DirectionText(s.Direction) + " parked confirmation expired";
+                        NsF("PARENT", "reset:parked_expired");
                         s.Reset();
                         return;
                     }
@@ -1034,6 +1153,150 @@ namespace cAlgo.Robots
             }
         }
 
+        // v2.59 Waiting-stage arming, unchanged; extracted so the v2.60 slot upgrade can re-arm on the same bar.
+        private void TryArmSetup(SetupState s, int i, double atr, DateTime timeUtc)
+        {
+            LiquidityLevel level;
+            bool reclaimed;
+            double extreme;
+            if (!TryDetectLiquidityTake(i, s.Direction, atr, timeUtc, out level, out reclaimed, out extreme))
+                return;
+
+            if (RequireExternalLiquidity && !level.External && !IsM5InternalLiquidityLevel(level))
+                return;
+
+            s.StartIndex = i;
+            s.TakenIndex = i;
+            s.LiquidityName = level.Name;
+            s.LiquidityPrice = level.Price;
+            s.LiquidityStrength = level.Strength;
+            s.LiquidityExternal = level.External;
+            s.SweepExtreme = extreme;
+            s.SameBarReclaim = reclaimed;
+            s.SetupType = ClassifySetupType(level.Name, reclaimed);
+            CaptureCrtContext(s, i, atr, timeUtc);
+            s.MssLevel = FindMssLevelBefore(i, s.Direction);
+            if (s.MssLevel <= 0)
+            {
+                s.Reset();
+                return;
+            }
+            if (FailFastStaticGates && StaticGatesRejectAtArm(s, timeUtc))
+            {
+                NsF("PARENT", "failfast:arm");
+                s.Reset();
+                return;
+            }
+
+            if (reclaimed)
+            {
+                s.ReclaimIndex = i;
+                s.Stage = SetupStage.WaitingMss;
+                s.ExpiryIndex = i + ScaleLogicBars(MaxReclaimToMssBars);
+                _lastEvent = DirectionText(s.Direction) + " sweep " + level.Name + " reclaimed";
+            }
+            else
+            {
+                s.Stage = SetupStage.LiquidityTaken;
+                s.ExpiryIndex = i + ScaleLogicBars(ReclaimBars);
+                _lastEvent = DirectionText(s.Direction) + " liquidity taken " + level.Name;
+            }
+            NsF("PARENT", "armed");
+            Log("{0}: {1} @ {2:F2}; MSS trigger {3:F2}.", DirectionText(s.Direction), level.Name, level.Price, s.MssLevel);
+        }
+
+        // v2.60-dev (P3): gates whose outcome is already fixed when the raid is armed. An M5 internal raid that needs CRT
+        // premium/discount can never pass without a qualified H1 CRT range (CrtH1 is captured once, at arming).
+        private bool StaticGatesRejectAtArm(SetupState s, DateTime timeUtc)
+        {
+            if (IsM5InternalSetup(s) && M5InternalRequireCrtPremiumDiscount &&
+                (!EnableCrtContextLayer || s.CrtH1 == null || !s.CrtH1.Valid))
+                return true;
+            return HtfBiasFilter != SmcHtfBias.Off && HtfBiasDirection(timeUtc) == -s.Direction;
+        }
+
+        // v2.60-dev (K-Cont): trend-continuation lane. Inside the London / NY killzones, with the M15 anchor, the M5 delivery
+        // structure (regime, no counter veto) and the H1 structure all pointing the same way, a displacement candle that closes
+        // through the last execution swing is a fresh break of structure. Its leg (origin extreme -> break) is handled exactly
+        // like a Parent leg after the MSS: same PD-array search, entry, score, stop, target and R/R gates. No raid is required,
+        // so the lane counts as internal liquidity: extended sessions and the A+ stop/RR exceptions never apply to it.
+        private void TryArmContinuation(SetupState s, int i, double atr, DateTime timeUtc)
+        {
+            if (s.NsNew || i < MssLookbackBars + 2)
+                return;
+            string core = CoreSessionName(timeUtc);
+            if (core != "LONDON" && core != "NY-AM" && core != "NY-PM")
+                return;
+            int pivot = -1;
+            for (int k = i - ExecPivotRight - 1; k >= Math.Max(ExecPivotLeft, i - MssLookbackBars); k--)
+                if (IsPivot(_exec, k, s.Direction > 0, ExecPivotLeft, ExecPivotRight, i - 1)) { pivot = k; break; }
+            if (pivot < 0)
+                return;
+            double level = s.Direction > 0 ? _exec.HighPrices[pivot] : _exec.LowPrices[pivot];
+            double buffer = Math.Max(Symbol.TickSize, atr * MssAtrBuffer);
+            if (!ClosesThrough(i, s.Direction, level, buffer) || ClosesThrough(i - 1, s.Direction, level, buffer))
+                return;
+            if (!(HasDirectionalDisplacement(_exec, i, s.Direction, atr) || HasMultiCandleDisplacement(_exec, i, s.Direction, atr)))
+                return;
+            RegimeSnapshot regime = GetAdaptiveRegime(timeUtc);
+            if (regime.Regime != s.Direction)
+                return;
+            if (GetPersistentStructureTrend(_h1, GetCompletedBarIndexAtTime(_h1, timeUtc), 2, 2, 120) != s.Direction)
+                return;
+
+            int origin = pivot;
+            for (int k = pivot; k <= i; k++)
+                if (s.Direction > 0 ? _exec.LowPrices[k] < _exec.LowPrices[origin] : _exec.HighPrices[k] > _exec.HighPrices[origin])
+                    origin = k;
+            if (origin >= i)
+                return;
+
+            s.StartIndex = origin;
+            s.TakenIndex = origin;
+            s.ReclaimIndex = origin;
+            s.LiquidityName = "Continuation BOS";
+            s.LiquidityPrice = level;
+            s.LiquidityStrength = 1;
+            s.LiquidityExternal = false;
+            s.SweepExtreme = s.Direction > 0 ? _exec.LowPrices[origin] : _exec.HighPrices[origin];
+            s.SetupType = "Continuation";
+            s.MssLevel = level;
+            CaptureCrtContext(s, i, atr, timeUtc);
+            s.MssIndex = i;
+            s.HasDisplacement = true;
+            GetRangeExtremes(origin, i, out s.ImpulseLow, out s.ImpulseHigh);
+            s.Stage = SetupStage.WaitingPdArray;
+            s.PdArrayWaitUntil = i + Math.Max(2, ScaleLogicBars(2));
+            s.ExpiryIndex = s.PdArrayWaitUntil;
+            NsF("PARENT", "cont_armed");
+            _lastEvent = DirectionText(s.Direction) + " continuation BOS " + level.ToString("F2", CultureInfo.InvariantCulture);
+            Log("{0}: continuation BOS through {1:F2} ({2}), origin {3:F2}.", DirectionText(s.Direction), level, core, s.SweepExtreme);
+            TryAssignZone(s, i, atr);
+        }
+
+        // v2.60-dev (P4): a pending candidate that is not yet touching its zone gives way to a fresh raid of stronger
+        // external liquidity in the same direction (deeper/major pool wins). Confirmation-stage setups are never replaced.
+        private bool TryUpgradeSlot(SetupState s, int i, double atr, DateTime timeUtc)
+        {
+            if (s.NsNew || (s.Stage != SetupStage.LiquidityTaken && s.Stage != SetupStage.WaitingMss &&
+                            s.Stage != SetupStage.WaitingPdArray && s.Stage != SetupStage.WaitingEntry))
+                return false;
+            LiquidityLevel level;
+            bool reclaimed;
+            double extreme;
+            if (!TryDetectLiquidityTake(i, s.Direction, atr, timeUtc, out level, out reclaimed, out extreme) || !level.External)
+                return false;
+            if (s.LiquidityExternal && level.Strength <= s.LiquidityStrength)
+                return false;
+            if (Math.Abs(level.Price - s.LiquidityPrice) <= Symbol.TickSize)
+                return false;
+            Log("{0}: slot upgrade {1} -> {2} @ {3:F2}.", DirectionText(s.Direction), s.LiquidityName, level.Name, level.Price);
+            NsF("PARENT", "slot_upgrade");
+            s.Reset();
+            TryArmSetup(s, i, atr, timeUtc);
+            return true;
+        }
+
         private void TryAssignZone(SetupState s, int currentIndex, double atr)
         {
             ZoneInfo zone = FindEventEntryZone(s, currentIndex, atr);
@@ -1049,10 +1312,17 @@ namespace cAlgo.Robots
                 NsF("OTE", "ote_clip_ok");
                 s.NsOte = true;
             }
-            else
-                zone = BuildBroadTradeZone(s, zone);
+            else if (EntryMode != SmcEntryMode.FvgCeTouch)
+                zone = BuildBroadTradeZone(s, zone);   // v2.60-dev (E2): CE entries rest in the true PD array
             AnnotateZoneWithCrtContext(s, zone);
             s.Zone = zone;
+            if (FailFastStaticGates && IsM5InternalSetup(s) && !IsM5InternalStaticQuality(s))
+            {
+                NsF("PARENT", "failfast:m5_internal_zone");
+                _lastEvent = DirectionText(s.Direction) + " M5 internal zone fails static gates";
+                s.Reset();
+                return;
+            }
             s.Stage = SetupStage.WaitingEntry;
             s.ExpiryIndex = currentIndex + ScaleLogicBars(MaxMssToEntryBars);
             _lastEvent = DirectionText(s.Direction) + " zone " + zone.Label + " Q" + zone.Quality;
@@ -1096,7 +1366,7 @@ namespace cAlgo.Robots
                 return;
             }
 
-            RegimeSnapshot regime = GetAdaptiveRegime(timeUtc);
+            RegimeSnapshot regime = GetSetupRegime(s, timeUtc);
             if (IsM5InternalSetup(s) && !IsM5InternalQualityCandidate(s, regime, timeUtc))
             {
                 NsF(fm, "rej:exec:m5_internal_context");
@@ -1108,6 +1378,15 @@ namespace cAlgo.Robots
                     s.Zone != null && s.Zone.CrtCorrectPremiumDiscount,
                     CoreSessionName(timeUtc),
                     regime.DeliveryTrend, regime.AnchorTrend);
+                s.Reset();
+                return;
+            }
+
+            if (HtfBiasFilter != SmcHtfBias.Off && HtfBiasDirection(timeUtc) == -s.Direction)
+            {
+                NsF(fm, "rej:exec:htf_bias");
+                _lastEvent = DirectionText(s.Direction) + " against H4 structure";
+                Log("{0}: rejected HTF bias (H4 structure against the trade).", DirectionText(s.Direction));
                 s.Reset();
                 return;
             }
@@ -1189,14 +1468,15 @@ namespace cAlgo.Robots
                 return;
             }
 
-            double rr = tp1Pips / Math.Max(riskPips, 0.0001);
-            double minimumRrAllowed = EffectiveMinimumRewardRisk(s);
+            double rr;
+            double minimumRrAllowed;
+            bool rewardRiskOk = EvaluateRewardRisk(s, estimatedEntry, riskPips, ref tp1, ref tp1Pips, tp2Pips, tp2Name, out rr, out minimumRrAllowed);
             CandCaptureGeometry(s, timeUtc, estimatedEntry, stop, tp1, rr);
-            if (rr < minimumRrAllowed)
+            if (!rewardRiskOk)
             {
                 NsFE(fm, "rej:exec:rr_floor", "dir=" + s.Direction + "|type=" + s.SetupType + "|rr=" + Fi(rr) + "|req=" + Fi(minimumRrAllowed));
                 _lastEvent = DirectionText(s.Direction) + " TP1 RR " + rr.ToString("F2", CultureInfo.InvariantCulture);
-                Log("{0}: rejected TP1 RR {1:F2}, required={2:F2} ({3}).",
+                Log("{0}: rejected " + (RrBasis == SmcRrBasis.Tp1 ? "TP1" : "structural") + " RR {1:F2}, required={2:F2} ({3}).",
                     DirectionText(s.Direction), rr, minimumRrAllowed, ConfirmationTierName(s));
                 s.Reset();
                 return;
@@ -1239,6 +1519,10 @@ namespace cAlgo.Robots
                 ? NewSetups.NsRules.LaneComment(FsOwnerMarker, s.NsCore, true, s.NsOte, s.NsId)
                 : NewSetups.NsRules.LaneComment(FsOwnerMarker, "Parent", false, false, null);
             double balanceBeforeOrder = Account.Balance;
+            // v2.60-dev bugfix: the post-fill risk cap is evaluated against the equity the volume was sized with. v2.59 re-read
+            // Account.Equity after the fill (already reduced by the spread), so a position sized right at the cap was closed
+            // as "post-fill protection invalid" and latched the protection kill switch.
+            double sizingEquity = Account.Equity;
             string preOrderBlock;   // F6: ownership/safety re-evaluated immediately before the order
             var result = FsGuardedMarketOrder(tradeType, volume, atomicSlPips, atomicTpPips, lane, out preOrderBlock);
             if (preOrderBlock != null)
@@ -1278,7 +1562,7 @@ namespace cAlgo.Robots
             double actualStopSymbolPips = Math.Abs(actualEntry - stop) / Symbol.PipSize;
             double actualPostFillRisk = NsFinite(actualStopSymbolPips) && actualStopSymbolPips > 0
                 ? Symbol.AmountRisked(position.VolumeInUnits, actualStopSymbolPips) : double.NaN;
-            double maximumRiskAmount = FsCapped(Account.Equity * MaximumRiskPercent / 100.0, MaxRiskCapAccount);
+            double maximumRiskAmount = FsCapped(sizingEquity * MaximumRiskPercent / 100.0, MaxRiskCapAccount);
 
             if ((s.NsOte && !NewSetups.EntryGeometry.Contains(actualEntry, s.Zone.Low, s.Zone.High)) ||
                 ((s.NsNew || s.NsOte) && (!NsFinite(actualEntry) || !NsFinite(stop) || !NsFinite(riskPips) ||
@@ -1286,7 +1570,7 @@ namespace cAlgo.Robots
                 !NsFinite(actualPostFillRisk) || actualPostFillRisk > maximumRiskAmount + 1e-9 ||
                 !TryBuildTradeTargets(s, actualEntry, timeUtc, out tp1, out tp1Name, out tp1Pips, out tp2, out tp2Name, out tp2Pips) ||
                 riskPips > EffectiveMaximumStopPips(s) + 1e-9 ||
-                tp1Pips / Math.Max(riskPips, 0.0001) < EffectiveMinimumRewardRisk(s))
+                !EvaluateRewardRisk(s, actualEntry, riskPips, ref tp1, ref tp1Pips, tp2Pips, tp2Name, out double postFillRr, out double postFillRrRequired))
             {
                 NsF(fm, "rej:postfill:protection_invalid");
                 _lastEvent = DirectionText(s.Direction) + " post-fill protection invalid";
@@ -1385,6 +1669,52 @@ namespace cAlgo.Robots
             return IsAPlusCompositeSetup(s) ? APlusMinimumRewardRisk : MinimumRewardRisk;
         }
 
+        // v2.60-dev (E1): the single reward/risk rule for the pre-order gate, the post-fill re-validation and the NS preflight.
+        // Tp1 basis = v2.59 (TP1 / risk >= Effective Minimum R/R). Structural basis: TP2 must be a real liquidity objective
+        // (not the fixed "Runner TP2" fallback) with TP2 / risk >= Structural Minimum R/R; TP1 stays the partial-profit level
+        // but is lifted to at least TP1 Minimum R so the 50 % close always banks >= that multiple.
+        private bool EvaluateRewardRisk(SetupState s, double entry, double riskPips, ref double tp1, ref double tp1Pips,
+            double tp2Pips, string tp2Name, out double rr, out double required)
+        {
+            double risk = Math.Max(riskPips, 0.0001);
+            if (RrBasis == SmcRrBasis.Tp1)
+            {
+                rr = tp1Pips / risk;
+                required = EffectiveMinimumRewardRisk(s);
+                return rr >= required;
+            }
+            rr = tp2Pips / risk;
+            required = StructuralMinimumRewardRisk;
+            if (tp2Name == "Runner TP2")
+                return false;
+            double tp1Floor = Tp1MinimumR * risk;
+            if (tp1Pips < tp1Floor)
+            {
+                if (tp1Floor >= tp2Pips - 1e-9)
+                    return false;
+                tp1Pips = tp1Floor;
+                tp1 = s.Direction > 0 ? entry + tp1Pips * PricePerStrategyPip : entry - tp1Pips * PricePerStrategyPip;
+            }
+            return rr >= required;
+        }
+
+        // v2.60-dev: H4 persistent market structure as higher-timeframe bias (0 = neutral / not loaded).
+        private int HtfBiasDirection(DateTime timeUtc)
+        {
+            if (HtfBiasFilter == SmcHtfBias.Off || _h4 == null)
+                return 0;
+            return GetPersistentStructureTrend(_h4, GetCompletedBarIndexAtTime(_h4, timeUtc), 2, 2, 120);
+        }
+
+        // v2.60-dev (P2): regime for one setup. With Delivery Veto Only After MSS a counter M5 break that closed before this
+        // setup's own MSS candle closed is the raid leg of the setup itself and is not a veto.
+        private RegimeSnapshot GetSetupRegime(SetupState s, DateTime timeUtc)
+        {
+            if (!DeliveryVetoAfterMssOnly || s == null || s.MssIndex < 0 || s.MssIndex >= _exec.Count)
+                return GetAdaptiveRegime(timeUtc);
+            return GetAdaptiveRegime(timeUtc, _exec.OpenTimes[s.MssIndex].AddMinutes(ExecutionMinutes()));
+        }
+
         private void LogShadowMetricsAfterGateReject(SetupState s, int i, double atr, DateTime timeUtc, string gateReason)
         {
             if (!VerboseLog || s == null || s.Zone == null)
@@ -1439,7 +1769,7 @@ namespace cAlgo.Robots
                 if (s.Zone.OteConfluence) score += 3;
             }
 
-            if (s.EntryTrigger == "ZoneRetest") score += 3;
+            if (s.EntryTrigger == "ZoneRetest" || s.EntryTrigger == "CeTouch") score += 3;
             else if (s.EntryTrigger == "MomentumPullback") score -= 1;
 
             if (s.SetupType == "CRT Sweep") score += 5;
@@ -1477,7 +1807,8 @@ namespace cAlgo.Robots
             reclaimed = false;
             extreme = direction > 0 ? _exec.LowPrices[i] : _exec.HighPrices[i];
 
-            List<LiquidityLevel> levels = BuildLiquidityLevels(timeUtc);
+            List<LiquidityLevel> levels = BuildLiquidityLevels(timeUtc,
+                IgnoreConsumedLiquidity == SmcConsumedLiquidity.Sweeps || IgnoreConsumedLiquidity == SmcConsumedLiquidity.Both ? _exec.OpenTimes[i] : DateTime.MinValue);
             int wantedSide = direction > 0 ? -1 : 1;
             double minSweep = Math.Max(MinimumSweepPips * PricePerStrategyPip, atr * MinimumSweepAtr);
             double tol = Math.Max(Symbol.TickSize * 2.0, atr * 0.015);
@@ -1524,7 +1855,9 @@ namespace cAlgo.Robots
             return true;
         }
 
-        private List<LiquidityLevel> BuildLiquidityLevels(DateTime timeUtc)
+        // consumedCutoffUtc: levels traded through between their formation and this instant are dropped (the sweep detector
+        // passes the raid candle's open, the target builder the decision time); DateTime.MinValue = keep all (v2.59).
+        private List<LiquidityLevel> BuildLiquidityLevels(DateTime timeUtc, DateTime consumedCutoffUtc)
         {
             var levels = new List<LiquidityLevel>();
 
@@ -1540,7 +1873,65 @@ namespace cAlgo.Robots
                 AddM5InternalLiquidity(levels, timeUtc);
             AddCrtLiquidity(levels, timeUtc);
 
+            if (consumedCutoffUtc != DateTime.MinValue)
+                levels.RemoveAll(l => IsLiquidityConsumed(l, consumedCutoffUtc));
             return DeduplicateLiquidity(levels, timeUtc);
+        }
+
+        // ---- v2.60-dev (P5): consumed liquidity. Suffix extremes of the M5 bars closed by the cutoff (plus the execution
+        // bars after the last M5 close) are built once per cutoff, so each level costs one binary search.
+        private DateTime _consumedCutoff = DateTime.MinValue;
+        private int _consumedFirst = -1, _consumedLast = -1;
+        private double[] _consumedHigh = new double[0], _consumedLow = new double[0];
+        private double _consumedTailHigh, _consumedTailLow;
+
+        private void EnsureConsumedIndex(DateTime cutoffUtc)
+        {
+            if (cutoffUtc == _consumedCutoff)
+                return;
+            _consumedCutoff = cutoffUtc;
+            _consumedLast = GetLastFullyClosedBarIndex(_m5, cutoffUtc, 5);
+            _consumedFirst = Math.Max(0, _consumedLast - 1200);
+            int n = Math.Max(0, _consumedLast - _consumedFirst + 1);
+            if (_consumedHigh.Length < n) { _consumedHigh = new double[n]; _consumedLow = new double[n]; }
+            double hi = double.MinValue, lo = double.MaxValue;
+            for (int k = _consumedLast; k >= _consumedFirst && k >= 0; k--)
+            {
+                hi = Math.Max(hi, _m5.HighPrices[k]);
+                lo = Math.Min(lo, _m5.LowPrices[k]);
+                _consumedHigh[k - _consumedFirst] = hi;
+                _consumedLow[k - _consumedFirst] = lo;
+            }
+            _consumedTailHigh = double.MinValue;
+            _consumedTailLow = double.MaxValue;
+            DateTime m5Close = _consumedLast >= 0 ? _m5.OpenTimes[_consumedLast].AddMinutes(5) : DateTime.MinValue;
+            for (int k = GetLastFullyClosedBarIndex(_exec, cutoffUtc, ExecutionMinutes()); k >= 0 && _exec.OpenTimes[k] >= m5Close; k--)
+            {
+                _consumedTailHigh = Math.Max(_consumedTailHigh, _exec.HighPrices[k]);
+                _consumedTailLow = Math.Min(_consumedTailLow, _exec.LowPrices[k]);
+            }
+        }
+
+        private bool IsLiquidityConsumed(LiquidityLevel level, DateTime cutoffUtc)
+        {
+            if (level == null || level.FormedUtc == DateTime.MinValue || cutoffUtc == DateTime.MinValue || level.FormedUtc >= cutoffUtc)
+                return false;
+            EnsureConsumedIndex(cutoffUtc);
+            double hi = _consumedTailHigh, lo = _consumedTailLow;
+            if (_consumedLast >= 0)
+            {
+                int k = _m5.OpenTimes.GetIndexByTime(level.FormedUtc);
+                if (k < _consumedFirst) k = _consumedFirst;
+                while (k > _consumedFirst && _m5.OpenTimes[k - 1] >= level.FormedUtc) k--;
+                while (k <= _consumedLast && _m5.OpenTimes[k] < level.FormedUtc) k++;
+                if (k <= _consumedLast)
+                {
+                    hi = Math.Max(hi, _consumedHigh[k - _consumedFirst]);
+                    lo = Math.Min(lo, _consumedLow[k - _consumedFirst]);
+                }
+            }
+            double through = Math.Max(Symbol.TickSize * 2.0, MinimumSweepPips * PricePerStrategyPip);
+            return level.Side > 0 ? hi > level.Price + through : lo < level.Price - through;
         }
 
         private void AddCrtLiquidity(List<LiquidityLevel> levels, DateTime timeUtc)
@@ -1558,8 +1949,9 @@ namespace cAlgo.Robots
         {
             if (range == null || !range.Valid)
                 return;
-            levels.Add(new LiquidityLevel(range.Label + " H", range.High, 1, strength, external));
-            levels.Add(new LiquidityLevel(range.Label + " L", range.Low, -1, strength, external));
+            DateTime formed = range.SourceOpenTime.AddMinutes(range.TimeframeMinutes);
+            levels.Add(new LiquidityLevel(range.Label + " H", range.High, 1, strength, external) { FormedUtc = formed });
+            levels.Add(new LiquidityLevel(range.Label + " L", range.Low, -1, strength, external) { FormedUtc = formed });
         }
 
         private CrtRangeContext FindRecentCrtRange(Bars bars, DateTime timeUtc, string label, int timeframeMinutes, int lookbackBars, double minimumCandleAtr)
@@ -1812,12 +2204,14 @@ namespace cAlgo.Robots
             DateTime currentNyDate = ToNewYork(timeUtc).Date;
             int end = GetCompletedBarIndexAtTime(_m5, timeUtc);
             DateTime previousDate = DateTime.MinValue;
+            DateTime formedUtc = DateTime.MinValue;
             for (int i = end; i >= Math.Max(0, end - 900); i--)
             {
                 DateTime d = ToNewYork(_m5.OpenTimes[i]).Date;
                 if (d < currentNyDate)
                 {
                     previousDate = d;
+                    formedUtc = _m5.OpenTimes[i].AddMinutes(5);
                     break;
                 }
             }
@@ -1839,8 +2233,8 @@ namespace cAlgo.Robots
 
             if (high > low && low > 0)
             {
-                levels.Add(new LiquidityLevel("PDH", high, 1, 3, true));
-                levels.Add(new LiquidityLevel("PDL", low, -1, 3, true));
+                levels.Add(new LiquidityLevel("PDH", high, 1, 3, true) { FormedUtc = formedUtc });
+                levels.Add(new LiquidityLevel("PDL", low, -1, 3, true) { FormedUtc = formedUtc });
             }
         }
 
@@ -1858,6 +2252,7 @@ namespace cAlgo.Robots
             double high = double.MinValue;
             double low = double.MaxValue;
             bool any = false;
+            DateTime formedUtc = DateTime.MinValue;
 
             for (int i = end; i >= Math.Max(0, end - 500); i--)
             {
@@ -1874,6 +2269,8 @@ namespace cAlgo.Robots
 
                 if (inSession)
                 {
+                    if (!any)
+                        formedUtc = _m5.OpenTimes[i].AddMinutes(5);
                     any = true;
                     high = Math.Max(high, _m5.HighPrices[i]);
                     low = Math.Min(low, _m5.LowPrices[i]);
@@ -1886,8 +2283,8 @@ namespace cAlgo.Robots
 
             if (any && high > low)
             {
-                levels.Add(new LiquidityLevel(name + " H", high, 1, 3, true));
-                levels.Add(new LiquidityLevel(name + " L", low, -1, 3, true));
+                levels.Add(new LiquidityLevel(name + " H", high, 1, 3, true) { FormedUtc = formedUtc });
+                levels.Add(new LiquidityLevel(name + " L", low, -1, 3, true) { FormedUtc = formedUtc });
             }
         }
 
@@ -1916,14 +2313,7 @@ namespace cAlgo.Robots
                 return false;
             if (M5InternalRequireCoreSession && CoreSessionName(timeUtc) == "OFF")
                 return false;
-            if (s.Zone.Quality < M5InternalMinimumZoneQuality)
-                return false;
-            if (M5InternalRequireComposite && !s.Zone.Composite)
-                return false;
-            if (!s.Zone.InCorrectPremiumDiscount)
-                return false;
-            if (M5InternalRequireCrtPremiumDiscount &&
-                (!EnableCrtContextLayer || s.CrtH1 == null || !s.CrtH1.Valid || !s.Zone.CrtCorrectPremiumDiscount || s.Zone.CrtNearEquilibrium))
+            if (!IsM5InternalStaticQuality(s))
                 return false;
 
             if (M5InternalRequireDeliveryAlignment)
@@ -1935,6 +2325,21 @@ namespace cAlgo.Robots
                 if (!aligned)
                     return false;
             }
+            return true;
+        }
+
+        // Zone/CRT part of the M5 internal gate: fixed once the zone exists (time-dependent parts stay at the order gate).
+        private bool IsM5InternalStaticQuality(SetupState s)
+        {
+            if (s.Zone.Quality < M5InternalMinimumZoneQuality)
+                return false;
+            if (M5InternalRequireComposite && !s.Zone.Composite)
+                return false;
+            if (!s.Zone.InCorrectPremiumDiscount)
+                return false;
+            if (M5InternalRequireCrtPremiumDiscount &&
+                (!EnableCrtContextLayer || s.CrtH1 == null || !s.CrtH1.Valid || !s.Zone.CrtCorrectPremiumDiscount || s.Zone.CrtNearEquilibrium))
+                return false;
             return true;
         }
 
@@ -1951,10 +2356,11 @@ namespace cAlgo.Robots
 
             for (int i = end - M5InternalPivotRight; i >= start; i--)
             {
+                DateTime formed = _m5.OpenTimes[i + M5InternalPivotRight].AddMinutes(5);
                 if (IsPivot(_m5, i, true, M5InternalPivotLeft, M5InternalPivotRight, end))
-                    raw.Add(new LiquidityLevel("M5 iBSL", _m5.HighPrices[i], 1, 1, false));
+                    raw.Add(new LiquidityLevel("M5 iBSL", _m5.HighPrices[i], 1, 1, false) { FormedUtc = formed });
                 if (IsPivot(_m5, i, false, M5InternalPivotLeft, M5InternalPivotRight, end))
-                    raw.Add(new LiquidityLevel("M5 iSSL", _m5.LowPrices[i], -1, 1, false));
+                    raw.Add(new LiquidityLevel("M5 iSSL", _m5.LowPrices[i], -1, 1, false) { FormedUtc = formed });
                 if (raw.Count >= 36)
                     break;
             }
@@ -1969,6 +2375,7 @@ namespace cAlgo.Robots
                     double sum = sideLevels[a].Price;
                     int count = 1;
                     used[a] = true;
+                    DateTime formed = sideLevels[a].FormedUtc;
 
                     for (int b = a + 1; b < sideLevels.Count; b++)
                     {
@@ -1978,13 +2385,16 @@ namespace cAlgo.Robots
                             used[b] = true;
                             sum += sideLevels[b].Price;
                             count++;
+                            if (sideLevels[b].FormedUtc > formed) formed = sideLevels[b].FormedUtc;
                         }
                     }
 
+                    if (Math.Min(3, count) < M5InternalMinimumStrength)
+                        continue;   // v2.60-dev: optionally only equal highs/lows count as internal liquidity
                     string label = side > 0
                         ? (count >= 2 ? "M5 iEQH" : "M5 iBSL")
                         : (count >= 2 ? "M5 iEQL" : "M5 iSSL");
-                    levels.Add(new LiquidityLevel(label, sum / count, side, Math.Min(3, count), false));
+                    levels.Add(new LiquidityLevel(label, sum / count, side, Math.Min(3, count), false) { FormedUtc = formed });
                 }
             }
         }
@@ -2002,10 +2412,11 @@ namespace cAlgo.Robots
 
             for (int i = end - M15PivotRight; i >= start; i--)
             {
+                DateTime formed = _m15.OpenTimes[i + M15PivotRight].AddMinutes(15);
                 if (IsPivot(_m15, i, true, M15PivotLeft, M15PivotRight, end))
-                    raw.Add(new LiquidityLevel("M15 BSL", _m15.HighPrices[i], 1, 1, true));
+                    raw.Add(new LiquidityLevel("M15 BSL", _m15.HighPrices[i], 1, 1, true) { FormedUtc = formed });
                 if (IsPivot(_m15, i, false, M15PivotLeft, M15PivotRight, end))
-                    raw.Add(new LiquidityLevel("M15 SSL", _m15.LowPrices[i], -1, 1, true));
+                    raw.Add(new LiquidityLevel("M15 SSL", _m15.LowPrices[i], -1, 1, true) { FormedUtc = formed });
                 if (raw.Count >= 24)
                     break;
             }
@@ -2020,6 +2431,7 @@ namespace cAlgo.Robots
                     double sum = sideLevels[a].Price;
                     int count = 1;
                     used[a] = true;
+                    DateTime formed = sideLevels[a].FormedUtc;
                     for (int b = a + 1; b < sideLevels.Count; b++)
                     {
                         if (used[b]) continue;
@@ -2028,11 +2440,12 @@ namespace cAlgo.Robots
                             used[b] = true;
                             sum += sideLevels[b].Price;
                             count++;
+                            if (sideLevels[b].FormedUtc > formed) formed = sideLevels[b].FormedUtc;
                         }
                     }
 
                     string label = side > 0 ? (count >= 2 ? "M15 EQH" : "M15 BSL") : (count >= 2 ? "M15 EQL" : "M15 SSL");
-                    levels.Add(new LiquidityLevel(label, sum / count, side, Math.Min(3, count), true));
+                    levels.Add(new LiquidityLevel(label, sum / count, side, Math.Min(3, count), true) { FormedUtc = formed });
                 }
             }
         }
@@ -2090,6 +2503,11 @@ namespace cAlgo.Robots
 
         private RegimeSnapshot GetAdaptiveRegime(DateTime timeUtc)
         {
+            return GetAdaptiveRegime(timeUtc, DateTime.MinValue);
+        }
+
+        private RegimeSnapshot GetAdaptiveRegime(DateTime timeUtc, DateTime vetoMustCloseAfterUtc)
+        {
             var r = new RegimeSnapshot();
             r.AnchorTrend = GetPersistentStructureTrend(_m15, GetCompletedBarIndexAtTime(_m15, timeUtc), 2, 2, 120);
             r.DeliveryTrend = GetPersistentStructureTrend(_m5, GetCompletedBarIndexAtTime(_m5, timeUtc), 2, 1, 120);
@@ -2100,7 +2518,10 @@ namespace cAlgo.Robots
             else if (r.DeliveryTrend != 0)
                 r.TransitionDirection = r.DeliveryTrend;
 
-            r.DeliveryVetoDirection = GetRecentDeliveryVeto(_m5, timeUtc, r.AnchorTrend);
+            DateTime vetoCloseUtc;
+            r.DeliveryVetoDirection = GetRecentDeliveryVeto(_m5, timeUtc, r.AnchorTrend, out vetoCloseUtc);
+            if (r.DeliveryVetoDirection != 0 && vetoMustCloseAfterUtc != DateTime.MinValue && vetoCloseUtc <= vetoMustCloseAfterUtc)
+                r.DeliveryVetoDirection = 0;
             if (r.DeliveryVetoDirection != 0 && r.DeliveryVetoDirection != r.Regime)
             {
                 r.Regime = 0;
@@ -2109,8 +2530,18 @@ namespace cAlgo.Robots
             return r;
         }
 
-        private int GetRecentDeliveryVeto(Bars bars, DateTime timeUtc, int anchorTrend)
+        private int GetRecentDeliveryVeto(Bars bars, DateTime timeUtc, int anchorTrend, out DateTime vetoCloseUtc)
         {
+            vetoCloseUtc = DateTime.MinValue;
+            int veto = GetRecentDeliveryVetoAt(bars, timeUtc, anchorTrend, out int vetoIndex);
+            if (veto != 0)
+                vetoCloseUtc = bars.OpenTimes[vetoIndex].AddMinutes(5);
+            return veto;
+        }
+
+        private int GetRecentDeliveryVetoAt(Bars bars, DateTime timeUtc, int anchorTrend, out int vetoIndex)
+        {
+            vetoIndex = -1;
             int end = GetCompletedBarIndexAtTime(bars, timeUtc);
             if (end < 8)
                 return 0;
@@ -2125,12 +2556,12 @@ namespace cAlgo.Robots
                 bool up = ph >= 0 && bars.ClosePrices[i] > bars.HighPrices[ph] + buffer && bars.ClosePrices[i - 1] <= bars.HighPrices[ph] + buffer;
                 bool down = pl >= 0 && bars.ClosePrices[i] < bars.LowPrices[pl] - buffer && bars.ClosePrices[i - 1] >= bars.LowPrices[pl] - buffer;
 
-                if (anchorTrend > 0 && down && HasDirectionalDisplacement(bars, i, -1, atr)) return -1;
-                if (anchorTrend < 0 && up && HasDirectionalDisplacement(bars, i, 1, atr)) return 1;
+                if (anchorTrend > 0 && down && HasDirectionalDisplacement(bars, i, -1, atr)) { vetoIndex = i; return -1; }
+                if (anchorTrend < 0 && up && HasDirectionalDisplacement(bars, i, 1, atr)) { vetoIndex = i; return 1; }
                 if (anchorTrend == 0)
                 {
-                    if (up && HasDirectionalDisplacement(bars, i, 1, atr)) return 1;
-                    if (down && HasDirectionalDisplacement(bars, i, -1, atr)) return -1;
+                    if (up && HasDirectionalDisplacement(bars, i, 1, atr)) { vetoIndex = i; return 1; }
+                    if (down && HasDirectionalDisplacement(bars, i, -1, atr)) { vetoIndex = i; return -1; }
                 }
             }
             return 0;
@@ -2210,6 +2641,8 @@ namespace cAlgo.Robots
         {
             if (s.MssIndex < 2 || currentIndex < s.MssIndex)
                 return null;
+            if (FvgSearchWholeLeg)
+                return FindLegEntryZone(s, currentIndex, atr);
 
             ZoneInfo bestFvg = null;
             int last = Math.Min(currentIndex, s.MssIndex + 2);
@@ -2223,7 +2656,42 @@ namespace cAlgo.Robots
             if (bestFvg == null)
                 return null;
 
+            return QualifyEventZone(s, bestFvg, FindOriginOrderBlock(s, atr), atr);
+        }
+
+        // v2.60-dev (P1): every FVG printed by the displacement leg (sweep candle .. MSS + 2) is a candidate. Composite,
+        // width, discount, quality and freshness (price has not traded back into it) are checked per candidate; the best
+        // surviving zone wins (higher quality, then the more recent one). v2.59 only looked at the premium end of the leg.
+        private ZoneInfo FindLegEntryZone(SetupState s, int currentIndex, double atr)
+        {
+            int first = Math.Max(2, s.TakenIndex + 2);
+            int last = Math.Min(currentIndex, s.MssIndex + 2);
             ZoneInfo ob = FindOriginOrderBlock(s, atr);
+            ZoneInfo best = null;
+            for (int j = first; j <= last; j++)
+            {
+                ZoneInfo fvg = TryCreateFvg(j, s.Direction, atr);
+                if (fvg == null || !IsFvgUntouchedSince(fvg, j, currentIndex, s.Direction))
+                    continue;
+                ZoneInfo zone = QualifyEventZone(s, fvg, ob, atr);
+                if (zone == null)
+                    continue;
+                if (best == null || zone.Quality > best.Quality || (zone.Quality == best.Quality && zone.SourceIndex > best.SourceIndex))
+                    best = zone;
+            }
+            return best;
+        }
+
+        private bool IsFvgUntouchedSince(ZoneInfo fvg, int sourceIndex, int currentIndex, int direction)
+        {
+            for (int k = sourceIndex + 1; k <= currentIndex; k++)
+                if (direction > 0 ? _exec.LowPrices[k] <= fvg.High : _exec.HighPrices[k] >= fvg.Low)
+                    return false;
+            return true;
+        }
+
+        private ZoneInfo QualifyEventZone(SetupState s, ZoneInfo bestFvg, ZoneInfo ob, double atr)
+        {
             ZoneInfo zone = bestFvg;
             bool overlaps = ob != null && Math.Min(bestFvg.High, ob.High) > Math.Max(bestFvg.Low, ob.Low);
             double obGapPips = double.MaxValue;
@@ -2661,6 +3129,10 @@ namespace cAlgo.Robots
                     localExtreme = Math.Max(localExtreme, _exec.HighPrices[k]);
             }
 
+            // v2.60-dev (E2): a CE entry is invalidated by the raid extreme, not by the edge of the PD array.
+            if (s.EntryTrigger == "CeTouch" && CeStopAnchor == SmcCeStopAnchor.SweepExtreme && s.SweepExtreme > 0)
+                localExtreme = s.Direction > 0 ? Math.Min(localExtreme, s.SweepExtreme) : Math.Max(localExtreme, s.SweepExtreme);
+
             double buffer = Math.Max(StopBufferMinimumPips * PricePerStrategyPip, Math.Max(Symbol.Spread * 1.2, atr * StopBufferAtr));
             double stop = s.Direction > 0 ? localExtreme - buffer : localExtreme + buffer;
             double riskPips = Math.Abs(entry - stop) / PricePerStrategyPip;
@@ -2682,7 +3154,8 @@ namespace cAlgo.Robots
                 return false;
 
             int direction = s.Direction;
-            List<LiquidityLevel> levels = BuildLiquidityLevels(timeUtc);
+            List<LiquidityLevel> levels = BuildLiquidityLevels(timeUtc,
+                IgnoreConsumedLiquidity == SmcConsumedLiquidity.Targets || IgnoreConsumedLiquidity == SmcConsumedLiquidity.Both ? timeUtc : DateTime.MinValue);
             var candidates = levels
                 .Where(x => direction > 0 ? (x.Side > 0 && x.Price > entry) : (x.Side < 0 && x.Price < entry))
                 .Select(x => new { Level = x, Pips = Math.Abs(x.Price - entry) / PricePerStrategyPip })
@@ -3999,7 +4472,7 @@ namespace cAlgo.Robots
             // legacy indexing, whatever NS flags are on, so Parent stays byte-identical to OFF.
             if (_nsScope > 0)
             {
-                int minutes = ReferenceEquals(bars, _h1) ? 60 : ReferenceEquals(bars, _m15) ? 15 :
+                int minutes = ReferenceEquals(bars, _h1) ? 60 : _h4 != null && ReferenceEquals(bars, _h4) ? 240 : ReferenceEquals(bars, _m15) ? 15 :
                     ReferenceEquals(bars, _m5) ? 5 : ReferenceEquals(bars, _exec) ? ExecutionMinutes() : 0;
                 return minutes > 0 ? NsClosedIndex(bars, minutes, time) : -1;
             }
@@ -4256,6 +4729,7 @@ namespace cAlgo.Robots
             public int Side;
             public int Strength;
             public bool External;
+            public DateTime FormedUtc = DateTime.MinValue;   // v2.60-dev: when the level became known (MinValue = unknown)
 
             public LiquidityLevel(string name, double price, int side, int strength, bool external)
             {
