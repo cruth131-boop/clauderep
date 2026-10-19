@@ -1,0 +1,5 @@
+bin/
+obj/
+data/
+__pycache__/
+cAlgo/

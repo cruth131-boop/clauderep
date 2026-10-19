@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Führt den Indikator gegen cAlgoMock.cs aus (Backtest außerhalb von cTrader) -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="cAlgoMock.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="../../XauM2SignalGenerator.cs" />
+  </ItemGroup>
+</Project>
