@@ -80,6 +80,23 @@ Der Indikator kompiliert fehlerfrei gegen das offizielle NuGet-Paket `cTrader.Au
 - Prüfe die Statistik oben links auf **deinem** Broker mit möglichst viel Historie. Steht dort dauerhaft ein negativer Ø R, gilt das Ergebnis oben auch für deine Daten.
 - Verwende ihn höchstens auf einem Demokonto. Das ist keine Anlageberatung.
 
+## Literatur-Hypothesen für mehrere Signale pro Tag
+
+Gesucht waren dokumentierte Intraday-Effekte in Gold, die mehrere Signale pro Tag liefern. Alle Zeiten und Parameter stammen aus den Studien und standen vor dem Test fest. Getestet wurde auf XAUUSD M15 2012–2022 (10 Jahre) und M1 2025, mit 0,37 USD Kosten je Trade (`backtest/session_hypotheses.py`).
+
+| Hypothese (Quelle) | 2012–2022 brutto | 2012–2022 netto | 2025 netto |
+|---|---|---|---|
+| H1 US-Session short, 08:20–13:30 New York (Blose & Gondhalekar 2014/2018) | +0,06 USD | −0,31 USD | −0,63 USD |
+| H2 Overnight long, 13:30–08:20 New York (ebd.) | +0,12 USD | −0,25 USD | +4,02 USD (t = 1,9) |
+| H3 Intraday-Momentum: erste → letzte Halbstunde (Gao et al. 2018) | −0,04 USD | −0,41 USD | −0,44 USD |
+| H4 Sessions in Richtung des SMA-200-Tagestrends | −0,08 USD | −0,45 USD | – |
+| H5 Slot-Persistenz, 4h-Slots / 20 Tage (Heston, Korajczyk & Sadka 2010) | −0,05 USD | −0,42 USD | −0,93 USD |
+
+- Der für 1985–2012 belegte Effekt „Gold steigt nachts und fällt in der US-Session“ ist 2012–2022 **verschwunden**. Die Autoren schrieben selbst, er habe sich stark abgeschwächt.
+- Der positive Wert von H2 im Jahr 2025 kommt aus dem Bullenmarkt (+60 %). Gold ist 2025 auch in der US-Session gestiegen. Ein Session-Effekt lässt sich daraus nicht ableiten.
+- Laut WGC war die Asymmetrie im 1. Halbjahr 2026 wieder sehr stark: +12,9 % in asiatischen und −15 % in US-Handelszeiten. Für 2023–2026 lagen hier keine Kursdaten vor, das ist also ungeprüft. Effekte, die je nach Marktphase auftauchen und wieder verschwinden, sind kein verlässlicher Vorteil.
+- **Fazit:** Keine der fünf Hypothesen hat brutto, also vor Kosten, einen stabilen Vorteil. Mehr Signale pro Tag bedeuten damit vor allem mehr Kosten. Deshalb wurde nichts davon in den Indikator übernommen.
+
 ## Reproduzieren
 
 ```bash
@@ -94,9 +111,13 @@ dotnet run -c Release --project backtest/Harness -- --bars backtest/data/m2.csv 
 python3 backtest/evaluate.py signals.csv backtest/data/m1.csv --max-bars 600
 # Kompilierprüfung gegen die echte cTrader-API
 dotnet build backtest/CompileCheck
+# Literatur-Hypothesen (M15 2012–2022 + M1 2025)
+python3 backtest/m15_from_mt5.py XAUUSDm15.csv backtest/data/m15_hist.csv
+python3 backtest/session_hypotheses.py backtest/data
 ```
 
 ## Quellen
 - Strategie-Recherche: [TradingView-Strategieliste](https://de.tradingview.com/scripts/?script_access=all&script_type=strategies). Gelesen wurden u. a. [Gold Trail](https://de.tradingview.com/script/be5yqBM1-Gold-Trail-XAUUSD-Regime-Gated-Adaptive-ATR-Strategy/), [UT Bot Alerts](https://de.tradingview.com/script/n8ss8BID-UT-Bot-Alerts/), [SuperTrend STRATEGY](https://de.tradingview.com/script/P5Gu6F8k/) und [Squeeze Momentum](https://de.tradingview.com/script/nqQ1DT5a-Squeeze-Momentum-Indicator-LazyBear/).
 - M1-Daten 2025: [tanjiroweb3/forex-data](https://github.com/tanjiroweb3/forex-data) (`DAT_ASCII_XAUUSD_M1_2025.csv`)
 - M15-Daten 2012–2022: [ejtraderLabs/historical-data](https://github.com/ejtraderLabs/historical-data) (`XAUUSD/XAUUSDm15.csv`, Brokerzeit UTC+2/+3, nach UTC umgerechnet)
+- Literatur: [Blose & Gondhalekar 2014](https://ideas.repec.org/a/taf/apeclt/v21y2014i18p1269-1272.html), [Blose, Gondhalekar & Kort 2018](https://ideas.repec.org/a/spr/jecfin/v42y2018i3d10.1007_s12197-017-9403-0.html), [Gao et al. – Intraday Momentum](https://alphaarchitect.com/2014/08/attention-prop-traders-the-first-half-hour-of-trading-predicts-the-last-half-hour/), [Intraday-Momentum in Rohstoff-Futures](https://ideas.repec.org/a/wly/jfutmk/v40y2020i4p632-650.html), [Batten et al. 2017 – Intraday-Muster der Edelmetalle](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5407636/), [WGC-Daten H1 2026 (Sekundärquelle)](https://www.fxstreet.com/analysis/a-strange-dichotomy-gold-up-on-the-year-in-asian-markets-down-big-in-the-west-202607131959)
