@@ -1,0 +1,43 @@
+tag=A0_control__R2021
+params=
+signals=103 ny_days=518 signals_per_day=0.199 win_rate=36.9% net_eur=602.03 pf_eur=1.33 sum_r=33.64 avg_r=0.327 pf_r=1.53 max_dd_eur=301.31 max_dd_pct=5.59
+  setup CRT Sweep          n=  13 win= 30.8% sum_r=   4.07 pf_r=1.45
+  setup LiquiditySweep     n=  43 win= 46.5% sum_r=  29.80 pf_r=2.30
+  setup M5 Internal        n=   3 win= 33.3% sum_r=   0.77 pf_r=1.38
+  setup SessionSweep       n=  18 win= 11.1% sum_r= -12.25 pf_r=0.17
+  setup TurtleSoup         n=  26 win= 42.3% sum_r=  11.26 pf_r=1.80
+  quarter 2020-Q1 n=   6 sum_r=   6.14 net_eur=  141.99
+  quarter 2020-Q2 n=  13 sum_r=   7.51 net_eur=  119.14
+  quarter 2020-Q3 n=  11 sum_r=   2.07 net_eur=   15.36
+  quarter 2020-Q4 n=  15 sum_r=   2.88 net_eur=   39.93
+  quarter 2021-Q1 n=   7 sum_r=  -1.02 net_eur=  -34.55
+  quarter 2021-Q2 n=  13 sum_r=   0.51 net_eur=  -14.86
+  quarter 2021-Q3 n=  22 sum_r=  12.26 net_eur=  219.46
+  quarter 2021-Q4 n=  16 sum_r=   3.30 net_eur=  115.55
+funnel:
+  PARENT|armed=17602
+  PARENT|exec_enter=905
+  PARENT|exec_gate_parked=52
+  PARENT|fill=103
+  PARENT|order_request=103
+  PARENT|parent_zone_found=1621
+  PARENT|rej:exec:delivery_veto=1
+  PARENT|rej:exec:gate:extended session quality=220
+  PARENT|rej:exec:gate:loss cooldown=1
+  PARENT|rej:exec:gate:outside session=71
+  PARENT|rej:exec:gate:unprotected position already open=5
+  PARENT|rej:exec:m5_internal_context=193
+  PARENT|rej:exec:no_target_room=10
+  PARENT|rej:exec:rr_floor=140
+  PARENT|rej:exec:score=11
+  PARENT|rej:exec:stop_distance=98
+  PARENT|reset:confirmation_expired=14
+  PARENT|reset:crt_invalidated=5789
+  PARENT|reset:mss_expired=4320
+  PARENT|reset:no_pd_array=3922
+  PARENT|reset:no_reclaim=1804
+  PARENT|reset:zone_expired_no_touch=198
+  PARENT|reset:zone_invalidated_after_touch=152
+  PARENT|reset:zone_invalidated_before_touch=90
+  PARENT|reset:zone_over_mitigated=147
+  PARENT|trade_managed=103

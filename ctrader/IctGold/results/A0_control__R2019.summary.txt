@@ -1,0 +1,44 @@
+tag=A0_control__R2019
+params=
+signals=113 ny_days=519 signals_per_day=0.218 win_rate=31.9% net_eur=162.10 pf_eur=1.08 sum_r=19.93 avg_r=0.176 pf_r=1.26 max_dd_eur=488.97 max_dd_pct=9.30
+  setup CRT Sweep          n=  17 win= 35.3% sum_r=   5.27 pf_r=1.50
+  setup LiquiditySweep     n=  39 win= 33.3% sum_r=   6.70 pf_r=1.26
+  setup M5 Internal        n=   9 win= 44.4% sum_r=   7.88 pf_r=2.58
+  setup SessionSweep       n=  17 win= 35.3% sum_r=   1.86 pf_r=1.17
+  setup TurtleSoup         n=  31 win= 22.6% sum_r=  -1.77 pf_r=0.92
+  quarter 2018-Q1 n=  17 sum_r=  -0.51 net_eur=   -7.73
+  quarter 2018-Q2 n=  17 sum_r=   8.51 net_eur=  184.04
+  quarter 2018-Q3 n=  21 sum_r=   5.23 net_eur=    5.01
+  quarter 2018-Q4 n=  13 sum_r=  -3.91 net_eur= -171.15
+  quarter 2019-Q1 n=  12 sum_r=  -5.63 net_eur= -143.58
+  quarter 2019-Q2 n=  12 sum_r=   5.61 net_eur=   25.47
+  quarter 2019-Q3 n=  10 sum_r=   3.91 net_eur=  131.20
+  quarter 2019-Q4 n=  11 sum_r=   6.72 net_eur=  138.83
+funnel:
+  PARENT|armed=17044
+  PARENT|exec_enter=897
+  PARENT|exec_gate_parked=58
+  PARENT|fill=113
+  PARENT|order_request=113
+  PARENT|parent_zone_found=1480
+  PARENT|rej:exec:delivery_veto=1
+  PARENT|rej:exec:gate:extended session quality=229
+  PARENT|rej:exec:gate:loss cooldown=1
+  PARENT|rej:exec:gate:outside session=59
+  PARENT|rej:exec:gate:same liquidity runner active=1
+  PARENT|rej:exec:gate:unprotected position already open=4
+  PARENT|rej:exec:m5_internal_context=183
+  PARENT|rej:exec:no_target_room=9
+  PARENT|rej:exec:rr_floor=137
+  PARENT|rej:exec:score=10
+  PARENT|rej:exec:stop_distance=92
+  PARENT|reset:confirmation_expired=12
+  PARENT|reset:crt_invalidated=5490
+  PARENT|reset:mss_expired=4347
+  PARENT|reset:no_pd_array=3681
+  PARENT|reset:no_reclaim=1826
+  PARENT|reset:zone_expired_no_touch=176
+  PARENT|reset:zone_invalidated_after_touch=129
+  PARENT|reset:zone_invalidated_before_touch=77
+  PARENT|reset:zone_over_mitigated=135
+  PARENT|trade_managed=113

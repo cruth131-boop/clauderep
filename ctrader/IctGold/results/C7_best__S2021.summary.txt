@@ -1,0 +1,44 @@
+tag=C7_best__S2021
+params=FailFastStaticGates=true AllowDeepFillWithHold=true EntryMode=FvgCeTouch RrBasis=StructuralTarget
+signals=389 ny_days=518 signals_per_day=0.751 win_rate=37.3% net_eur=3450.47 pf_eur=1.64 sum_r=167.52 avg_r=0.431 pf_r=1.69 max_dd_eur=310.73 max_dd_pct=4.13
+  setup CRT Sweep          n=  76 win= 38.2% sum_r=  34.77 pf_r=1.74
+  setup LiquiditySweep     n= 157 win= 35.7% sum_r=  62.05 pf_r=1.62
+  setup M5 Internal        n=  28 win= 42.9% sum_r=  17.83 pf_r=2.11
+  setup SessionSweep       n=  59 win= 33.9% sum_r=  22.20 pf_r=1.57
+  setup TurtleSoup         n=  69 win= 40.6% sum_r=  30.66 pf_r=1.75
+  quarter 2020-Q1 n=  42 sum_r=   6.08 net_eur=  197.93
+  quarter 2020-Q2 n=  52 sum_r=  20.07 net_eur=  277.01
+  quarter 2020-Q3 n=  45 sum_r=  23.20 net_eur=  500.74
+  quarter 2020-Q4 n=  58 sum_r=  15.69 net_eur=  573.76
+  quarter 2021-Q1 n=  53 sum_r=  15.66 net_eur=  288.96
+  quarter 2021-Q2 n=  41 sum_r=  23.73 net_eur=  569.11
+  quarter 2021-Q3 n=  43 sum_r=  24.28 net_eur=  321.68
+  quarter 2021-Q4 n=  55 sum_r=  38.81 net_eur=  721.28
+funnel:
+  PARENT|armed=20635
+  PARENT|ce_touch=722
+  PARENT|exec_enter=722
+  PARENT|failfast:arm=1851
+  PARENT|failfast:m5_internal_zone=838
+  PARENT|fill=389
+  PARENT|order_request=389
+  PARENT|parent_zone_found=2311
+  PARENT|rej:exec:delivery_veto=14
+  PARENT|rej:exec:gate:extended session quality=187
+  PARENT|rej:exec:gate:loss cooldown=8
+  PARENT|rej:exec:gate:loss streak=3
+  PARENT|rej:exec:gate:same liquidity runner active=2
+  PARENT|rej:exec:gate:signal cooldown=2
+  PARENT|rej:exec:gate:unprotected position already open=9
+  PARENT|rej:exec:m5_internal_context=29
+  PARENT|rej:exec:no_target_room=2
+  PARENT|rej:exec:rr_floor=32
+  PARENT|rej:exec:score=11
+  PARENT|rej:exec:stop_distance=34
+  PARENT|reset:crt_invalidated=5187
+  PARENT|reset:mss_expired=4671
+  PARENT|reset:no_pd_array=4790
+  PARENT|reset:no_reclaim=3419
+  PARENT|reset:zone_expired_no_touch=384
+  PARENT|reset:zone_invalidated_before_touch=239
+  PARENT|trade_managed=389

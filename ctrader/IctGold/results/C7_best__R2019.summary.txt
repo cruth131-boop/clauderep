@@ -1,0 +1,43 @@
+tag=C7_best__R2019
+params=FailFastStaticGates=true AllowDeepFillWithHold=true EntryMode=FvgCeTouch RrBasis=StructuralTarget
+signals=305 ny_days=519 signals_per_day=0.588 win_rate=31.1% net_eur=1648.17 pf_eur=1.38 sum_r=56.65 avg_r=0.186 pf_r=1.27 max_dd_eur=390.00 max_dd_pct=6.29
+  setup CRT Sweep          n=  50 win= 32.0% sum_r=  17.39 pf_r=1.51
+  setup LiquiditySweep     n= 106 win= 30.2% sum_r=  13.30 pf_r=1.18
+  setup M5 Internal        n=  17 win= 17.6% sum_r=  -2.50 pf_r=0.82
+  setup SessionSweep       n=  39 win= 35.9% sum_r=  10.03 pf_r=1.40
+  setup TurtleSoup         n=  93 win= 32.3% sum_r=  18.43 pf_r=1.30
+  quarter 2018-Q1 n=  39 sum_r= -10.75 net_eur=  -75.37
+  quarter 2018-Q2 n=  33 sum_r=   8.23 net_eur=  167.99
+  quarter 2018-Q3 n=  42 sum_r=   5.65 net_eur=  101.27
+  quarter 2018-Q4 n=  44 sum_r=  19.75 net_eur=  431.94
+  quarter 2019-Q1 n=  33 sum_r=   2.65 net_eur=  219.60
+  quarter 2019-Q2 n=  39 sum_r=   6.82 net_eur=  -31.33
+  quarter 2019-Q3 n=  30 sum_r=  34.01 net_eur=  906.06
+  quarter 2019-Q4 n=  45 sum_r=  -9.70 net_eur=  -72.01
+funnel:
+  PARENT|armed=16503
+  PARENT|ce_touch=542
+  PARENT|exec_enter=542
+  PARENT|failfast:arm=1093
+  PARENT|failfast:m5_internal_zone=380
+  PARENT|fill=305
+  PARENT|order_request=305
+  PARENT|parent_zone_found=1403
+  PARENT|rej:exec:delivery_veto=4
+  PARENT|rej:exec:gate:extended session quality=135
+  PARENT|rej:exec:gate:loss cooldown=4
+  PARENT|rej:exec:gate:loss streak=2
+  PARENT|rej:exec:gate:signal cooldown=1
+  PARENT|rej:exec:gate:unprotected position already open=6
+  PARENT|rej:exec:m5_internal_context=14
+  PARENT|rej:exec:no_target_room=1
+  PARENT|rej:exec:rr_floor=34
+  PARENT|rej:exec:score=13
+  PARENT|rej:exec:stop_distance=23
+  PARENT|reset:crt_invalidated=5477
+  PARENT|reset:mss_expired=4144
+  PARENT|reset:no_pd_array=3498
+  PARENT|reset:no_reclaim=1737
+  PARENT|reset:zone_expired_no_touch=264
+  PARENT|reset:zone_invalidated_before_touch=139
+  PARENT|trade_managed=305

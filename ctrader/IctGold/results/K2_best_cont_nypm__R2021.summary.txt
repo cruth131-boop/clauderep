@@ -1,0 +1,46 @@
+tag=K2_best_cont_nypm__R2021
+params=FailFastStaticGates=true AllowDeepFillWithHold=true EntryMode=FvgCeTouch RrBasis=StructuralTarget EnableContinuationLane=true TradeNyPm=true
+signals=598 ny_days=518 signals_per_day=1.154 win_rate=35.3% net_eur=4804.27 pf_eur=1.60 sum_r=202.12 avg_r=0.338 pf_r=1.52 max_dd_eur=387.66 max_dd_pct=5.96
+  setup CRT Sweep          n=  52 win= 42.3% sum_r=  16.59 pf_r=1.55
+  setup Continuation       n= 263 win= 31.2% sum_r=  62.53 pf_r=1.35
+  setup LiquiditySweep     n= 136 win= 37.5% sum_r=  59.95 pf_r=1.71
+  setup M5 Internal        n=   9 win= 33.3% sum_r=   2.58 pf_r=1.43
+  setup SessionSweep       n=  43 win= 27.9% sum_r=   2.62 pf_r=1.08
+  setup TurtleSoup         n=  95 win= 43.2% sum_r=  57.86 pf_r=2.09
+  quarter 2020-Q1 n=  45 sum_r=  -8.90 net_eur=  -88.33
+  quarter 2020-Q2 n=  80 sum_r=  44.99 net_eur=  956.63
+  quarter 2020-Q3 n=  77 sum_r=  20.04 net_eur=  437.03
+  quarter 2020-Q4 n=  69 sum_r=  21.85 net_eur=  499.65
+  quarter 2021-Q1 n=  75 sum_r=   9.64 net_eur=  300.78
+  quarter 2021-Q2 n=  82 sum_r=  69.08 net_eur= 1260.31
+  quarter 2021-Q3 n=  86 sum_r=  16.92 net_eur=  685.49
+  quarter 2021-Q4 n=  84 sum_r=  28.50 net_eur=  752.70
+funnel:
+  PARENT|armed=16938
+  PARENT|ce_touch=1149
+  PARENT|cont_armed=2614
+  PARENT|exec_enter=1149
+  PARENT|failfast:arm=1145
+  PARENT|failfast:m5_internal_zone=434
+  PARENT|fill=598
+  PARENT|order_request=598
+  PARENT|parent_zone_found=2394
+  PARENT|rej:exec:delivery_veto=19
+  PARENT|rej:exec:gate:extended session quality=133
+  PARENT|rej:exec:gate:loss cooldown=20
+  PARENT|rej:exec:gate:loss streak=6
+  PARENT|rej:exec:gate:same liquidity runner active=3
+  PARENT|rej:exec:gate:signal cooldown=2
+  PARENT|rej:exec:gate:unprotected position already open=23
+  PARENT|rej:exec:m5_internal_context=19
+  PARENT|rej:exec:no_target_room=103
+  PARENT|rej:exec:rr_floor=133
+  PARENT|rej:exec:score=15
+  PARENT|rej:exec:stop_distance=75
+  PARENT|reset:crt_invalidated=5766
+  PARENT|reset:mss_expired=4070
+  PARENT|reset:no_pd_array=5413
+  PARENT|reset:no_reclaim=1698
+  PARENT|reset:zone_expired_no_touch=462
+  PARENT|reset:zone_invalidated_before_touch=254
+  PARENT|trade_managed=598

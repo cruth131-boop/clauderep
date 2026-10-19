@@ -1,0 +1,46 @@
+tag=K2_best_cont_nypm__O2017
+params=FailFastStaticGates=true AllowDeepFillWithHold=true EntryMode=FvgCeTouch RrBasis=StructuralTarget EnableContinuationLane=true TradeNyPm=true
+signals=578 ny_days=517 signals_per_day=1.118 win_rate=33.9% net_eur=4863.06 pf_eur=1.63 sum_r=222.25 avg_r=0.385 pf_r=1.58 max_dd_eur=298.40 max_dd_pct=3.39
+  setup CRT Sweep          n=  55 win= 41.8% sum_r=  38.03 pf_r=2.19
+  setup Continuation       n= 261 win= 33.7% sum_r= 117.54 pf_r=1.68
+  setup LiquiditySweep     n= 123 win= 33.3% sum_r=  45.78 pf_r=1.56
+  setup M5 Internal        n=  11 win= 18.2% sum_r=  -4.82 pf_r=0.46
+  setup SessionSweep       n=  34 win= 23.5% sum_r=  -2.94 pf_r=0.89
+  setup TurtleSoup         n=  94 win= 36.2% sum_r=  28.67 pf_r=1.48
+  quarter 2016-Q1 n=  64 sum_r=  39.16 net_eur=  956.71
+  quarter 2016-Q2 n=  84 sum_r=  39.80 net_eur=  737.64
+  quarter 2016-Q3 n=  85 sum_r=  40.80 net_eur=  944.89
+  quarter 2016-Q4 n=  76 sum_r=  19.33 net_eur=  625.46
+  quarter 2017-Q1 n=  62 sum_r=  20.14 net_eur=  402.09
+  quarter 2017-Q2 n=  73 sum_r=   5.03 net_eur=   82.34
+  quarter 2017-Q3 n=  63 sum_r=   4.20 net_eur=  128.16
+  quarter 2017-Q4 n=  71 sum_r=  53.79 net_eur=  985.78
+funnel:
+  PARENT|armed=16488
+  PARENT|ce_touch=1104
+  PARENT|cont_armed=2507
+  PARENT|exec_enter=1104
+  PARENT|failfast:arm=913
+  PARENT|failfast:m5_internal_zone=437
+  PARENT|fill=578
+  PARENT|order_request=578
+  PARENT|parent_zone_found=2310
+  PARENT|rej:exec:delivery_veto=7
+  PARENT|rej:exec:gate:extended session quality=146
+  PARENT|rej:exec:gate:loss cooldown=11
+  PARENT|rej:exec:gate:loss streak=7
+  PARENT|rej:exec:gate:same liquidity runner active=3
+  PARENT|rej:exec:gate:signal cooldown=1
+  PARENT|rej:exec:gate:unprotected position already open=36
+  PARENT|rej:exec:m5_internal_context=27
+  PARENT|rej:exec:no_target_room=98
+  PARENT|rej:exec:rr_floor=144
+  PARENT|rej:exec:score=14
+  PARENT|rej:exec:stop_distance=32
+  PARENT|reset:crt_invalidated=5433
+  PARENT|reset:mss_expired=4062
+  PARENT|reset:no_pd_array=5179
+  PARENT|reset:no_reclaim=1747
+  PARENT|reset:zone_expired_no_touch=480
+  PARENT|reset:zone_invalidated_before_touch=217
+  PARENT|trade_managed=578

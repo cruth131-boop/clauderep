@@ -1,0 +1,43 @@
+tag=C7_best__O2015
+params=FailFastStaticGates=true AllowDeepFillWithHold=true EntryMode=FvgCeTouch RrBasis=StructuralTarget
+signals=299 ny_days=516 signals_per_day=0.579 win_rate=29.4% net_eur=1184.66 pf_eur=1.29 sum_r=39.55 avg_r=0.132 pf_r=1.19 max_dd_eur=628.80 max_dd_pct=10.16
+  setup CRT Sweep          n=  44 win= 25.0% sum_r=  -5.54 pf_r=0.83
+  setup LiquiditySweep     n= 131 win= 27.5% sum_r=   6.39 pf_r=1.07
+  setup M5 Internal        n=  10 win= 20.0% sum_r=   0.25 pf_r=1.03
+  setup SessionSweep       n=  30 win= 30.0% sum_r=   9.77 pf_r=1.47
+  setup TurtleSoup         n=  84 win= 35.7% sum_r=  28.69 pf_r=1.53
+  quarter 2014-Q1 n=  34 sum_r=  17.30 net_eur=  358.28
+  quarter 2014-Q2 n=  42 sum_r=   0.34 net_eur=   45.25
+  quarter 2014-Q3 n=  39 sum_r=   8.04 net_eur=  256.86
+  quarter 2014-Q4 n=  28 sum_r=  13.59 net_eur=  308.10
+  quarter 2015-Q1 n=  42 sum_r=  -8.34 net_eur= -111.41
+  quarter 2015-Q2 n=  33 sum_r= -12.64 net_eur= -247.23
+  quarter 2015-Q3 n=  39 sum_r=   5.77 net_eur=  236.93
+  quarter 2015-Q4 n=  42 sum_r=  15.49 net_eur=  337.87
+funnel:
+  PARENT|armed=15964
+  PARENT|ce_touch=521
+  PARENT|exec_enter=521
+  PARENT|failfast:arm=1313
+  PARENT|failfast:m5_internal_zone=407
+  PARENT|fill=299
+  PARENT|order_request=299
+  PARENT|parent_zone_found=1372
+  PARENT|rej:exec:delivery_veto=5
+  PARENT|rej:exec:gate:extended session quality=115
+  PARENT|rej:exec:gate:loss cooldown=5
+  PARENT|rej:exec:gate:loss streak=3
+  PARENT|rej:exec:gate:signal cooldown=1
+  PARENT|rej:exec:gate:unprotected position already open=11
+  PARENT|rej:exec:m5_internal_context=29
+  PARENT|rej:exec:no_target_room=1
+  PARENT|rej:exec:rr_floor=25
+  PARENT|rej:exec:score=9
+  PARENT|rej:exec:stop_distance=18
+  PARENT|reset:crt_invalidated=4947
+  PARENT|reset:mss_expired=4175
+  PARENT|reset:no_pd_array=3512
+  PARENT|reset:no_reclaim=1724
+  PARENT|reset:zone_expired_no_touch=246
+  PARENT|reset:zone_invalidated_before_touch=128
+  PARENT|trade_managed=299

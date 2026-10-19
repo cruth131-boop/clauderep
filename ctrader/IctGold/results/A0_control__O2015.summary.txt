@@ -1,0 +1,43 @@
+tag=A0_control__O2015
+params=
+signals=132 ny_days=516 signals_per_day=0.256 win_rate=22.7% net_eur=-542.41 pf_eur=0.78 sum_r=-26.26 avg_r=-0.199 pf_r=0.73 max_dd_eur=896.74 max_dd_pct=16.88
+  setup CRT Sweep          n=  16 win= 18.8% sum_r=  -5.80 pf_r=0.51
+  setup LiquiditySweep     n=  64 win= 23.4% sum_r=  -7.46 pf_r=0.84
+  setup M5 Internal        n=   4 win=  0.0% sum_r=  -4.00 pf_r=0.00
+  setup SessionSweep       n=  15 win= 20.0% sum_r=  -7.52 pf_r=0.37
+  setup TurtleSoup         n=  33 win= 27.3% sum_r=  -1.48 pf_r=0.94
+  quarter 2014-Q1 n=  12 sum_r=  -0.07 net_eur=  -36.62
+  quarter 2014-Q2 n=  19 sum_r=   4.95 net_eur=  135.88
+  quarter 2014-Q3 n=  17 sum_r=   5.32 net_eur=  175.20
+  quarter 2014-Q4 n=  13 sum_r=  -5.92 net_eur= -105.43
+  quarter 2015-Q1 n=  14 sum_r=  -2.53 net_eur=  -53.60
+  quarter 2015-Q2 n=  20 sum_r=  -2.45 net_eur=  -94.71
+  quarter 2015-Q3 n=  21 sum_r= -20.94 net_eur= -500.63
+  quarter 2015-Q4 n=  16 sum_r=  -4.63 net_eur=  -62.51
+funnel:
+  PARENT|armed=16565
+  PARENT|exec_enter=896
+  PARENT|exec_gate_parked=40
+  PARENT|fill=132
+  PARENT|order_request=132
+  PARENT|parent_zone_found=1471
+  PARENT|rej:exec:delivery_veto=6
+  PARENT|rej:exec:gate:extended session quality=227
+  PARENT|rej:exec:gate:loss cooldown=5
+  PARENT|rej:exec:gate:outside session=68
+  PARENT|rej:exec:gate:unprotected position already open=10
+  PARENT|rej:exec:m5_internal_context=210
+  PARENT|rej:exec:no_target_room=6
+  PARENT|rej:exec:rr_floor=117
+  PARENT|rej:exec:score=7
+  PARENT|rej:exec:stop_distance=68
+  PARENT|reset:confirmation_expired=5
+  PARENT|reset:crt_invalidated=4940
+  PARENT|reset:mss_expired=4411
+  PARENT|reset:no_pd_array=3697
+  PARENT|reset:no_reclaim=1826
+  PARENT|reset:zone_expired_no_touch=173
+  PARENT|reset:zone_invalidated_after_touch=146
+  PARENT|reset:zone_invalidated_before_touch=72
+  PARENT|reset:zone_over_mitigated=111
+  PARENT|trade_managed=132

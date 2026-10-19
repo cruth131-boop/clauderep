@@ -1581,7 +1581,10 @@ namespace cAlgo.Robots
             stop = NormalizePrice(stop);
             tp1 = NormalizePrice(tp1);
             tp2 = NormalizePrice(tp2);
-            if (!RiskCap.WithinCap(Symbol.AmountRisked(position.VolumeInUnits, Math.Abs(actualEntry - stop) / Symbol.PipSize), maximumRiskAmount))
+            // v2.60-dev bugfix: rounding the stop to the tick grid (and the broker's readback, already accepted within one tick)
+            // may add up to one tick of risk. v2.59 compared that against the bare cap and force-closed positions sized at the cap.
+            double quantizedCap = maximumRiskAmount + Symbol.AmountRisked(position.VolumeInUnits, Symbol.TickSize / Symbol.PipSize);
+            if (!RiskCap.WithinCap(Symbol.AmountRisked(position.VolumeInUnits, Math.Abs(actualEntry - stop) / Symbol.PipSize), quantizedCap))
             {
                 NsF(fm, "rej:postfill:normalized_stop_risk_cap");
                 _lastEvent = DirectionText(s.Direction) + " normalized stop exceeds risk cap";
@@ -1594,7 +1597,7 @@ namespace cAlgo.Robots
                 _lastEvent = DirectionText(s.Direction) + " protection failed";
                 return;
             }
-            if (!FsFinalRiskOk(position, stop, maximumRiskAmount))   // read-back SL of the live position against the cap
+            if (!FsFinalRiskOk(position, stop, quantizedCap))   // read-back SL of the live position against the cap
             {
                 NsF(fm, "rej:postfill:readback_stop_risk_cap");
                 _lastEvent = DirectionText(s.Direction) + " read-back stop exceeds risk cap";

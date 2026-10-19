@@ -1,0 +1,42 @@
+tag=C7_best__R2021
+params=FailFastStaticGates=true AllowDeepFillWithHold=true EntryMode=FvgCeTouch RrBasis=StructuralTarget
+signals=332 ny_days=518 signals_per_day=0.641 win_rate=39.5% net_eur=3604.73 pf_eur=1.88 sum_r=161.44 avg_r=0.486 pf_r=1.81 max_dd_eur=298.08 max_dd_pct=3.84
+  setup CRT Sweep          n=  55 win= 43.6% sum_r=  22.87 pf_r=1.74
+  setup LiquiditySweep     n= 130 win= 36.9% sum_r=  58.43 pf_r=1.71
+  setup M5 Internal        n=   8 win= 37.5% sum_r=   3.58 pf_r=1.72
+  setup SessionSweep       n=  44 win= 31.8% sum_r=  15.58 pf_r=1.52
+  setup TurtleSoup         n=  95 win= 44.2% sum_r=  60.97 pf_r=2.17
+  quarter 2020-Q1 n=  27 sum_r=   2.79 net_eur=  116.78
+  quarter 2020-Q2 n=  39 sum_r=  17.28 net_eur=  295.64
+  quarter 2020-Q3 n=  42 sum_r=  27.48 net_eur=  631.68
+  quarter 2020-Q4 n=  40 sum_r=  10.22 net_eur=  274.30
+  quarter 2021-Q1 n=  38 sum_r=   9.75 net_eur=  299.97
+  quarter 2021-Q2 n=  54 sum_r=  58.03 net_eur= 1046.59
+  quarter 2021-Q3 n=  47 sum_r=  11.05 net_eur=  362.76
+  quarter 2021-Q4 n=  45 sum_r=  24.83 net_eur=  577.02
+funnel:
+  PARENT|armed=17095
+  PARENT|ce_touch=600
+  PARENT|exec_enter=600
+  PARENT|failfast:arm=1147
+  PARENT|failfast:m5_internal_zone=448
+  PARENT|fill=332
+  PARENT|order_request=332
+  PARENT|parent_zone_found=1571
+  PARENT|rej:exec:delivery_veto=14
+  PARENT|rej:exec:gate:extended session quality=140
+  PARENT|rej:exec:gate:loss cooldown=9
+  PARENT|rej:exec:gate:same liquidity runner active=3
+  PARENT|rej:exec:gate:unprotected position already open=8
+  PARENT|rej:exec:m5_internal_context=16
+  PARENT|rej:exec:no_target_room=2
+  PARENT|rej:exec:rr_floor=30
+  PARENT|rej:exec:score=11
+  PARENT|rej:exec:stop_distance=35
+  PARENT|reset:crt_invalidated=5751
+  PARENT|reset:mss_expired=4116
+  PARENT|reset:no_pd_array=3737
+  PARENT|reset:no_reclaim=1707
+  PARENT|reset:zone_expired_no_touch=277
+  PARENT|reset:zone_invalidated_before_touch=153
+  PARENT|trade_managed=332
