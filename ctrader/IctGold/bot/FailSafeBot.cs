@@ -593,6 +593,16 @@ namespace cAlgo.Robots
             return ExecuteMarketOrder(tradeType, SymbolName, volume, BotLabel, slPips, tpPips, comment);
         }
 
+        // v2.61-dev: the analogous single path for resting CE limit orders (PendingLimit.cs). Same entry gate, same request quotes;
+        // nothing else may call PlaceLimitOrder.
+        private TradeResult FsGuardedLimitOrder(TradeType tradeType, double volume, double targetPrice, double? slPips, double? tpPips, DateTime? expiryUtc, string comment, out string block)
+        {
+            block = FsEntryBlock();
+            if (block != null) return null;
+            _pendingReqBid = Symbol.Bid; _pendingReqAsk = Symbol.Ask;
+            return PlaceLimitOrder(tradeType, SymbolName, volume, targetPrice, BotLabel, slPips, tpPips, expiryUtc, comment);
+        }
+
         // ---- news
         private string FsLiveNewsBlock(DateTime utc)
         {

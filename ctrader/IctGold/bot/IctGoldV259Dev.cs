@@ -782,7 +782,7 @@ namespace cAlgo.Robots
             _m5 = MarketData.GetBars(TimeFrame.Minute5, SymbolName);
             _m15 = MarketData.GetBars(TimeFrame.Minute15, SymbolName);
             _h1 = MarketData.GetBars(TimeFrame.Hour, SymbolName);
-            if (HtfBiasFilter != SmcHtfBias.Off)
+            if (HtfBiasFilter != SmcHtfBias.Off || UseH4SwingLiquidity)
                 _h4 = MarketData.GetBars(TimeFrame.Hour4, SymbolName);
 
             EnsureHistory(_exec, 1200);
@@ -795,12 +795,15 @@ namespace cAlgo.Robots
 
             _longState = new SetupState(1, NsF) { CandidateResetSink = CandReset };
             _shortState = new SetupState(-1, NsF) { CandidateResetSink = CandReset };
+            CreateParentSlots();   // v2.61-dev: slot 0 = _longState/_shortState, further slots only with Setup Slots Per Direction > 1
 
             int closed = _exec.Count - 2;
             if (closed >= 0)
                 _lastProcessedExecOpen = _exec.OpenTimes[closed];
 
             FsStartSequence();   // F3/F5: reset day, safety init, ledger restore, live validation (see FailSafeBot.cs)
+            StartRestingLimits();   // v2.61-dev: fill handler; stale own pending orders of a previous run are cancelled
+            MetaStart();            // v2.61-dev: meta-labeling telemetry / model (Off = nothing)
 
             // v2.36-news: the offline calendar replaces the data source of
             // _newsEvents; it is verified fail-closed before the first tick.
@@ -843,6 +846,7 @@ namespace cAlgo.Robots
             if (FsSafetyOnlyTick()) return;   // F3: failed start -> only serve queued closes / ownership
             CandInitialize();
             CandAdvanceShadows(false);
+            MetaTick();
             NsRetryProtectionFailures();
             ResetNyDay(Server.Time, false);
 
@@ -859,8 +863,10 @@ namespace cAlgo.Robots
             {
                 _lastProcessedExecOpen = _exec.OpenTimes[closed];
                 ProcessClosedExecutionBar(closed);
+                _closedBarThisTick = true;
             }
 
+            ManageRestingLimits();   // v2.61-dev: no-op unless CE Execution = RestingLimit (cancel retries only)
             if (EntryMode == SmcEntryMode.FvgCeTouch)
                 ProcessCeEntries();
 
@@ -869,11 +875,12 @@ namespace cAlgo.Robots
 
         protected override void OnStop()
         {
+            try { StopRestingLimits(); } catch (Exception ex) { Print("StopRestingLimits failed: " + ex.GetType().Name); }
             FsOnStop();
             try { NsFunnelSummary(); } catch (Exception ex) { Print("NsFunnelSummary skipped: " + ex.GetType().Name); }
             try { CandOnStop(); } catch (Exception ex) { Print("CandOnStop skipped: " + ex.GetType().Name); }
-            if (_longState != null) _longState.FunnelSink = null;
-            if (_shortState != null) _shortState.FunnelSink = null;
+            try { MetaStop(); } catch (Exception ex) { Print("MetaStop skipped: " + ex.GetType().Name); }
+            foreach (SetupState slot in ParentSlots()) slot.FunnelSink = null;
             Positions.Closed -= OnPositionClosed;
             if (ShowDashboard && _safetyOnlyReason.Length == 0)
                 Chart.RemoveObject("SMC_SCALP_DASH");
@@ -887,9 +894,9 @@ namespace cAlgo.Robots
             int closed = _exec.Count - 2;
             if (closed < 5)
                 return;
-            foreach (SetupState s in new[] { _longState, _shortState })
+            foreach (SetupState s in ParentSlots())
             {
-                if (s == null || s.NsNew || s.Stage != SetupStage.WaitingEntry || s.Zone == null || closed < s.Zone.SourceIndex)
+                if (s == null || s.NsNew || s.Stage != SetupStage.WaitingEntry || s.Zone == null || closed < s.Zone.SourceIndex || s.PendingOrderId != 0)
                     continue;
                 double price = s.Direction > 0 ? Symbol.Ask : Symbol.Bid;
                 double ce = s.Zone.Midpoint;
@@ -923,8 +930,8 @@ namespace cAlgo.Robots
             if (atr <= 0)
                 return;
 
-            AdvanceState(_longState, i, atr, decisionUtc);
-            AdvanceState(_shortState, i, atr, decisionUtc);
+            AdvanceSlots(_longSlots, i, atr, decisionUtc);
+            AdvanceSlots(_shortSlots, i, atr, decisionUtc);
             CandObserveShadowDetectors(i, decisionUtc);
             TryArmFailedSetupFlip(i, atr, decisionUtc);
             if (NsCoresEnabled())
@@ -1339,16 +1346,18 @@ namespace cAlgo.Robots
                 zone.InCorrectPremiumDiscount, zone.CrtCorrectPremiumDiscount, zone.CrtNearEquilibrium);
         }
 
-        private void TryExecuteSetup(SetupState s, int i, double atr, DateTime timeUtc)
+        // v2.61-dev: the complete pre-order gate sequence of TryExecuteSetup (v2.60 order and side effects unchanged), evaluated for a
+        // given entry price. quiet = dry run for resting limit orders: no funnel/log/journal/telemetry/reset/parking side effects,
+        // the reject reason is returned instead. Returns null when the setup is rejected.
+        private EntryPlan PlanEntry(SetupState s, int i, double atr, DateTime timeUtc, double estimatedEntry, bool quiet, out string rejectReason)
         {
-            CandEnsureState(s, timeUtc);
             string fm = NsMod(s);
-            NsF(fm, "exec_enter");
-            if (s.NsOte && !NewSetups.EntryGeometry.Contains(s.Direction > 0 ? Symbol.Ask : Symbol.Bid, s.Zone.Low, s.Zone.High))
-            { NsFE(fm, "rej:exec:quote_outside_ote_zone", "dir=" + s.Direction + "|type=" + s.SetupType + "|quote=" + Fi(s.Direction > 0 ? Symbol.Ask : Symbol.Bid) + "|zone=" + Fi(s.Zone.Low) + "-" + Fi(s.Zone.High)); s.Reset(); return; }
+            rejectReason = null;
             string gateReason;
             if (!CanOpenNewTrade(timeUtc, s, s.SetupType == "FailedSetupFlip", out gateReason))
             {
+                rejectReason = "gate:" + gateReason;
+                if (quiet) return null;
                 if (!s.NsNew && gateReason == "outside session" && ParkConfirmationMinutes > 0)
                 {
                     int minutesToSession = MinutesUntilTradingSession(timeUtc, ParkConfirmationMinutes);
@@ -1362,7 +1371,7 @@ namespace cAlgo.Robots
                         NsF(fm, "exec_gate_parked");
                         _lastEvent = DirectionText(s.Direction) + " confirmation parked " + minutesToSession + "m";
                         Log("{0}: confirmation parked; next session in {1}m.", DirectionText(s.Direction), minutesToSession);
-                        return;
+                        return null;
                     }
                 }
 
@@ -1371,12 +1380,14 @@ namespace cAlgo.Robots
                 Log("{0}: rejected gate {1}.", DirectionText(s.Direction), gateReason);
                 LogShadowMetricsAfterGateReject(s, i, atr, timeUtc, gateReason);
                 s.Reset();
-                return;
+                return null;
             }
 
             RegimeSnapshot regime = GetSetupRegime(s, timeUtc);
-            if (IsM5InternalSetup(s) && !IsM5InternalQualityCandidate(s, regime, timeUtc))
+            if (IsM5InternalSetup(s) && !IsM5InternalQualityCandidate(s, regime, timeUtc) && !PlanWaive("m5_internal_context"))
             {
+                rejectReason = "m5_internal_context";
+                if (quiet) return null;
                 NsF(fm, "rej:exec:m5_internal_context");
                 _lastEvent = DirectionText(s.Direction) + " M5 internal context";
                 Log("{0}: rejected M5 internal context; Q={1}, composite={2}, PD={3}, CRT-PD={4}, core={5}, delivery={6}, anchor={7}.",
@@ -1387,16 +1398,18 @@ namespace cAlgo.Robots
                     CoreSessionName(timeUtc),
                     regime.DeliveryTrend, regime.AnchorTrend);
                 s.Reset();
-                return;
+                return null;
             }
 
-            if (HtfBiasFilter != SmcHtfBias.Off && HtfBiasDirection(timeUtc) == -s.Direction)
+            if (HtfBiasFilter != SmcHtfBias.Off && HtfBiasDirection(timeUtc) == -s.Direction && !PlanWaive("htf_bias"))
             {
+                rejectReason = "htf_bias";
+                if (quiet) return null;
                 NsF(fm, "rej:exec:htf_bias");
                 _lastEvent = DirectionText(s.Direction) + " against H4 structure";
                 Log("{0}: rejected HTF bias (H4 structure against the trade).", DirectionText(s.Direction));
                 s.Reset();
-                return;
+                return null;
             }
 
             bool oppositeDeliveryVeto = BlockDeliveryVeto &&
@@ -1406,20 +1419,22 @@ namespace cAlgo.Robots
                                           AllowAPlusCompositeAgainstDeliveryVeto &&
                                           IsAPlusCompositeSetup(s);
 
-            if (oppositeDeliveryVeto && !aPlusDeliveryException)
+            if (oppositeDeliveryVeto && !aPlusDeliveryException && !PlanWaive("delivery_veto"))
             {
+                rejectReason = "delivery_veto";
+                if (quiet) return null;
                 NsF(fm, "rej:exec:delivery_veto");
                 _lastEvent = DirectionText(s.Direction) + " delivery veto";
                 Log("{0}: rejected delivery veto.", DirectionText(s.Direction));
                 s.Reset();
-                return;
+                return null;
             }
 
-            if (aPlusDeliveryException)
+            if (aPlusDeliveryException && !quiet)
                 Log("{0}: A+ composite delivery-veto exception accepted; score penalty retained.", DirectionText(s.Direction));
 
             int score = ScoreSetup(s, i, atr, timeUtc, regime);
-            if (EnableCrtContextLayer && s.CrtH1 != null && s.CrtH1.Valid)
+            if (!quiet && EnableCrtContextLayer && s.CrtH1 != null && s.CrtH1.Valid)
             {
                 Log("{0}: CRT eval H1-sweep={1}, reclaim={2}, CRT-PD={3}, M15-align={4}, targetRoom={5}, EQ-near={6}.",
                     DirectionText(s.Direction), s.CrtH1SweepObserved, s.CrtH1SweepReclaimed,
@@ -1430,17 +1445,18 @@ namespace cAlgo.Robots
             int requiredScore = UseSessionFilter ? Math.Max(MinimumSignalScore, RequiredScoreForSession(timeUtc)) : MinimumSignalScore;
             if (IsM5InternalSetup(s))
                 requiredScore = Math.Max(requiredScore, M5InternalMinimumScore);
-            if (score < requiredScore)
+            if (score < requiredScore && !PlanWaive("score"))
             {
+                rejectReason = "score";
+                if (quiet) return null;
                 NsFE(fm, "rej:exec:score", "dir=" + s.Direction + "|type=" + s.SetupType + "|score=" + score + "|req=" + requiredScore + "|session=" + SessionName(timeUtc));
                 _lastEvent = DirectionText(s.Direction) + " score " + score + " < " + requiredScore;
                 Log("{0}: rejected score {1}, required={2} for {3}.", DirectionText(s.Direction), score, requiredScore, SessionName(timeUtc));
                 s.Reset();
-                return;
+                return null;
             }
 
             TradeType tradeType = s.Direction > 0 ? TradeType.Buy : TradeType.Sell;
-            double estimatedEntry = tradeType == TradeType.Buy ? Symbol.Ask : Symbol.Bid;
             double stop = BuildStructuralStop(s, i, atr, estimatedEntry);
             double riskPips = Math.Abs(estimatedEntry - stop) / StrategyPip;
             double maximumStopAllowed = EffectiveMaximumStopPips(s);
@@ -1449,16 +1465,18 @@ namespace cAlgo.Robots
                 stop = NewSetups.EntryGeometry.StopTick(stop, s.Direction, Symbol.TickSize);
                 riskPips = Math.Abs(estimatedEntry - stop) / StrategyPip;
                 if (!NsFinite(estimatedEntry) || !NsFinite(stop) || !NsFinite(riskPips) ||
-                    s.Direction * (estimatedEntry - stop) <= 0) { NsF(fm, "rej:exec:stop_geometry"); s.Reset(); return; }
+                    s.Direction * (estimatedEntry - stop) <= 0) { rejectReason = "stop_geometry"; if (quiet) return null; NsF(fm, "rej:exec:stop_geometry"); s.Reset(); return null; }
             }
             if (riskPips < MinimumStopPips - 1e-9 || riskPips > maximumStopAllowed + 1e-9)
             {
+                rejectReason = "stop_distance";
+                if (quiet) return null;
                 NsFE(fm, "rej:exec:stop_distance", "dir=" + s.Direction + "|type=" + s.SetupType + "|riskPips=" + Fi(riskPips) + "|max=" + Fi(maximumStopAllowed));
                 _lastEvent = DirectionText(s.Direction) + " SL distance " + riskPips.ToString("F1", CultureInfo.InvariantCulture) + "p";
                 Log("{0}: rejected SL distance {1:F1}p, allowed={2:F1}p ({3}).",
                     DirectionText(s.Direction), riskPips, maximumStopAllowed, ConfirmationTierName(s));
                 s.Reset();
-                return;
+                return null;
             }
 
             double tp1;
@@ -1469,45 +1487,90 @@ namespace cAlgo.Robots
             double tp2Pips;
             if (!TryBuildTradeTargets(s, estimatedEntry, timeUtc, out tp1, out tp1Name, out tp1Pips, out tp2, out tp2Name, out tp2Pips))
             {
+                rejectReason = "no_target_room";
+                if (quiet) return null;
                 NsF(fm, "rej:exec:no_target_room");
                 _lastEvent = DirectionText(s.Direction) + " no target room";
                 Log("{0}: rejected no target room.", DirectionText(s.Direction));
                 s.Reset();
-                return;
+                return null;
             }
 
             double rr;
             double minimumRrAllowed;
             bool rewardRiskOk = EvaluateRewardRisk(s, estimatedEntry, riskPips, ref tp1, ref tp1Pips, tp2Pips, tp2Name, out rr, out minimumRrAllowed);
-            CandCaptureGeometry(s, timeUtc, estimatedEntry, stop, tp1, rr);
-            if (!rewardRiskOk)
+            if (!quiet) CandCaptureGeometry(s, timeUtc, estimatedEntry, stop, tp1, rr);
+            if (!rewardRiskOk && !PlanWaive("rr_floor"))
             {
+                rejectReason = "rr_floor";
+                if (quiet) return null;
                 NsFE(fm, "rej:exec:rr_floor", "dir=" + s.Direction + "|type=" + s.SetupType + "|rr=" + Fi(rr) + "|req=" + Fi(minimumRrAllowed));
                 _lastEvent = DirectionText(s.Direction) + " TP1 RR " + rr.ToString("F2", CultureInfo.InvariantCulture);
                 Log("{0}: rejected " + (RrBasis == SmcRrBasis.Tp1 ? "TP1" : "structural") + " RR {1:F2}, required={2:F2} ({3}).",
                     DirectionText(s.Direction), rr, minimumRrAllowed, ConfirmationTierName(s));
                 s.Reset();
-                return;
+                return null;
             }
 
-            double volume = CalculateVolumeInUnits(riskPips, tradeType);
-            CandCaptureGeometry(s, timeUtc, estimatedEntry, stop, tp1, rr, volume);
+            double volume = CalculateVolumeInUnits(riskPips, tradeType, quiet);
+            if (!quiet) CandCaptureGeometry(s, timeUtc, estimatedEntry, stop, tp1, rr, volume);
             double estimatedMargin = volume > 0 ? Symbol.GetEstimatedMargin(tradeType, volume) : double.NaN;
             if (!NsFinite(Symbol.Bid) || !NsFinite(Symbol.Ask) || Symbol.Bid <= 0 || Symbol.Ask <= Symbol.Bid ||
                 !NsFinite(volume) || volume > Symbol.VolumeInUnitsMax + 1e-9 || !NsFinite(estimatedMargin) || estimatedMargin <= 0 || estimatedMargin > Account.FreeMargin)
             {
+                rejectReason = "quote_margin";
+                if (quiet) return null;
                 NsF(fm, "rej:exec:quote_margin");
                 Jr("reject", null, "code", DailyJournal.Q("QUOTE_MARGIN_INVALID"), "message", DailyJournal.Q("invalid quote, volume or insufficient margin"));
                 s.Reset();
-                return;
+                return null;
             }
             if (volume < Symbol.VolumeInUnitsMin)
             {
+                rejectReason = "volume";
+                if (quiet) return null;
                 NsF(fm, "rej:exec:volume");
                 _lastEvent = DirectionText(s.Direction) + " volume blocked";
                 s.Reset();
-                return;
+                return null;
             }
+
+            return new EntryPlan
+            {
+                TradeType = tradeType, Entry = estimatedEntry, Stop = stop, RiskPips = riskPips, Tp1 = tp1, Tp1Name = tp1Name, Tp1Pips = tp1Pips,
+                Tp2 = tp2, Tp2Name = tp2Name, Tp2Pips = tp2Pips, Rr = rr, Volume = volume, Score = score
+            };
+        }
+
+        private sealed class EntryPlan
+        {
+            public TradeType TradeType;
+            public double Entry, Stop, RiskPips, Tp1, Tp1Pips, Tp2, Tp2Pips, Rr, Volume;
+            public string Tp1Name, Tp2Name;
+            public int Score;
+        }
+
+        private void TryExecuteSetup(SetupState s, int i, double atr, DateTime timeUtc)
+        {
+            CandEnsureState(s, timeUtc);
+            string fm = NsMod(s);
+            NsF(fm, "exec_enter");
+            if (s.NsOte && !NewSetups.EntryGeometry.Contains(s.Direction > 0 ? Symbol.Ask : Symbol.Bid, s.Zone.Low, s.Zone.High))
+            { NsFE(fm, "rej:exec:quote_outside_ote_zone", "dir=" + s.Direction + "|type=" + s.SetupType + "|quote=" + Fi(s.Direction > 0 ? Symbol.Ask : Symbol.Bid) + "|zone=" + Fi(s.Zone.Low) + "-" + Fi(s.Zone.High)); s.Reset(); return; }
+            string rejectReason;
+            // v2.61-dev (item 5): Log/Shadow only write telemetry; Override may return the relaxed plan of a soft-rejected setup
+            EntryPlan plan = MetaMode != SmcMetaMode.Off && !s.NsNew ? MetaDecide(s, i, atr, timeUtc) : null;
+            if (plan != null)
+                CandCaptureGeometry(s, timeUtc, plan.Entry, plan.Stop, plan.Tp1, plan.Rr, plan.Volume);
+            else
+            {
+                plan = PlanEntry(s, i, atr, timeUtc, s.Direction > 0 ? Symbol.Ask : Symbol.Bid, false, out rejectReason);
+                if (plan == null)
+                    return;
+            }
+            TradeType tradeType = plan.TradeType;
+            double estimatedEntry = plan.Entry, stop = plan.Stop, tp2 = plan.Tp2, rr = plan.Rr, volume = plan.Volume;
+            int score = plan.Score;
 
             int protectedRunnerCountBeforeEntry = CountProtectedRunners();
             if (protectedRunnerCountBeforeEntry > 0)
@@ -1552,6 +1615,15 @@ namespace cAlgo.Robots
 
             Position position = result.Position;
             if (_ks != null) _ks.Update(Server.Time, Account.Equity, Account.Balance, Account.Balance - balanceBeforeOrder); // order cost (e.g. commission) is attributable
+            AdoptFill(s, position, i, atr, timeUtc, score, sizingEquity, stop, tp2, fm);
+        }
+
+        // v2.61-dev: everything after a broker fill (ledger, post-fill re-validation at the real entry, protection, managed state).
+        // Shared by the market path (TryExecuteSetup) and resting CE limit orders (PendingLimit.cs); v2.60 logic unchanged.
+        private void AdoptFill(SetupState s, Position position, int i, double atr, DateTime timeUtc, int score, double sizingEquity, double stop, double tp2, string fm)
+        {
+            double tp1 = 0, tp1Pips = 0, tp2Pips = 0, riskPips;
+            string tp1Name = "", tp2Name = "";
             // Capture actual filled Parent identity before protection callbacks or Reset.
             NsFE(fm, "fill", "dir=" + s.Direction + "|type=" + s.SetupType + "|entry=" + Fi(position.EntryPrice));
             NsRecordParentFill(s);
@@ -1829,7 +1901,7 @@ namespace cAlgo.Robots
             var candidates = new List<Tuple<LiquidityLevel, double>>();
             foreach (LiquidityLevel level in levels)
             {
-                if (level.Side != wantedSide)
+                if (level.Side != wantedSide || level.TargetOnly)
                     continue;
                 if (RequireExternalLiquidity && !level.External && !IsM5InternalLiquidityLevel(level))
                     continue;
@@ -1884,6 +1956,8 @@ namespace cAlgo.Robots
             if (EnableM5InternalLiquidity)
                 AddM5InternalLiquidity(levels, timeUtc);
             AddCrtLiquidity(levels, timeUtc);
+            if (AnyExtraLiquidityPool())
+                AddExtraLiquidityPools(levels, timeUtc);   // v2.61-dev (item 4)
 
             if (consumedCutoffUtc != DateTime.MinValue)
                 levels.RemoveAll(l => IsLiquidityConsumed(l, consumedCutoffUtc));
@@ -2052,7 +2126,10 @@ namespace cAlgo.Robots
                 (liquidityName.IndexOf("Asia", StringComparison.OrdinalIgnoreCase) >= 0 ||
                  liquidityName.IndexOf("London", StringComparison.OrdinalIgnoreCase) >= 0 ||
                  liquidityName.IndexOf("PDH", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                 liquidityName.IndexOf("PDL", StringComparison.OrdinalIgnoreCase) >= 0))
+                 liquidityName.IndexOf("PDL", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 liquidityName.IndexOf("PWH", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 liquidityName.IndexOf("PWL", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 liquidityName.IndexOf("NY AM", StringComparison.OrdinalIgnoreCase) >= 0))
                 return "SessionSweep";
             return "LiquiditySweep";
         }
@@ -2479,6 +2556,7 @@ namespace cAlgo.Robots
                 {
                     existing.Strength = Math.Max(existing.Strength, level.Strength);
                     existing.External = existing.External || level.External;
+                    existing.TargetOnly = existing.TargetOnly && level.TargetOnly;
                     if (!existing.Name.Contains(level.Name))
                         existing.Name = existing.Name + "/" + level.Name;
                 }
@@ -3524,7 +3602,7 @@ namespace cAlgo.Robots
             }
 
             int direction = -_failedFlip.OriginalDirection;
-            SetupState targetState = direction > 0 ? _longState : _shortState;
+            SetupState targetState = FirstWaitingSlot(direction);
             if (targetState == null || targetState.Stage != SetupStage.Waiting)
                 return;
 
@@ -3641,7 +3719,7 @@ namespace cAlgo.Robots
                 reason = "outside session";
                 return false;
             }
-            if (UseSessionFilter && IsExtendedSession(session) && !IsExtendedSessionQualityCandidate(setup))
+            if (UseSessionFilter && IsExtendedSession(session) && !IsExtendedSessionQualityCandidate(setup) && !PlanWaive("gate:extended session quality"))
             {
                 reason = "extended session quality";
                 return false;
@@ -4387,8 +4465,8 @@ namespace cAlgo.Robots
             _dayStartBalance = Account.Balance;
             FsLedgerRollDay(d);
             // An unresolved broker failure is not a daily signal lifecycle reset.
-            if (_longState?.Stage != SetupStage.ProtectionFailure) _longState?.Reset();
-            if (_shortState?.Stage != SetupStage.ProtectionFailure) _shortState?.Reset();
+            foreach (SetupState slot in ParentSlots())
+                if (slot.Stage != SetupStage.ProtectionFailure) slot.Reset();
         }
 
         private static DateTime ToNewYork(DateTime utc)
@@ -4704,6 +4782,13 @@ namespace cAlgo.Robots
             public string NsCore, NsId;
             public string CandidateTelemetryId;
             public Action<SetupState, int> CandidateResetSink; // observer only
+            // v2.61-dev: resting CE limit order of this setup (PendingLimit.cs); Reset cancels it through the sink
+            public int PendingOrderId;
+            public string PendingKey = "";
+            public int PendingScore;
+            public double PendingSizingEquity, PendingStop, PendingTp2, PendingReqBid, PendingReqAsk;
+            public EntryPlan PendingPlan;
+            public Action<SetupState> PendingCancelSink;
 
             public SetupState(int direction, Action<string, string> funnelSink = null)
             {
@@ -4718,6 +4803,10 @@ namespace cAlgo.Robots
             public void Reset([System.Runtime.CompilerServices.CallerLineNumber] int line = 0)
             {
                 if (CandidateResetSink != null && !string.IsNullOrEmpty(CandidateTelemetryId)) CandidateResetSink(this, line);
+                if (PendingOrderId != 0 && PendingCancelSink != null) PendingCancelSink(this);
+                PendingOrderId = 0;
+                PendingKey = "";
+                PendingPlan = null;
                 if (NsOte && FunnelSink != null) FunnelSink("OTE", "reset:L" + line + ":" + Stage);
                 Stage = SetupStage.Waiting;
                 StartIndex = -1;
@@ -4771,6 +4860,7 @@ namespace cAlgo.Robots
             public int Strength;
             public bool External;
             public DateTime FormedUtc = DateTime.MinValue;   // v2.60-dev: when the level became known (MinValue = unknown)
+            public bool TargetOnly;                          // v2.61-dev: draw on liquidity only, never a raid trigger
 
             public LiquidityLevel(string name, double price, int side, int strength, bool external)
             {

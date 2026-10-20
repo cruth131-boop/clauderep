@@ -56,6 +56,23 @@ ARMS = {
         "C7_c2_rr": ROBUST + ["EntryMode=FvgCeTouch", "RrBasis=StructuralTarget"],
     },
 }
+K2 = BEST + ["EnableContinuationLane=true", "TradeNyPm=true"]
+K2L = K2 + ["CeExecution=RestingLimit"]
+POOLS = ["UsePreviousWeekLiquidity=true", "UseNyAmSessionLiquidity=true", "UseH4SwingLiquidity=true", "UseNwogTargets=true"]
+# v2.61-dev (items 3-5). CE arms run with resting limit orders: their fill (exactly at the CE) does not depend on the
+# harness tick grid, unlike the tick trigger, which the coarse interpolation flatters (see README, tick-density check).
+ARMS["v261"] = {
+    "A0_control": [],
+    "K2L_limit": K2L,
+    "K2L_S2": K2L + ["SetupSlotsPerDirection=2"],
+    "K2L_S3": K2L + ["SetupSlotsPerDirection=3"],
+    "K2L_PW": K2L + ["UsePreviousWeekLiquidity=true"],
+    "K2L_NYAM": K2L + ["UseNyAmSessionLiquidity=true"],
+    "K2L_H4": K2L + ["UseH4SwingLiquidity=true"],
+    "K2L_NWOG": K2L + ["UseNwogTargets=true"],
+    "K2L_POOLS": K2L + POOLS,
+    "K2L_S2_POOLS": K2L + ["SetupSlotsPerDirection=2"] + POOLS,
+}
 METRIC = re.compile(r"(\w+)=(-?[\d.]+|NaN)%?")
 OPEN = re.compile(r"OPEN (LONG|SHORT): type=([^,]+), score=(\d+), entry=([\d.]+), SL=([\d.]+) \(([\d.]+)p\), TP1=([\d.]+) \(([\d.]+)p\), "
                   r"TP2=([\d.]+) \(([\d.]+)p\), TP1-RR=([\d.]+)")
@@ -89,6 +106,8 @@ def invariants(arm_params, opens, funnel):
     if post:
         issues.append("postfill rejects " + str(post))
     structural = "RrBasis=StructuralTarget" in arm_params
+    if "MetaMode=Override" in arm_params:
+        return issues   # soft R/R rejections may be overridden on purpose
     for o in opens:
         sl, tp1, tp2, rr1 = float(o[5]), float(o[7]), float(o[9]), float(o[10])
         if structural:

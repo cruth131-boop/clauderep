@@ -122,7 +122,7 @@ namespace cAlgo.Robots
             CandInitialize();
             if (ShadowOteDetectorEnabled)
             {
-                foreach (SetupState s in new[] { _longState, _shortState })
+                foreach (SetupState s in ParentSlots())
                 {
                     if (s == null || s.Zone == null || s.Stage == SetupStage.Waiting || s.NsNew ||
                         !(s.ImpulseHigh > s.ImpulseLow)) continue;
