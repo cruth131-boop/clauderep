@@ -26,18 +26,23 @@ Grundlage war die kritische Gate- und Logikanalyse. Ziel: mehr Signale, ohne das
 | `bot/IctGoldV259Dev.cs` | Haupt-Robot (v2.60-dev). Der Klassenname bleibt, damit deine übrigen Partial-Dateien weiter passen |
 | `bot/Ns.cs` | `NsPreflight` nutzt dieselben Veto- und RR-Helfer wie das Parent-Gate |
 | `bot/FailSafeBot.cs` | nur `BotVersion = "v2.60-dev"` (Owner-Marker im Order-Kommentar ändert sich damit) |
-| `bot/NsRules.cs`, `bot/FailSafe.cs` | unverändert |
+| `bot/NsRules.cs`, `bot/FailSafe.cs`, `bot/CandidateTelemetry*.cs`, `bot/EntryGeometry.cs`, `bot/LiveNews.cs`, `bot/Patterns.cs` | unverändert (die letzten fünf wurden nachgeliefert) |
 | `paramsets/v260-recommended.json` | die Parameter von K2, die von den Defaults abweichen |
 | `harness/` | Offline-Testumgebung: cAlgo-API-Nachbildung mit Tick-Engine und Runner |
 | `tools/make_m1_from_m15.py` | Testdaten: echte M15 → M1 (Brownian Bridge, optional Mikro-Rauschen und Volatilitätsnormierung) |
 | `tools/run_arms.py` | A/B-Matrix: Arme × Datensätze, parallel, mit Invarianten-Checks |
 | `tools/build_harness.sh` | baut `out/new` (aktueller Code) und `out/base` (v2.59 aus der Git-Historie) |
+| `tools/portfolio_corr.py`, `tools/strategy_family_study.py`, `tools/smt_study.py` | Portfolio-, Strategie-Familien- und SMT-Studien (siehe `ANALYSE_FEHLENDE_BAUSTEINE.md`) |
+| `ANALYSE_FEHLENDE_BAUSTEINE.md` | Was dem Bot fehlt (Frequenz, Diversifikation, Korrelation), mit Messwerten |
 | `results/` | Ergebnistabellen und Aufschlüsselung je Setup-Typ und Quartal |
 
-**Nicht im Upload enthalten** waren die Dateien für Candidate-Telemetrie (`Cand*`), Funnel-Telemetrie (`NsF`, `NsFE` …),
-Live-News-Gate (`LiveNewsGate` …) und NS-Pattern-Detektor/`EntryGeometry`. Der Harness ersetzt sie durch Stubs
-(`harness/src/MissingPartsStubs.cs`). In cTrader kompiliert der Bot mit deinen Originaldateien.
-Die NS-Module (Judas/Breaker/Mitigation/ATM, Default aus) sind deshalb **nicht** getestet.
+Alle Partial-Dateien sind die Originale, mit einer Ausnahme: die Funnel-Telemetrie (`NsF`, `NsFE`, `NsRej` …) fehlt im Upload.
+Sie ist im Harness durch einen Zähler ersetzt (`harness/src/MissingPartsStubs.cs`).
+Mit den echten Dateien geprüft (2020–21):
+- OFF ist identisch zu v2.59.
+- K2 ist identisch zum Stand mit Stubs.
+- Mit eingeschalteten NS-Modulen sind v2.59 und v2.60 identisch.
+- Die Shadow-Telemetrie ist handelsneutral.
 
 ## Änderungen
 

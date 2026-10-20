@@ -9,6 +9,10 @@ rm -rf "$base_src" && mkdir -p "$base_src"
 for f in IctGoldV259Dev.cs Ns.cs NsRules.cs FailSafe.cs FailSafeBot.cs; do
   git -C "$here" show "$base_commit:ctrader/IctGold/bot/$f" > "$base_src/$f"
 done
+# Partial files that were uploaded later and are unchanged by v2.60 are shared by both builds.
+for f in CandidateTelemetry.cs CandidateTelemetryBot.cs EntryGeometry.cs LiveNews.cs Patterns.cs; do
+  cp "$here/bot/$f" "$base_src/$f"
+done
 cd "$here/harness"
 dotnet build -c Release -o out/new
 dotnet build -c Release -p:BotDir="$base_src" -p:IntermediateOutputPath=obj/base/ -o out/base
