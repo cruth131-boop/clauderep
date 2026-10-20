@@ -1,4 +1,4 @@
-// Swing Points Structure v2 for cTrader (indicator, overlay). Built for manual XAUUSD trading on M1-M5 charts.
+// Swing Points Structure v2.1 for cTrader (indicator, overlay). Built for manual XAUUSD trading on M1-M5 charts.
 //
 //  * Main structure on its own timeframe (default M5), also drawn on smaller charts (M1, M2, M3): swing highs/lows as fractal
 //    pivots, confirmed after "Right Bars" CLOSED candles and never moved afterwards; labels HH / LH / EQH and HL / LL / EQL.
@@ -140,6 +140,10 @@ namespace cAlgo.Indicators
         [Parameter("Show Table", DefaultValue = true, Group = "5 Display")]
         public bool ShowTable { get; set; }
 
+        // Version, data and error line top left. Shows at once whether the indicator runs and what it found.
+        [Parameter("Show Status Line", DefaultValue = true, Group = "5 Display")]
+        public bool ShowStatus { get; set; }
+
         [Parameter("Show Labels", DefaultValue = true, Group = "5 Display")]
         public bool ShowLabels { get; set; }
 
@@ -183,27 +187,88 @@ namespace cAlgo.Indicators
         private string _lastTable = "";
         private readonly HashSet<string> _alerted = new HashSet<string>();
 
+        private const string Version = "v2.1";
+        private string _error = "";
+        private int _chartMinutes;
+
         protected override void Initialize()
         {
-            _main = new Layer(this, "M", StructureTimeFrame, LeftBars, RightBars, ZonesPerSide, true);
-            _layers.Add(_main);
-            if (ShowH1) _layers.Add(new Layer(this, "H1", TimeFrame.Hour, HtfBars, HtfBars, HtfZonesPerSide, false));
-            if (ShowH4) _layers.Add(new Layer(this, "H4", TimeFrame.Hour4, HtfBars, HtfBars, HtfZonesPerSide, false));
+            Status("Swing Points Structure " + Version + " startet ...", Color.Orange);
+            try
+            {
+                _chartMinutes = BarMinutes(Bars);
+                _main = new Layer(this, "M", StructureTimeFrame, LeftBars, RightBars, ZonesPerSide, true);
+                _layers.Add(_main);
+                if (ShowH1) _layers.Add(new Layer(this, "H1", TimeFrame.Hour, HtfBars, HtfBars, HtfZonesPerSide, false));
+                if (ShowH4) _layers.Add(new Layer(this, "H4", TimeFrame.Hour4, HtfBars, HtfBars, HtfZonesPerSide, false));
+                Print("SwingPointsStructure " + Version + ": chart " + _chartMinutes + "m, " + Bars.Count + " bars; layers " +
+                      string.Join(", ", _layers.ConvertAll(x => x.Describe())));
+            }
+            catch (Exception ex) { Fail("Initialize", ex); }
         }
 
         public override void Calculate(int index)
         {
-            if (IsLastBar && _liveSinceUtc == DateTime.MaxValue)
-                _liveSinceUtc = Bars.OpenTimes[index];
-            bool changed = false;
-            foreach (Layer l in _layers)
-                changed |= l.Advance(index);
-            if (IsLastBar)
+            if (_main == null) return;
+            try
             {
+                if (IsLastBar && _liveSinceUtc == DateTime.MaxValue)
+                    _liveSinceUtc = Bars.OpenTimes[index];
+                bool changed = false;
                 foreach (Layer l in _layers)
-                    l.RenderLive(index, changed);
-                if (ShowTable) DrawTable();
+                    changed |= l.Advance(index);
+                if (IsLastBar)
+                {
+                    foreach (Layer l in _layers)
+                        l.RenderLive(index, changed);
+                    if (ShowTable) DrawTable();
+                    if (ShowStatus && _error.Length == 0)
+                        Status("Swing Points Structure " + Version + " | " + string.Join(" | ", _layers.ConvertAll(x => x.Describe())), TableColor);
+                }
             }
+            catch (Exception ex) { Fail("Calculate(" + index + ")", ex); }
+        }
+
+        // An exception must never leave an empty chart without a reason: it is printed to the log and shown top left.
+        private void Fail(string where, Exception ex)
+        {
+            string msg = where + ": " + ex.GetType().Name + ": " + ex.Message;
+            if (msg == _error) return;
+            _error = msg;
+            Print("SwingPointsStructure ERROR " + ex);
+            Status("Swing Points Structure " + Version + " FEHLER\n" + msg, Color.Red, true);
+        }
+
+        private void Status(string text, Color color, bool force = false)
+        {
+            if (ShowStatus || force)
+                Chart.DrawStaticText(Prefix + "status", text, VerticalAlignment.Top, HorizontalAlignment.Left, color);
+        }
+
+        // Timeframe length in minutes from the bars themselves (smallest gap between consecutive candles), independent of
+        // how TimeFrame instances compare in the running cTrader version.
+        internal static int BarMinutes(Bars b)
+        {
+            double best = double.MaxValue;
+            for (int i = Math.Max(1, b.Count - 300); i < b.Count; i++)
+            {
+                double d = (b.OpenTimes[i] - b.OpenTimes[i - 1]).TotalMinutes;
+                if (d > 0 && d < best) best = d;
+            }
+            return best == double.MaxValue ? 0 : (int)Math.Round(best);
+        }
+
+        // Index of the last candle that opened at or before t (-1 if none). cTrader's GetIndexByTime returns the CLOSEST candle,
+        // which can be the next one; that would let a not yet closed higher-timeframe candle into the calculation.
+        internal static int IndexAtOrBefore(Bars b, DateTime t)
+        {
+            int lo = 0, hi = b.Count - 1, ans = -1;
+            while (lo <= hi)
+            {
+                int mid = (lo + hi) >> 1;
+                if (b.OpenTimes[mid] <= t) { ans = mid; lo = mid + 1; } else hi = mid - 1;
+            }
+            return ans;
         }
 
         // ------------------------------------------------------------------ table
@@ -262,12 +327,14 @@ namespace cAlgo.Indicators
         private sealed class Layer
         {
             private readonly SwingPointsStructure _ind;
-            public readonly string Name;
+            private readonly string _name;
+            public string Name { get { return IsMain ? MinutesName(_tfMinutes) : _name; } }
             public readonly bool IsMain;
             public readonly SwingEngine Engine;
             private readonly Bars _src;
             private readonly TimeFrame _tf;
-            private readonly int _tfMinutes, _zonesPerSide, _right;
+            private readonly int _zonesPerSide, _right;
+            private int _tfMinutes;
             private readonly string _p;
             private int _done = -1;
             private bool _dirty = true;
@@ -278,10 +345,13 @@ namespace cAlgo.Indicators
             public Layer(SwingPointsStructure ind, string name, TimeFrame tf, int left, int right, int zonesPerSide, bool isMain)
             {
                 _ind = ind; IsMain = isMain; _tf = tf; _zonesPerSide = zonesPerSide; _right = right;
-                _tfMinutes = Minutes(tf);
-                Name = isMain ? TfName(tf) : name;
+                Bars series = ind.MarketData.GetBars(tf);
+                int minutes = BarMinutes(series);
+                // the chart's own timeframe: use the chart candles directly (same indices, outputs per candle)
+                _src = ReferenceEquals(series, ind.Bars) || (minutes > 0 && minutes == ind._chartMinutes) ? ind.Bars : series;
+                _tfMinutes = minutes;
+                _name = name;
                 _p = Prefix + (isMain ? "" : name + "_");
-                _src = tf == ind.TimeFrame ? ind.Bars : ind.MarketData.GetBars(tf);
                 Bars s = _src;
                 Engine = new SwingEngine(left, right, isMain ? ind.Alternate : true, isMain ? ind.MinSwingAtr : 0, ind.EqualToleranceAtr,
                     ind.ZoneToleranceAtr, ind.AtrPeriod, ind.StructureMode,
@@ -291,6 +361,8 @@ namespace cAlgo.Indicators
             // Processes every source candle that closed before the chart candle "index" (history) or before now (live).
             public bool Advance(int index)
             {
+                if (_tfMinutes <= 0 || _src.Count < 300)
+                    _tfMinutes = BarMinutes(_src);   // known once the series has candles (cTrader: already at start)
                 int closed;
                 if (ReferenceEquals(_src, _ind.Bars))
                     closed = index - 1;
@@ -298,8 +370,9 @@ namespace cAlgo.Indicators
                     closed = _src.Count - 2;
                 else
                 {
+                    if (_tfMinutes <= 0) return false;
                     DateTime t = _ind.Bars.OpenTimes[index];
-                    int k = _src.OpenTimes.GetIndexByTime(t);
+                    int k = IndexAtOrBefore(_src, t);
                     closed = k < 0 ? -1 : (_src.OpenTimes[k].AddMinutes(_tfMinutes) <= t ? k : k - 1);
                 }
                 if (closed <= _done) return false;
@@ -342,7 +415,7 @@ namespace cAlgo.Indicators
                             else _ind.Chart.RemoveObject(ZoneName(e.Zone));
                             break;
                         case SwingEventKind.Sweep:
-                            if (_ind.ShowSweeps)
+                            if (_ind.ShowSweeps && OnChart(Time(e.Index)))
                             {
                                 double y = e.Zone.IsHigh ? e.Zone.High : e.Zone.Low;
                                 string n = _p + "sw_" + e.Zone.Id;
@@ -356,7 +429,7 @@ namespace cAlgo.Indicators
                             break;
                         case SwingEventKind.StructureBreak:
                             Swing b = e.Swing;
-                            if (IsMain && _ind.ShowBreaks)
+                            if (IsMain && _ind.ShowBreaks && OnChart(Time(b.Index)))
                             {
                                 Color c = b.IsHigh ? _ind.LowColor : _ind.HighColor;   // a break of a high is bullish
                                 _ind.Chart.DrawTrendLine(_p + "br_" + b.Id, Time(b.Index), b.Price, Time(e.Index), b.Price, c, 1, LineStyle.Solid);
@@ -376,7 +449,9 @@ namespace cAlgo.Indicators
             {
                 string n = _p + "lb_" + s.Id;
                 Color c = IsMain ? (s.IsHigh ? _ind.HighColor : _ind.LowColor) : _ind.HtfColor;
-                ChartText t = _ind.Chart.DrawText(n, IsMain ? s.Label : Name + " " + s.Label, ExtremeTime(s.Index, s.IsHigh, s.Price), s.Price, c);
+                DateTime at = ExtremeTime(s.Index, s.IsHigh, s.Price);
+                if (!OnChart(at)) return;   // older than the chart's history
+                ChartText t = _ind.Chart.DrawText(n, IsMain ? s.Label : Name + " " + s.Label, at, s.Price, c);
                 Style(t, HorizontalAlignment.Center, s.IsHigh ? VerticalAlignment.Top : VerticalAlignment.Bottom, IsMain ? _ind.FontSize : Math.Max(6, _ind.FontSize - 1));
                 Track(_labels, n);
             }
@@ -431,6 +506,7 @@ namespace cAlgo.Indicators
                 Color c = !IsMain ? _ind.HtfColor : z.IsHigh ? _ind.ResistanceColor : _ind.SupportColor;
                 string n = ZoneName(z);
                 DateTime start = Time(z.Index);
+                if (_ind.Bars.Count > 0 && start < _ind.Bars.OpenTimes[0]) start = _ind.Bars.OpenTimes[0];
                 if (z.High - z.Low <= _ind.Symbol.TickSize * 0.5)
                     _ind.Chart.DrawTrendLine(n, start, z.High, end, z.High, broken ? Color.FromArgb(110, c) : c, 1, LineStyle.Dots);
                 else
@@ -450,7 +526,7 @@ namespace cAlgo.Indicators
                 DateTime t0 = _src.OpenTimes[srcIndex];
                 if (ReferenceEquals(_src, _ind.Bars)) return t0;
                 Bars b = _ind.Bars;
-                int k = b.OpenTimes.GetIndexByTime(t0);
+                int k = IndexAtOrBefore(b, t0);
                 if (k < 0) return t0;
                 DateTime t1 = t0.AddMinutes(_tfMinutes);
                 for (int j = Math.Max(0, k); j < b.Count && b.OpenTimes[j] < t1; j++)
@@ -478,6 +554,7 @@ namespace cAlgo.Indicators
                 return false;
             }
 
+            private bool OnChart(DateTime t) { return _ind.Bars.Count > 0 && t >= _ind.Bars.OpenTimes[0]; }
             private DateTime CloseTime(int srcIndex) { return _src.OpenTimes[srcIndex].AddMinutes(_tfMinutes); }
             private DateTime Time(int srcIndex) { return _src.OpenTimes[Math.Max(0, Math.Min(srcIndex, _src.Count - 1))]; }
             private string ZoneName(Zone z) { return _p + "zn_" + z.Id; }
@@ -496,25 +573,14 @@ namespace cAlgo.Indicators
                 t.FontSize = size;
             }
 
-            private static int Minutes(TimeFrame tf)
+            private static string MinutesName(int m)
             {
-                if (tf == TimeFrame.Minute) return 1;
-                if (tf == TimeFrame.Minute2) return 2;
-                if (tf == TimeFrame.Minute3) return 3;
-                if (tf == TimeFrame.Minute5) return 5;
-                if (tf == TimeFrame.Minute10) return 10;
-                if (tf == TimeFrame.Minute15) return 15;
-                if (tf == TimeFrame.Minute30) return 30;
-                if (tf == TimeFrame.Hour) return 60;
-                if (tf == TimeFrame.Hour4) return 240;
-                if (tf == TimeFrame.Daily) return 1440;
-                return 5;
+                return m >= 1440 ? "D1" : m >= 60 ? "H" + (m / 60) : "M" + m;
             }
 
-            private static string TfName(TimeFrame tf)
+            public string Describe()
             {
-                int m = Minutes(tf);
-                return m >= 1440 ? "D1" : m >= 60 ? "H" + (m / 60) : "M" + m;
+                return Name + (ReferenceEquals(_src, _ind.Bars) ? "" : "*") + " " + _src.Count + " Kerzen, " + Engine.Swings.Count + " Swings";
             }
         }
     }

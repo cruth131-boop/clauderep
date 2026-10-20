@@ -1,4 +1,4 @@
-# Swing Points Structure v2 (cTrader-Indikator)
+# Swing Points Structure v2.1 (cTrader-Indikator)
 
 Nachbau von „Swing Points by MATA“ (TradingView) für cTrader, ausgebaut für manuelles Gold-Trading auf M1–M5 nach ICT.
 Eine Datei: `SwingPointsStructure.cs`.
@@ -11,6 +11,9 @@ Eine Datei: `SwingPointsStructure.cs`.
 1. cTrader öffnen → **Algo** → **Indicators** → **+ New** → Namen vergeben (z. B. `SwingPointsStructure`).
 2. Den gesamten Inhalt von `SwingPointsStructure.cs` hineinkopieren (den Vorlagen-Code ersetzen) → **Build**.
 3. Im Chart (XAUUSD, M1/M2/M3/M5) über **Indicators** → **Custom** → `SwingPointsStructure` hinzufügen.
+4. Oben links erscheint die **Statuszeile**, z. B. `Swing Points Structure v2.1 | M5 12000 Kerzen, 1100 Swings | H1* ... | H4* ...`.
+   Steht dort `FEHLER ...`, bitte den Text schicken (er steht auch im Log: Algo → Indikator → Log).
+   Erscheint gar keine Statuszeile, ist der Indikator nicht auf dem Chart aktiv.
 
 Die cTrader-Handy-App kann **keine eigenen Indikatoren** anzeigen, nur die eingebauten. Der Indikator läuft also nur,
 solange cTrader auf dem Mac geöffnet ist. Die Alarme kommen trotzdem aufs Handy (Telegram oder E-Mail, siehe unten).
@@ -66,6 +69,9 @@ Offline gegen eine Nachbildung der cAlgo-API (`test/`), mit echten XAUUSD-M15-Ke
 - **Kein Vorgriff:** Keine Ebene (M5, H1, H4) verarbeitet je eine Kerze, die noch nicht geschlossen ist.
 - **M5-Struktur auf dem M1-Chart = eigenständige Berechnung auf M5-Kerzen** (identische Swings, Labels und Trend).
 - Alarme nur aus dem Live-Teil, Chart-Objekte begrenzt (`Max Objects per Kind`).
+- v2.1: zusätzlich ein Testmodus wie in cTrader (gesamte Historie vor dem Start geladen); eigene Zeit→Kerzen-Suche statt
+  `GetIndexByTime` (liefert in cTrader die *nächstgelegene* Kerze, auch eine spätere); Zeitrahmenlänge aus den Kerzen statt
+  aus `TimeFrame`-Vergleichen; jede Ausnahme wird oben links und im Log angezeigt statt den Chart leer zu lassen.
 - Aufruf: `cd test && dotnet build -c Release -o out && out/SwingTest --m15 XAUUSDm15.csv` bzw.
   `out/SwingTest --m1 xau_m1.csv --chart Minute --structure Minute5`; Vorschau: `--dump x.csv` und `python3 render_svg.py x.csv x.svg`.
 

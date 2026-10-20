@@ -22,6 +22,7 @@ public static class Program
         string m15 = null, m1 = null, dump = null;
         DateTime from = new DateTime(2021, 1, 1), to = new DateTime(2022, 1, 1);
         int window = 160, live = 400;
+        bool preload = false;
         TimeFrame chart = null, structure = null;
         var sets = new List<string[]>();
         for (int a = 0; a < args.Length; a++)
@@ -37,6 +38,7 @@ public static class Program
                 case "--dump": dump = args[++a]; break;
                 case "--window": window = int.Parse(args[++a]); break;
                 case "--live": live = int.Parse(args[++a]); break;
+                case "--preload": preload = true; break;
                 case "--set": sets.Add(args[++a].Split(new[] { '=' }, 2)); break;
                 default: throw new ArgumentException(args[a]);
             }
@@ -48,7 +50,7 @@ public static class Program
         Console.WriteLine("base candles: " + baseBars.Count + " " + baseTf + " (" + baseBars[0].T.ToString("yyyy-MM-dd") + " .. " + baseBars[baseBars.Count - 1].T.ToString("yyyy-MM-dd") + "), chart " + chart + ", structure " + structure);
 
         int fail = 0;
-        var ind = Run(baseBars, baseTf, chart, structure, sets, live, ref fail);
+        var ind = preload ? RunPreloaded(baseBars, baseTf, chart, structure, sets, ref fail) : Run(baseBars, baseTf, chart, structure, sets, live, ref fail);
         var main = Layer(ind, 0);
         Bars src = (Bars)Field(main, "_src");
         var engine = (SwingEngine)Field(main, "Engine");
@@ -68,7 +70,11 @@ public static class Program
         foreach (string p in n.Popups.Take(4)) Console.WriteLine("  " + p);
         DateTime liveSince = (DateTime)typeof(SwingPointsStructure).GetField("_liveSinceUtc", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(ind);
         Console.WriteLine("  live since " + liveSince.ToString("yyyy-MM-dd HH:mm"));
-        var table = ind.Chart.Objects.Values.OfType<ChartStaticText>().FirstOrDefault();
+        var status = ind.Chart.Objects.Values.OfType<ChartStaticText>().FirstOrDefault(o => o.Name == "SPS_status");
+        Console.WriteLine("status line: " + (status == null ? "-" : status.Text.Replace("\n", " / ")));
+        string err = (string)typeof(SwingPointsStructure).GetField("_error", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(ind);
+        if (err.Length > 0) { fail++; Console.WriteLine("INDICATOR ERROR: " + err); }
+        var table = ind.Chart.Objects.Values.OfType<ChartStaticText>().FirstOrDefault(o => o.Name == "SPS_table");
         Console.WriteLine("table:\n  " + (table == null ? "-" : table.Text.Replace("\n", "\n  ")));
         if (dump != null) Dump(ind, window, dump);
         Console.WriteLine(fail == 0 ? "ALL CHECKS PASSED" : fail + " CHECK(S) FAILED");
@@ -86,7 +92,8 @@ public static class Program
         var series = new Dictionary<TimeFrame, Bars>();
         foreach (var tf in new[] { TimeFrame.Minute5, TimeFrame.Minute15, TimeFrame.Hour, TimeFrame.Hour4 })
             if (tf.Minutes >= baseTf.Minutes && tf != chartTf) { series[tf] = new Bars(); ind.MarketData.Series[tf] = series[tf]; }
-        ind.Chart.IndexOf = t => ind.Bars.OpenTimes.GetIndexByTime(t);
+        ind.MarketData.Series[chartTf] = ind.Bars;   // cTrader: GetBars(chart timeframe) works as well
+        ind.Chart.IndexOf = t => ind.Bars.OpenTimes.AtOrBefore(t);
         ind.TestInit();
         var layers = Layers(ind);
         int liveFrom = baseBars.Count - live * Math.Max(1, chartTf.Minutes / baseTf.Minutes);
@@ -109,11 +116,52 @@ public static class Program
                 int done = (int)Field(l, "_done");
                 if (done < 0) continue;
                 Bars s = (Bars)Field(l, "_src");
-                int minutes = (int)Field(l, "_tfMinutes");
+                // true timeframe of the layer's series (not the layer's own belief, which is what is being tested)
+                int minutes = ReferenceEquals(s, ind.Bars) ? chartTf.Minutes : series.First(kv => ReferenceEquals(kv.Value, s)).Key.Minutes;
                 if (s.OpenTimes[done].AddMinutes(minutes) > now) lookAhead++;
             }
         }
         Console.WriteLine("look-ahead violations (a layer used a candle that was not closed yet): " + lookAhead);
+        if (lookAhead > 0) fail++;
+        return ind;
+    }
+
+    // Like cTrader: every series is fully loaded BEFORE Initialize, then Calculate(index) runs over the history
+    // (Bars.Count is already the total), IsLastBar only on the last candle.
+    private static SwingPointsStructure RunPreloaded(List<Bar> baseBars, TimeFrame baseTf, TimeFrame chartTf, TimeFrame structureTf, List<string[]> sets, ref int fail)
+    {
+        var ind = new SwingPointsStructure();
+        ApplyDefaults(ind, sets);
+        ind.TimeFrame = chartTf;
+        ind.StructureTimeFrame = structureTf;
+        var series = new Dictionary<TimeFrame, Bars>();
+        foreach (var tf in new[] { TimeFrame.Minute5, TimeFrame.Minute15, TimeFrame.Hour, TimeFrame.Hour4 })
+            if (tf.Minutes >= baseTf.Minutes && tf != chartTf) { series[tf] = new Bars(); ind.MarketData.Series[tf] = series[tf]; }
+        ind.MarketData.Series[chartTf] = ind.Bars;
+        ind.Chart.IndexOf = t => ind.Bars.OpenTimes.AtOrBefore(t);
+        foreach (Bar b in baseBars)
+        {
+            ind.Bars.Merge(Floor(b.T, chartTf.Minutes), b.O, b.H, b.L, b.C);
+            foreach (var kv in series) kv.Value.Merge(Floor(b.T, kv.Key.Minutes), b.O, b.H, b.L, b.C);
+        }
+        ind.TestInit();
+        int lookAhead = 0;
+        var layers = Layers(ind);
+        for (int index = 0; index < ind.Bars.Count; index++)
+        {
+            ind.TestSetLast(index == ind.Bars.Count - 1);
+            ind.Calculate(index);
+            DateTime now = index == ind.Bars.Count - 1 ? baseBars[baseBars.Count - 1].T.AddMinutes(baseTf.Minutes) : ind.Bars.OpenTimes[index];
+            foreach (object l in layers)
+            {
+                int done = (int)Field(l, "_done");
+                if (done < 0) continue;
+                Bars s = (Bars)Field(l, "_src");
+                int minutes = ReferenceEquals(s, ind.Bars) ? chartTf.Minutes : series.First(kv => ReferenceEquals(kv.Value, s)).Key.Minutes;
+                if (s.OpenTimes[done].AddMinutes(minutes) > now) lookAhead++;
+            }
+        }
+        Console.WriteLine("preloaded like cTrader; look-ahead violations: " + lookAhead);
         if (lookAhead > 0) fail++;
         return ind;
     }
@@ -203,7 +251,7 @@ public static class Program
     {
         var b = ind.Bars;
         int start = b.Count - window;
-        Func<DateTime, int> ix = t => b.OpenTimes.GetIndexByTime(t);
+        Func<DateTime, int> ix = t => b.OpenTimes.AtOrBefore(t);
         using (var w = new StreamWriter(path))
         {
             for (int i = start; i < b.Count; i++)

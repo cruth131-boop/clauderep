@@ -72,6 +72,7 @@ namespace cAlgo.API
         public static Color Silver { get { return FromName("Silver"); } }
         public static Color DodgerBlue { get { return FromName("DodgerBlue"); } }
         public static Color Gray { get { return FromName("Gray"); } }
+        public static Color Orange { get { return FromName("Orange"); } }
         public override string ToString() { return Name + (A < 255 ? "@" + A : ""); }
     }
 
@@ -87,8 +88,15 @@ namespace cAlgo.API
         internal readonly List<DateTime> V = new List<DateTime>();
         public DateTime this[int i] { get { return V[i]; } }
         public int Count { get { return V.Count; } }
-        // index of the last bar that opened at or before t (-1 if none)
+        // like cTrader: index of the CLOSEST bar (can be the next one); the test's own lookups use AtOrBefore
         public int GetIndexByTime(DateTime t)
+        {
+            int k = AtOrBefore(t);
+            if (k < 0) return V.Count > 0 ? 0 : -1;
+            if (k + 1 < V.Count && (V[k + 1] - t) < (t - V[k])) return k + 1;
+            return k;
+        }
+        public int AtOrBefore(DateTime t)
         {
             int lo = 0, hi = V.Count - 1, ans = -1;
             while (lo <= hi) { int m = (lo + hi) / 2; if (V[m] <= t) { ans = m; lo = m + 1; } else hi = m - 1; }
