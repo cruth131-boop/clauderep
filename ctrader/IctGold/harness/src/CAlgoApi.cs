@@ -346,7 +346,7 @@ namespace cAlgo.API
     public sealed class Engine
     {
         public readonly Symbol Symbol = new Symbol { Name = "XAUUSD" };
-        public int LimitFills, LimitCancels, LimitExpiries, LimitRejects;
+        public int LimitFills, LimitCancels, LimitExpiries, LimitRejects, PendingLeftAtStop, MaxOpenPositions;
         internal readonly MarketData MarketData;
         internal readonly Positions Positions = new Positions();
         internal readonly PendingOrders PendingOrders = new PendingOrders();
@@ -395,6 +395,7 @@ namespace cAlgo.API
 
         public void AfterTick()
         {
+            if (Positions.Open.Count > MaxOpenPositions) MaxOpenPositions = Positions.Open.Count;
             double eq = Equity();
             if (eq > PeakEquity) PeakEquity = eq;
             double dd = PeakEquity - eq;

@@ -114,10 +114,18 @@ namespace cAlgo.Robots
             if (!take)
                 return null;
             _metaOverrides++;
+            s.MetaRrWaived = waived.Contains("rr_floor");
             NsF("PARENT", "meta_override");
             Log("{0}: META OVERRIDE of {1} (waived {2}): p={3:F3}, TP2 {4:F2}R, expected {5:F2}R >= {6:F2}.", DirectionText(s.Direction),
                 strictReason, string.Join("+", waived), p, tp2R, expR, MetaThreshold());
             return relaxed;
+        }
+
+        // Post-fill twin of the override rule: a setup whose R/R floor the model waived is re-validated against the override rule
+        // (real liquidity TP2, TP2 >= Meta Min R/R at the actual fill) instead of the structural floor. Everything else is unchanged.
+        private bool MetaRrWaiverHolds(SetupState s, string tp2Name, double tp2Pips, double riskPips)
+        {
+            return s != null && s.MetaRrWaived && tp2Name != "Runner TP2" && riskPips > 0 && tp2Pips / riskPips >= MetaMinRewardRisk - 1e-9;
         }
 
         private double MetaProbability(SetupState s, EntryPlan plan, int i, double atr, DateTime timeUtc, List<string> waived)

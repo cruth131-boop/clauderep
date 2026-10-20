@@ -7,6 +7,11 @@ Die Messungen stammen aus zwei Quellen:
   Echte M15-Kerzen, synthetische M1-Feinstruktur.
 - **Strategie-Proxies ausschließlich auf echten M15-Kerzen,** 2016-01 bis 2022-02, XAUUSD und vier FX-Majors (1.595 Handelstage).
 
+
+> **Stand v2.61-dev:** Die Punkte 3–5 der „Empfohlenen Reihenfolge“ sind umgesetzt (ADR-Pip und Instrument-Sätze, Limit-Engine, Slots,
+> Liquiditätspools, Meta-Labeling), ebenso die gemeinsame Tentative-News-Regel. Ergebnisse und eine Korrektur der K2-Zahlen
+> (Tick-Raster): `V261_UMSETZUNG.md`. Offen sind weiter die Punkte 1/2 (instanzfähige Fail-Safes, Portfolio-Risiko), SMT und die News-Lane.
+
 ## Kurzfazit
 
 1. **Der größte fehlende Hebel ist Portfolio-Fähigkeit: dieselbe Logik auf mehreren Instrumenten.**

@@ -1650,7 +1650,8 @@ namespace cAlgo.Robots
                 !NsFinite(actualPostFillRisk) || actualPostFillRisk > maximumRiskAmount + 1e-9 ||
                 !TryBuildTradeTargets(s, actualEntry, timeUtc, out tp1, out tp1Name, out tp1Pips, out tp2, out tp2Name, out tp2Pips) ||
                 riskPips > EffectiveMaximumStopPips(s) + 1e-9 ||
-                !EvaluateRewardRisk(s, actualEntry, riskPips, ref tp1, ref tp1Pips, tp2Pips, tp2Name, out double postFillRr, out double postFillRrRequired))
+                !(EvaluateRewardRisk(s, actualEntry, riskPips, ref tp1, ref tp1Pips, tp2Pips, tp2Name, out double postFillRr, out double postFillRrRequired) ||
+                  MetaRrWaiverHolds(s, tp2Name, tp2Pips, riskPips)))
             {
                 NsF(fm, "rej:postfill:protection_invalid");
                 _lastEvent = DirectionText(s.Direction) + " post-fill protection invalid";
@@ -4788,6 +4789,7 @@ namespace cAlgo.Robots
             public int PendingScore;
             public double PendingSizingEquity, PendingStop, PendingTp2, PendingReqBid, PendingReqAsk;
             public EntryPlan PendingPlan;
+            public bool MetaRrWaived;            // v2.61-dev: R/R floor waived by a meta override (post-fill uses the override rule)
             public Action<SetupState> PendingCancelSink;
 
             public SetupState(int direction, Action<string, string> funnelSink = null)
@@ -4807,6 +4809,7 @@ namespace cAlgo.Robots
                 PendingOrderId = 0;
                 PendingKey = "";
                 PendingPlan = null;
+                MetaRrWaived = false;
                 if (NsOte && FunnelSink != null) FunnelSink("OTE", "reset:L" + line + ":" + Stage);
                 Stage = SetupStage.Waiting;
                 StartIndex = -1;

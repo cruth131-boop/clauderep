@@ -1,7 +1,17 @@
-# ICT Gold cBot – v2.60-dev
+# ICT Gold cBot – v2.61-dev
 
 Weiterentwicklung von `SMC Precision Scalper XAUUSD v2.59-dev` (Klasse `IctGoldV259Dev`).
 Grundlage war die kritische Gate- und Logikanalyse. Ziel: mehr Signale, ohne dass die Qualität sinkt.
+
+> **v2.61-dev** (Punkte 3–5 der Gap-Analyse, Live-News-Regel, Monte Carlo): siehe **[`V261_UMSETZUNG.md`](V261_UMSETZUNG.md)**.
+> Neue Bausteine: ADR-normierter Strategie-Pip und Instrument-Parametersätze, echte Limit-Orders am CE, mehrere Setups je Richtung,
+> zusätzliche Liquiditätspools, Meta-Labeling auf der Telemetrie, eine gemeinsame Tentative-News-Regel für Live und Backtest,
+> `tools/monte_carlo.py`. Neue Empfehlung **K3** (`paramsets/v261-recommended.json`). Mit Defaults handelt v2.61 identisch zu v2.59.
+>
+> **Korrektur zu den v2.60-Zahlen unten:** Die CE-Arme (C7, K2) wurden mit einem zu groben Tick-Raster gemessen. Der Tick-Trigger bekam dadurch
+> im Schnitt 0,16 R bessere Einstiege als jeder echte Fill. Realistisch (Limit am CE) liegt K2 2020/21 bei PF ≈ 1,2 statt 1,52;
+> über 2014–2021 bei +0,06 R je Signal. Details: `results/v261_tick_density.txt`, `V261_UMSETZUNG.md` Abschnitt 1.
+> Die Tabellen unten bleiben als Dokumentation des v2.60-Stands stehen.
 
 > **Status: Entwicklungsstand, kein Live-Release.** Alle Zahlen unten stammen aus einem Offline-Harness
 > mit echten XAUUSD-M15-Kerzen und synthetischer M1-Feinstruktur (siehe „Testaufbau & Grenzen“).
@@ -23,10 +33,11 @@ Grundlage war die kritische Gate- und Logikanalyse. Ziel: mehr Signale, ohne das
 
 | Pfad | Inhalt |
 |---|---|
-| `bot/IctGoldV259Dev.cs` | Haupt-Robot (v2.60-dev). Der Klassenname bleibt, damit deine übrigen Partial-Dateien weiter passen |
+| `bot/IctGoldV259Dev.cs` | Haupt-Robot (v2.61-dev). Der Klassenname bleibt, damit deine übrigen Partial-Dateien weiter passen |
 | `bot/Ns.cs` | `NsPreflight` nutzt dieselben Veto- und RR-Helfer wie das Parent-Gate |
-| `bot/FailSafeBot.cs` | nur `BotVersion = "v2.60-dev"` (Owner-Marker im Order-Kommentar ändert sich damit) |
-| `bot/NsRules.cs`, `bot/FailSafe.cs`, `bot/CandidateTelemetry*.cs`, `bot/EntryGeometry.cs`, `bot/LiveNews.cs`, `bot/Patterns.cs` | unverändert (die letzten fünf wurden nachgeliefert) |
+| `bot/FailSafeBot.cs` | `BotVersion = "v2.61-dev"` (Owner-Marker im Order-Kommentar ändert sich damit); v2.61: `FsGuardedLimitOrder` (einziger Pfad zu `PlaceLimitOrder`) |
+| `bot/LiveNews.cs`, `bot/FailSafe.cs`, `bot/CandidateTelemetryBot.cs` | v2.61: `TentativeNews` (eine Regel für Live und Backtest), `NyTime.FromNy`, Telemetrie über alle Setup-Slots |
+| `bot/NsRules.cs`, `bot/CandidateTelemetry.cs`, `bot/EntryGeometry.cs`, `bot/Patterns.cs` | unverändert |
 | `paramsets/v260-recommended.json` | die Parameter von K2, die von den Defaults abweichen |
 | `harness/` | Offline-Testumgebung: cAlgo-API-Nachbildung mit Tick-Engine und Runner |
 | `tools/make_m1_from_m15.py` | Testdaten: echte M15 → M1 (Brownian Bridge, optional Mikro-Rauschen und Volatilitätsnormierung) |
@@ -34,6 +45,10 @@ Grundlage war die kritische Gate- und Logikanalyse. Ziel: mehr Signale, ohne das
 | `tools/build_harness.sh` | baut `out/new` (aktueller Code) und `out/base` (v2.59 aus der Git-Historie) |
 | `tools/portfolio_corr.py`, `tools/strategy_family_study.py`, `tools/smt_study.py` | Portfolio-, Strategie-Familien- und SMT-Studien (siehe `ANALYSE_FEHLENDE_BAUSTEINE.md`) |
 | `ANALYSE_FEHLENDE_BAUSTEINE.md` | Was dem Bot fehlt (Frequenz, Diversifikation, Korrelation), mit Messwerten |
+| `V261_UMSETZUNG.md` | v2.61-dev: Umsetzung, Messwerte, Parameter, Sicherheitslogik, nächste Schritte |
+| `bot/InstrumentPip.cs`, `bot/LiquidityPools.cs`, `bot/PendingLimit.cs`, `bot/MetaModel.cs`, `bot/MetaModelBot.cs` | v2.61-dev: ADR-Pip, Liquiditätspools, Limit-Orders und Slots, Meta-Labeling (neue Partial-Dateien, im cBot-Projekt mit hinzufügen) |
+| `paramsets/v261-recommended.json`, `paramsets/instruments/*.json` | K3 für XAUUSD; Startsätze für EURUSD, GBPUSD, USDJPY, XAGUSD, NAS100, US30, GER40 (nur Backtest) |
+| `tools/monte_carlo.py`, `tools/meta_train.py`, `tools/make_test_calendar.py`, `tools/news_tentative_stats.py` | Monte Carlo, Meta-Modell-Training (Walk-Forward), Testkalender, Tentative-News-Statistik |
 | `results/` | Ergebnistabellen und Aufschlüsselung je Setup-Typ und Quartal |
 
 Alle Partial-Dateien sind die Originale, mit einer Ausnahme: die Funnel-Telemetrie (`NsF`, `NsFE`, `NsRej` …) fehlt im Upload.

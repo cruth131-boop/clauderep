@@ -1,6 +1,22 @@
-# v2.61-dev item 3: K2 + StrategyPipMode=AdrNormalized on RAW FX prices (real contract specs, harness, 2020-2021, synthetic M1 rough)
-# cost = all-in spread used by the harness (no commission); low = raw-spread ECN level, real = typical retail all-in
-# overrides: RequiredSymbolPrefix= SizingMode=RiskPercent MaximumSpreadPips=15 (gate opened to measure the edge at each cost level)
+# v2.61-dev item 3, realistic execution: K3 (resting CE limits) + StrategyPipMode=AdrNormalized on RAW prices (real contract specs), 2020-2021
+# cost = all-in spread in the harness (no separate commission); low = raw-spread ECN level, real = typical retail all-in
+# overrides for FX: RequiredSymbolPrefix= SizingMode=RiskPercent MaximumSpreadPips=15 (gate opened to measure the edge at each cost level)
+eurusd_low: spread=3E-05 signals=985 signals_per_day=1.891 win_rate=33.6% sum_r=194.71 avg_r=0.198 pf_r=1.30 max_dd_pct=15.38
+eurusd_real: spread=8E-05 signals=900 signals_per_day=1.727 win_rate=31.3% sum_r=-0.97 avg_r=-0.001 pf_r=1.00 max_dd_pct=28.29
+gbpusd_low: spread=4E-05 signals=936 signals_per_day=1.797 win_rate=31.4% sum_r=171.22 avg_r=0.183 pf_r=1.27 max_dd_pct=12.45
+gbpusd_real: spread=0.00012 signals=857 signals_per_day=1.645 win_rate=28.2% sum_r=-31.19 avg_r=-0.036 pf_r=0.95 max_dd_pct=35.18
+gold_raw_adr: spread=0.2 signals=530 signals_per_day=1.023 win_rate=28.5% sum_r=3.55 avg_r=0.007 pf_r=1.01 max_dd_pct=9.07
+gold_raw_adr_rn10: spread=0.2 signals=563 signals_per_day=1.087 win_rate=27.5% sum_r=-12.44 avg_r=-0.022 pf_r=0.97 max_dd_pct=9.48
+gold_raw_adr_rn5: spread=0.2 signals=559 signals_per_day=1.079 win_rate=27.0% sum_r=-20.98 avg_r=-0.038 pf_r=0.95 max_dd_pct=10.78
+gold_vol55_adr: spread=0.2 signals=1014 signals_per_day=1.958 win_rate=30.4% sum_r=158.25 avg_r=0.156 pf_r=1.22 max_dd_pct=18.20
+usdjpy_low: spread=0.003 signals=900 signals_per_day=1.727 win_rate=30.1% sum_r=107.51 avg_r=0.119 pf_r=1.17 max_dd_pct=9.16
+usdjpy_real: spread=0.009 signals=794 signals_per_day=1.524 win_rate=28.5% sum_r=-84.83 avg_r=-0.107 pf_r=0.85 max_dd_pct=35.60
+
+# gold_vol55_adr = K3 with the ADR pip on vol55 gold (K3 with the fixed pip on the same data: 983 signals, PF 1.18, +118 R)
+# gold_raw_adr* = unscaled 2020-21 gold (median NY-day range ~20 USD): spread 0.20 costs twice as much of the range as on vol55;
+#   round-number targets (RN 10 / RN 5 USD) make it worse -> not recommended
+
+# --- v2.61 first pass (tick trigger, substeps 4: optimistic, see v261_tick_density.txt) ---
 eurusd_low: spread=3E-05 signals=605 signals_per_day=1.161 win_rate=35.0% avg_r=0.334 pf_r=1.52
 eurusd_real: spread=8E-05 signals=546 signals_per_day=1.048 win_rate=31.9% avg_r=0.119 pf_r=1.18
 gbpusd_low: spread=4E-05 signals=553 signals_per_day=1.061 win_rate=31.3% avg_r=0.345 pf_r=1.50

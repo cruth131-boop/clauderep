@@ -1,0 +1,30 @@
+# tools/monte_carlo.py, v2.61 recommended set K3 (resting CE limits, 2 slots, PWH/PWL, NY AM), 4 x 2 years harness 2014-2021 (synthetic M1 rough, spread 0.20)
+sample: 3784 signals on 2080 trading days (1.82/day), E=0.069 R, PF=1.10, win 29.8%, max DD 91.5 R, longest losing streak 18
+paths=4000, block=10 days, horizon=252 days; quantiles shown as 5% / 50% / 95%
+
+A  edge confidence (block bootstrap of the sample)
+   expectancy R/signal 0.01 / 0.06 / 0.12   P(E <= 0) = 2.57%
+   profit factor       1.02 / 1.09 / 1.17
+
+B  trade-order permutation (same result, different sequence)
+   max DD R            47.46 / 67.71 / 105.11   historical 91.5 R = 87th percentile
+   losing streak       16.00 / 20.00 / 28.00   (99%: 33)
+
+C  forward 252 trading days (R units)
+   result R            -41.47 / 25.79 / 103.12   P(result < 0) = 27.1%
+   max DD R            18.70 / 34.01 / 67.87   (99%: 83.2)
+   longest underwater  48.00 / 120.00 / 247.00 days
+   worst day R         -3.80 / -3.00 / -3.00
+
+D  fixed-fractional sizing, daily loss limit 2.00%, DD tolerance 10.0%
+   risk%  | return% 5/50/95         | max DD% 5/50/95        | P(DD>=tol) | P(DD>=25%) | limit days
+    0.25  | -10.21 / 6.14 / 28.67   | 4.61 / 8.25 / 15.82    |     31.8% |     0.00% |    0.0/yr
+    0.50  | -19.95 / 11.58 / 63.66  | 9.08 / 16.02 / 29.54   |     90.3% |    12.05% |    0.0/yr
+    0.75  | -29.30 / 16.27 / 106.21 | 13.42 / 23.26 / 41.17  |     99.6% |    42.40% |    0.1/yr
+    1.00  | -37.70 / 20.21 / 157.07 | 17.60 / 30.03 / 51.12  |    100.0% |    70.03% |    0.2/yr
+
+E  edge erosion: haircut in R per signal (costs/slippage/live gap)
+   -0.00 R  E=+0.069  result R -41.47 / 25.79 / 103.12  P(year < 0) =  27.1%
+   -0.05 R  E=+0.019  result R -64.18 / 3.27 / 80.60    P(year < 0) =  46.9%
+   -0.10 R  E=-0.031  result R -86.74 / -19.48 / 57.90  P(year < 0) =  67.1%
+   -0.20 R  E=-0.131  result R -131.49 / -64.54 / 12.62 P(year < 0) =  91.6%

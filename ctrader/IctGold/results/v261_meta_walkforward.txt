@@ -1,0 +1,74 @@
+# v2.61-dev item 5: meta-labeling, walk-forward (train only on earlier years), harness telemetry
+# telemetry config (Meta Mode = Log): K2 + RestingLimit + 2 slots + PW/NYAM/H4/NWOG pools, substeps 16
+# label: bracket from the CE (or decision quote) to plan stop / structural TP2 on M1 bars, stop first, 240 min horizon
+
+## fold 1: train 2014-2017, test 2018-2019
+train: 2484 candidates (2409 resolved, hit rate 0.211), 39 features, 2014-01-03..2017-12-29
+  strongest standardised weights: spread_risk -0.49, reg_regime +0.37, reg_anchor -0.32, tp2_r -0.29, w_rr_floor +0.17, zone_q -0.17, tp1_r +0.14, sess_ext +0.12, veto_against +0.12, reg_delivery -0.11, w_m5_internal_context +0.10, risk_atr -0.10
+in-sample:
+  rows 2484 on ~1041 trading days; resolved 2409; AUC 0.693; Brier 0.153
+  calibration (p decile: mean p / hit rate / n):  0.08/0.09/482  0.13/0.11/482  0.19/0.20/481  0.26/0.27/482  0.40/0.39/482
+  accepted:        n 1873 (1.80/day) mean R +0.059 PF 1.07
+  soft-rejected:   n  472 (0.45/day) mean R +0.210 PF 1.29   (eligible for override)
+  override exp_R >= 0.00: n  341 (0.33/day) mean R +0.256 PF 1.36
+  override exp_R >= 0.10: n  284 (0.27/day) mean R +0.298 PF 1.43
+  override exp_R >= 0.20: n  229 (0.22/day) mean R +0.398 PF 1.59
+  override exp_R >= 0.30: n  175 (0.17/day) mean R +0.391 PF 1.58
+  override exp_R >= 0.50: n   88 (0.08/day) mean R +0.272 PF 1.40
+  veto accepted exp_R < -0.3: vetoed n  192 mean R -0.356 | kept n 1681 mean R +0.106 PF 1.14
+  veto accepted exp_R < -0.2: vetoed n  379 mean R -0.315 | kept n 1494 mean R +0.154 PF 1.20
+  veto accepted exp_R < -0.1: vetoed n  640 mean R -0.259 | kept n 1233 mean R +0.224 PF 1.30
+  veto accepted exp_R < +0.0: vetoed n  890 mean R -0.186 | kept n  983 mean R +0.280 PF 1.38
+OUT-OF-SAMPLE (B__R2019.log):
+  rows 1229 on ~519 trading days; resolved 1195; AUC 0.675; Brier 0.154
+  calibration (p decile: mean p / hit rate / n):  0.09/0.10/239  0.14/0.10/239  0.20/0.21/239  0.27/0.28/239  0.40/0.35/239
+  accepted:        n  915 (1.76/day) mean R -0.042 PF 0.95
+  soft-rejected:   n  236 (0.45/day) mean R +0.428 PF 1.62   (eligible for override)
+  override exp_R >= 0.00: n  171 (0.33/day) mean R +0.431 PF 1.64
+  override exp_R >= 0.10: n  143 (0.28/day) mean R +0.322 PF 1.48
+  override exp_R >= 0.20: n  121 (0.23/day) mean R +0.429 PF 1.66
+  override exp_R >= 0.30: n   95 (0.18/day) mean R +0.341 PF 1.49
+  override exp_R >= 0.50: n   40 (0.08/day) mean R +0.627 PF 2.05
+  veto accepted exp_R < -0.3: vetoed n   72 mean R -0.140 | kept n  843 mean R -0.034 PF 0.96
+  veto accepted exp_R < -0.2: vetoed n  156 mean R -0.231 | kept n  759 mean R -0.003 PF 1.00
+  veto accepted exp_R < -0.1: vetoed n  276 mean R -0.325 | kept n  639 mean R +0.080 PF 1.10
+  veto accepted exp_R < +0.0: vetoed n  390 mean R -0.171 | kept n  525 mean R +0.053 PF 1.07
+
+## fold 2: train 2014-2019, test 2020-2021
+train: 3713 candidates (3604 resolved, hit rate 0.209), 39 features, 2014-01-03..2019-12-30
+  strongest standardised weights: spread_risk -0.46, tp2_r -0.39, reg_regime +0.25, score_margin -0.20, reg_anchor -0.20, w_rr_floor +0.17, tp1_r +0.16, sess_nyam +0.14, risk_atr -0.13, type_turtle +0.10, sess_london +0.09, liq_strength -0.09
+in-sample:
+  rows 3713 on ~1563 trading days; resolved 3604; AUC 0.692; Brier 0.152
+  calibration (p decile: mean p / hit rate / n):  0.08/0.08/721  0.13/0.13/721  0.19/0.19/720  0.26/0.27/721  0.39/0.38/721
+  accepted:        n 2788 (1.78/day) mean R +0.026 PF 1.03
+  soft-rejected:   n  708 (0.45/day) mean R +0.283 PF 1.40   (eligible for override)
+  override exp_R >= 0.00: n  531 (0.34/day) mean R +0.313 PF 1.45
+  override exp_R >= 0.10: n  446 (0.29/day) mean R +0.281 PF 1.41
+  override exp_R >= 0.20: n  362 (0.23/day) mean R +0.307 PF 1.45
+  override exp_R >= 0.30: n  284 (0.18/day) mean R +0.370 PF 1.56
+  override exp_R >= 0.50: n  115 (0.07/day) mean R +0.659 PF 2.10
+  veto accepted exp_R < -0.3: vetoed n  313 mean R -0.257 | kept n 2475 mean R +0.061 PF 1.08
+  veto accepted exp_R < -0.2: vetoed n  601 mean R -0.346 | kept n 2187 mean R +0.128 PF 1.17
+  veto accepted exp_R < -0.1: vetoed n  981 mean R -0.298 | kept n 1807 mean R +0.201 PF 1.27
+  veto accepted exp_R < +0.0: vetoed n 1359 mean R -0.200 | kept n 1429 mean R +0.241 PF 1.33
+OUT-OF-SAMPLE (B__R2021.log):
+  rows 1305 on ~521 trading days; resolved 1273; AUC 0.682; Brier 0.157
+  calibration (p decile: mean p / hit rate / n):  0.09/0.11/255  0.14/0.10/254  0.21/0.18/255  0.28/0.28/254  0.41/0.39/255
+  accepted:        n  993 (1.91/day) mean R +0.079 PF 1.10
+  soft-rejected:   n  252 (0.48/day) mean R +0.040 PF 1.05   (eligible for override)
+  override exp_R >= 0.00: n  199 (0.38/day) mean R +0.069 PF 1.10
+  override exp_R >= 0.10: n  171 (0.33/day) mean R -0.045 PF 0.94
+  override exp_R >= 0.20: n  142 (0.27/day) mean R +0.007 PF 1.01
+  override exp_R >= 0.30: n  110 (0.21/day) mean R +0.161 PF 1.23
+  override exp_R >= 0.50: n   47 (0.09/day) mean R +0.098 PF 1.13
+  veto accepted exp_R < -0.3: vetoed n   80 mean R +0.250 | kept n  913 mean R +0.064 PF 1.08
+  veto accepted exp_R < -0.2: vetoed n  179 mean R +0.025 | kept n  814 mean R +0.091 PF 1.12
+  veto accepted exp_R < -0.1: vetoed n  299 mean R +0.082 | kept n  694 mean R +0.078 PF 1.10
+  veto accepted exp_R < +0.0: vetoed n  417 mean R +0.043 | kept n  576 mean R +0.105 PF 1.14
+
+## the bot in Meta Mode = Override with the fold model (threshold 0.20 fixed in advance), same config, substeps 16, out of sample
+OFF__R2019: signals=915 signals_per_day=1.763 win_rate=27.8% sum_r=-38.98 avg_r=-0.043 pf_r=0.94 max_dd_pct=18.82 
+OV2__R2019: signals=1038 signals_per_day=2.000 win_rate=30.2% sum_r=23.46 avg_r=0.023 pf_r=1.03 max_dd_pct=12.71 meta_override=137
+OFF__R2021: signals=993 signals_per_day=1.917 win_rate=32.1% sum_r=100.68 avg_r=0.101 pf_r=1.15 max_dd_pct=8.51 
+OV2__R2021: signals=1146 signals_per_day=2.212 win_rate=33.2% sum_r=120.86 avg_r=0.105 pf_r=1.16 max_dd_pct=8.47 meta_override=162
+OFF = Meta Mode Off (identical trade list to Log mode). Post-fill closes of overridden trades: 0 (after the R/R waiver fix).

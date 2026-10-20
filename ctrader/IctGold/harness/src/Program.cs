@@ -19,7 +19,9 @@ namespace IctGoldHarness
     {
         public static int Main(string[] args)
         {
+#if !BASELINE
             if (args.Length == 2 && args[0] == "--selftest-news") return SelfTestNews(args[1]);
+#endif
             string data = null, outDir = ".", tag = "run";
             DateTime from = DateTime.MinValue, to = DateTime.MaxValue;
             bool log = false;
@@ -88,6 +90,7 @@ namespace IctGoldHarness
                 }
             }
             bot.HarnessStop();
+            engine.PendingLeftAtStop = engine.PendingOrders.Count;   // v2.61-dev: OnStop must cancel every resting order
             engine.ForceCloseAll();
             if (logWriter != null) logWriter.Dispose();
             WriteReport(engine, bot, tradingDays.Count, outDir, tag, sets);
@@ -121,6 +124,7 @@ namespace IctGoldHarness
             s.VolumeInUnitsMax = max; s.QuoteToAccount = q2a; s.SymbolLeverage = lev;
         }
 
+#if !BASELINE
         // v2.61-dev: the live feed (FailSafe.LiveNewsFeed) and the backtest file calendar (bot) must derive the SAME blocked days and
         // blocking events from one calendar for every tentative policy. Returns 0 when both agree.
         private static int SelfTestNews(string csvPath)
@@ -154,6 +158,8 @@ namespace IctGoldHarness
             }
             return failures == 0 ? 0 : 1;
         }
+
+#endif
 
         private static void ApplyParameters(object bot, List<KeyValuePair<string, string>> sets)
         {
@@ -232,8 +238,9 @@ namespace IctGoldHarness
             var sb = new StringBuilder();
             sb.AppendLine("tag=" + tag);
             sb.AppendLine("params=" + string.Join(" ", sets.Select(s => s.Key + "=" + s.Value)));
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "symbol={0} pip={1} tick={2} spread={3} limit_fills={4} limit_cancels={5} limit_expiries={6} limit_rejects={7}",
-                engine.Symbol.Name, engine.Symbol.PipSize, engine.Symbol.TickSize, engine.Spread, engine.LimitFills, engine.LimitCancels, engine.LimitExpiries, engine.LimitRejects));
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "symbol={0} pip={1} tick={2} spread={3} limit_fills={4} limit_cancels={5} limit_expiries={6} limit_rejects={7} pending_left={8} max_open={9}",
+                engine.Symbol.Name, engine.Symbol.PipSize, engine.Symbol.TickSize, engine.Spread, engine.LimitFills, engine.LimitCancels, engine.LimitExpiries, engine.LimitRejects,
+                engine.PendingLeftAtStop, engine.MaxOpenPositions));
             sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
                 "signals={0} ny_days={1} signals_per_day={2:F3} win_rate={3:F1}% net_eur={4:F2} pf_eur={5:F2} sum_r={6:F2} avg_r={7:F3} pf_r={8:F2} max_dd_eur={9:F2} max_dd_pct={10:F2}",
                 recs.Count, days, days > 0 ? recs.Count / (double)days : 0, recs.Count > 0 ? 100.0 * wins / recs.Count : 0,

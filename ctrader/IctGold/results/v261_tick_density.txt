@@ -1,0 +1,18 @@
+# Tick-density check (harness): how much of the CE-touch result is an artefact of the interpolated tick grid?
+# Each M1 candle is replayed as open -> extreme -> extreme -> close; --substeps N inserts N interpolated ticks per leg.
+# With N = 4 one tick step is ~1/4 of an M1 leg (often 0.3-0.5 USD on vol55 gold). The v2.60 tick trigger fills at the first
+# tick at/through the CE, i.e. up to one step BEYOND the CE (a better price than any real fill), and it can skip moves that
+# jump through the whole lower half of the zone in one step (often the fast losers). A resting limit fills exactly at the CE.
+#
+# K2 (v2.60 recommendation), gold vol55 rough 2020-2021
+#   execution              substeps 4                     substeps 16                    substeps 32
+#   tick trigger (v2.60)   598 sig, PF 1.52, +0.338 R     674 sig, PF 1.31, +0.204 R     693 sig, PF 1.23, +0.156 R
+#   resting limit (v2.61)  722 sig, PF 1.21, +0.138 R     715 sig, PF 1.21, +0.138 R     710 sig, PF 1.20, +0.134 R
+# Same setups (582 matched trades): the tick trigger entered on average 0.16 R better than the CE.
+#
+# C7 (BEST without lane) and A0 (v2.59 close confirmation), substeps 4 -> 32
+#   C7 R2021  PF 1.81 -> 1.36     C7 R2019  PF 1.27 -> 1.09
+#   A0 R2021  PF 1.53 -> 1.48     A0 R2019  PF 1.26 -> 1.22
+#
+# Consequence: the v2.60 CE results (K2, C7) in README/matrix_*.md were optimistic. Realistic CE results are the
+# resting-limit numbers (tick-grid invariant); all v2.61 CE arms are measured that way.

@@ -1,0 +1,19 @@
+{
+  "_comment": "v2.61-dev recommended development set K3 for XAUUSD: K2 logic, CE entry as a resting limit order, 2 setups per direction, previous-week and NY-AM liquidity. Meta Mode = Log only collects META_CAND/META_OUT telemetry for training (trading unchanged). Only the parameters that differ from the source defaults are listed. Harness 2014-2021 (realistic limit fills): 1.83 signals/day, +0.069 R per signal, PF 0.98-1.19 per 2-year period; Monte Carlo: P(year < 0) ~27 % at zero extra cost (results/monte_carlo_K3.txt). Development set, not a live release: validate in the cTrader backtester with real ticks first.",
+  "Parameters": {
+    "FailFastStaticGates": "True",
+    "AllowDeepFillWithHold": "True",
+    "EntryMode": "FvgCeTouch",
+    "CeStopAnchor": "SweepExtreme",
+    "RrBasis": "StructuralTarget",
+    "StructuralMinimumRewardRisk": "2.0",
+    "Tp1MinimumR": "1.0",
+    "EnableContinuationLane": "True",
+    "TradeNyPm": "True",
+    "CeExecution": "RestingLimit",
+    "SetupSlotsPerDirection": "2",
+    "UsePreviousWeekLiquidity": "True",
+    "UseNyAmSessionLiquidity": "True",
+    "MetaMode": "Log"
+  }
+}

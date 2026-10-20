@@ -1,4 +1,5 @@
 # tools/monte_carlo.py, arm K2 (v260-recommended), 4 x 2 years harness (R2021, R2019, O2015, O2017), synthetic M1 rough
+# NOTE: K2 numbers below were measured with the tick trigger on substeps 4 and are optimistic (results/v261_tick_density.txt). Realistic: results/monte_carlo_K3.txt
 sample: 2352 signals on 2071 trading days (1.14/day), E=0.278 R, PF=1.41, win 32.4%, max DD 39.6 R, longest losing streak 19
 paths=4000, block=10 days, horizon=252 days; quantiles shown as 5% / 50% / 95%
 
