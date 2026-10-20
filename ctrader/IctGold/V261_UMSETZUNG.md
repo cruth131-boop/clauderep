@@ -201,6 +201,7 @@ Aufruf: `python3 tools/monte_carlo.py --trades a.trades.csv b.trades.csv --risk-
 | 19 | `MetaModelPath`, `MetaMinExpectedR`, `MetaMinRewardRisk`, `MetaShadowHorizonMinutes` | "", 0 (= Modellwert), 1,5, 240 | Modelldatei (fail-closed geprüft), Schwelle, Mindest-TP2-R, Bracket-Horizont |
 
 Empfohlener Entwicklungssatz: `paramsets/v261-recommended.json` (K3, `MetaMode = Log`). Je Instrument: `paramsets/instruments/*.json`.
+Als cTrader-Dateien: `paramsets/cbotset/*.cbotset` (nur die Abweichungen von den Defaults, damit kontospezifische Einstellungen erhalten bleiben).
 
 ## 8. Sicherheitslogik der Limit-Orders
 

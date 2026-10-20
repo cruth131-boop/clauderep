@@ -47,6 +47,7 @@ Grundlage war die kritische Gate- und Logikanalyse. Ziel: mehr Signale, ohne das
 | `ANALYSE_FEHLENDE_BAUSTEINE.md` | Was dem Bot fehlt (Frequenz, Diversifikation, Korrelation), mit Messwerten |
 | `V261_UMSETZUNG.md` | v2.61-dev: Umsetzung, Messwerte, Parameter, Sicherheitslogik, nächste Schritte |
 | `bot/InstrumentPip.cs`, `bot/LiquidityPools.cs`, `bot/PendingLimit.cs`, `bot/MetaModel.cs`, `bot/MetaModelBot.cs` | v2.61-dev: ADR-Pip, Liquiditätspools, Limit-Orders und Slots, Meta-Labeling (neue Partial-Dateien, im cBot-Projekt mit hinzufügen) |
+| `paramsets/cbotset/*.cbotset` | dieselben Sätze als cTrader-Dateien (Laden über „Load Parameters“); nur die Abweichungen von den Defaults, erzeugt mit `tools/make_cbotset.py` |
 | `paramsets/v261-recommended.json`, `paramsets/instruments/*.json` | K3 für XAUUSD; Startsätze für EURUSD, GBPUSD, USDJPY, XAGUSD, NAS100, US30, GER40 (nur Backtest) |
 | `tools/monte_carlo.py`, `tools/meta_train.py`, `tools/make_test_calendar.py`, `tools/news_tentative_stats.py` | Monte Carlo, Meta-Modell-Training (Walk-Forward), Testkalender, Tentative-News-Statistik |
 | `results/` | Ergebnistabellen und Aufschlüsselung je Setup-Typ und Quartal |

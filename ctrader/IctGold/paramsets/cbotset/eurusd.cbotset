@@ -1,0 +1,30 @@
+{
+  "Chart": {
+    "Symbol": "EURUSD",
+    "Period": "m2"
+  },
+  "Parameters": {
+    "AdrLookbackDays": "20",
+    "AdrReferenceStrategyPips": "550",
+    "AllowDeepFillWithHold": "True",
+    "CeExecution": "RestingLimit",
+    "CeStopAnchor": "SweepExtreme",
+    "CommissionSymbolPips": "0",
+    "EnableContinuationLane": "True",
+    "EntryMode": "FvgCeTouch",
+    "FailFastStaticGates": "True",
+    "MaximumSpreadPips": "5",
+    "NewsCurrencies": "USD,EUR",
+    "RequiredSymbolPrefix": "EURUSD",
+    "RiskPercentPerTrade": "0.5",
+    "RrBasis": "StructuralTarget",
+    "SetupSlotsPerDirection": "2",
+    "SizingMode": "RiskPercent",
+    "StrategyPipMode": "AdrNormalized",
+    "StructuralMinimumRewardRisk": "2.0",
+    "Tp1MinimumR": "1.0",
+    "TradeNyPm": "True",
+    "UseNyAmSessionLiquidity": "True",
+    "UsePreviousWeekLiquidity": "True"
+  }
+}

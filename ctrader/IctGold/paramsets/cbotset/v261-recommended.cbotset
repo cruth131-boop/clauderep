@@ -1,0 +1,22 @@
+{
+  "Chart": {
+    "Symbol": "XAUUSD",
+    "Period": "m2"
+  },
+  "Parameters": {
+    "AllowDeepFillWithHold": "True",
+    "CeExecution": "RestingLimit",
+    "CeStopAnchor": "SweepExtreme",
+    "EnableContinuationLane": "True",
+    "EntryMode": "FvgCeTouch",
+    "FailFastStaticGates": "True",
+    "MetaMode": "Log",
+    "RrBasis": "StructuralTarget",
+    "SetupSlotsPerDirection": "2",
+    "StructuralMinimumRewardRisk": "2.0",
+    "Tp1MinimumR": "1.0",
+    "TradeNyPm": "True",
+    "UseNyAmSessionLiquidity": "True",
+    "UsePreviousWeekLiquidity": "True"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "Chart": {
+    "Symbol": "XAUUSD",
+    "Period": "m2"
+  },
+  "Parameters": {
+    "AllowDeepFillWithHold": "True",
+    "CeStopAnchor": "SweepExtreme",
+    "EnableContinuationLane": "True",
+    "EntryMode": "FvgCeTouch",
+    "FailFastStaticGates": "True",
+    "RrBasis": "StructuralTarget",
+    "StructuralMinimumRewardRisk": "2.0",
+    "Tp1MinimumR": "1.0",
+    "TradeNyPm": "True"
+  }
+}
