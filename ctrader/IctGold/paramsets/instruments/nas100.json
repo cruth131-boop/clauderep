@@ -1,0 +1,24 @@
+{
+  "_comment": "v2.61-dev starting point for NAS100: K2 logic with the ADR-normalised strategy pip (item 3). Apply on top of the source defaults. Backtest only: the G3 live contract still allows XAUUSD only, and the fail-safes are single-instance (items 1/2 of the gap analysis). Acceptance in the cTrader backtester with real ticks before any further use: PF(R) >= 1.20 over 2 years and in each half, max DD within the Monte-Carlo band (tools/monte_carlo.py). NOT tested (no data). Cost/range ratio of US index CFDs (~0.5 %) is close to gold, the most promising second instrument. London killzone off (cash session starts 09:30 NY).",
+  "Parameters": {
+    "FailFastStaticGates": "True",
+    "AllowDeepFillWithHold": "True",
+    "EntryMode": "FvgCeTouch",
+    "CeStopAnchor": "SweepExtreme",
+    "RrBasis": "StructuralTarget",
+    "StructuralMinimumRewardRisk": "2.0",
+    "Tp1MinimumR": "1.0",
+    "EnableContinuationLane": "True",
+    "TradeNyPm": "True",
+    "StrategyPipMode": "AdrNormalized",
+    "AdrReferenceStrategyPips": "550",
+    "AdrLookbackDays": "20",
+    "SizingMode": "RiskPercent",
+    "RiskPercentPerTrade": "0.5",
+    "MaximumSpreadPips": "5",
+    "CommissionSymbolPips": "0",
+    "RequiredSymbolPrefix": "NAS100",
+    "NewsCurrencies": "USD",
+    "TradeLondon": "False"
+  }
+}

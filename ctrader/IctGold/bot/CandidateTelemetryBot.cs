@@ -155,7 +155,7 @@ namespace cAlgo.Robots
                 }
                 foreach (int direction in new[] { 1, -1 })
                     foreach (Pattern p in Patterns.Detect(bars, 60, direction, Symbol.TickSize,
-                        MinimumSweepPips * PricePerStrategyPip, MinimumSweepAtr, MssAtrBuffer).Where(x => x.Core == "K05"))
+                        MinimumSweepPips * StrategyPip, MinimumSweepAtr, MssAtrBuffer).Where(x => x.Core == "K05"))
                     {
                         if (!_candShadowAtmSeen.Add(p.Id)) continue;
                         var c = _candRegistry.Begin("ATM", utc, p.Id, p.Direction, "AtmH1LegacyProxy", "K05", "shadow_atm");

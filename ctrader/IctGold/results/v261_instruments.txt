@@ -1,0 +1,15 @@
+# v2.61-dev item 3: K2 + StrategyPipMode=AdrNormalized on RAW FX prices (real contract specs, harness, 2020-2021, synthetic M1 rough)
+# cost = all-in spread used by the harness (no commission); low = raw-spread ECN level, real = typical retail all-in
+# overrides: RequiredSymbolPrefix= SizingMode=RiskPercent MaximumSpreadPips=15 (gate opened to measure the edge at each cost level)
+eurusd_low: spread=3E-05 signals=605 signals_per_day=1.161 win_rate=35.0% avg_r=0.334 pf_r=1.52
+eurusd_real: spread=8E-05 signals=546 signals_per_day=1.048 win_rate=31.9% avg_r=0.119 pf_r=1.18
+gbpusd_low: spread=4E-05 signals=553 signals_per_day=1.061 win_rate=31.3% avg_r=0.345 pf_r=1.50
+gbpusd_real: spread=0.00012 signals=508 signals_per_day=0.975 win_rate=27.8% avg_r=0.060 pf_r=1.08
+usdjpy_low: spread=0.003 signals=555 signals_per_day=1.065 win_rate=36.6% avg_r=0.449 pf_r=1.71
+usdjpy_real: spread=0.009 signals=496 signals_per_day=0.952 win_rate=34.3% avg_r=0.098 pf_r=1.15
+
+# gold reference (vol55 rough): Fixed pip vs AdrNormalized, and the scale-invariance test (gold prices x0.001 with EURUSD-like contract)
+K2_fixed: signals=598 signals_per_day=1.154 win_rate=35.3% avg_r=0.338 pf_r=1.52 max_dd_pct=5.96
+K2_adr: signals=583 signals_per_day=1.125 win_rate=32.1% avg_r=0.320 pf_r=1.47 max_dd_pct=14.54
+K2_adr_scaled: signals=581 signals_per_day=1.122 win_rate=32.2% avg_r=0.326 pf_r=1.48 max_dd_pct=12.62
+scale invariance: 580 of 583 trades identical (time, side, R); the 3 others are CE-touch ties on the interpolated tick grid

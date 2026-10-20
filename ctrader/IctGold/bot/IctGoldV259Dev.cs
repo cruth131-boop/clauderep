@@ -770,6 +770,7 @@ namespace cAlgo.Robots
             if (NsAnyEnabled() && ExecutionTimeframe != SmcScalpExecutionTimeFrame.M2)
                 throw new InvalidOperationException("NS-1 requires closed M2 execution bars.");
             ValidateConfiguration();
+            _strategyPip = PricePerStrategyPip;
 
             _exec = MarketData.GetBars(GetExecutionTimeFrame(), SymbolName);
             _m5 = MarketData.GetBars(TimeFrame.Minute5, SymbolName);
@@ -781,9 +782,10 @@ namespace cAlgo.Robots
             EnsureHistory(_exec, 1200);
             EnsureHistory(_m5, 800);
             EnsureHistory(_m15, Math.Max(600, M15LiquidityLookback + 100));
-            EnsureHistory(_h1, 300);
+            EnsureHistory(_h1, StrategyPipMode == SmcStrategyPipMode.AdrNormalized ? Math.Max(300, 24 * (AdrLookbackDays + 6)) : 300);
             if (_h4 != null)
                 EnsureHistory(_h4, 200);
+            UpdateStrategyPip(Server.Time, true);
 
             _longState = new SetupState(1, NsF) { CandidateResetSink = CandReset };
             _shortState = new SetupState(-1, NsF) { CandidateResetSink = CandReset };
@@ -817,7 +819,7 @@ namespace cAlgo.Robots
             _lastEvent = "Ready";
             RefreshDashboard(true);
             Log("Ready v2.35. Exec={0}, strategy pip={1:F4}, TP1/TP2={2:F0}/{3:F0}p, stop={4:F0}-{5:F0}p (A+ {6:F0}p), RR={7:F2} (A+ {8:F2}), min score={9}.",
-                ExecutionTimeframe, PricePerStrategyPip, PreferredScalpTargetPips, PreferredRunnerTargetPips,
+                ExecutionTimeframe, StrategyPip, PreferredScalpTargetPips, PreferredRunnerTargetPips,
                 MinimumStopPips, MaximumStopPips, APlusMaximumStopPips, MinimumRewardRisk, APlusMinimumRewardRisk, MinimumSignalScore);
             Log("CRT v2.35: context={0}, H1 trigger={1}, M15 context={2}, M15 trigger={3}, opposite TP2={4}, EQ TP1={5}.",
                 EnableCrtContextLayer, UseCrtH1Range, UseCrtM15Context, UseCrtM15Range, PreferCrtOppositeSideTp2, UseCrtEquilibriumAsTp1);
@@ -1434,12 +1436,12 @@ namespace cAlgo.Robots
             TradeType tradeType = s.Direction > 0 ? TradeType.Buy : TradeType.Sell;
             double estimatedEntry = tradeType == TradeType.Buy ? Symbol.Ask : Symbol.Bid;
             double stop = BuildStructuralStop(s, i, atr, estimatedEntry);
-            double riskPips = Math.Abs(estimatedEntry - stop) / PricePerStrategyPip;
+            double riskPips = Math.Abs(estimatedEntry - stop) / StrategyPip;
             double maximumStopAllowed = EffectiveMaximumStopPips(s);
             if (s.NsNew || s.NsOte)
             {
                 stop = NewSetups.EntryGeometry.StopTick(stop, s.Direction, Symbol.TickSize);
-                riskPips = Math.Abs(estimatedEntry - stop) / PricePerStrategyPip;
+                riskPips = Math.Abs(estimatedEntry - stop) / StrategyPip;
                 if (!NsFinite(estimatedEntry) || !NsFinite(stop) || !NsFinite(riskPips) ||
                     s.Direction * (estimatedEntry - stop) <= 0) { NsF(fm, "rej:exec:stop_geometry"); s.Reset(); return; }
             }
@@ -1558,7 +1560,7 @@ namespace cAlgo.Robots
             }
             stop = BuildStructuralStop(s, i, atr, actualEntry);
             if (s.NsNew || s.NsOte) stop = NewSetups.EntryGeometry.StopTick(stop, s.Direction, Symbol.TickSize);
-            riskPips = Math.Abs(actualEntry - stop) / PricePerStrategyPip;
+            riskPips = Math.Abs(actualEntry - stop) / StrategyPip;
             double actualStopSymbolPips = Math.Abs(actualEntry - stop) / Symbol.PipSize;
             double actualPostFillRisk = NsFinite(actualStopSymbolPips) && actualStopSymbolPips > 0
                 ? Symbol.AmountRisked(position.VolumeInUnits, actualStopSymbolPips) : double.NaN;
@@ -1629,7 +1631,8 @@ namespace cAlgo.Robots
                 Tp2Price = tp2,
                 Tp2Pips = tp2Pips,
                 Tp2Name = tp2Name,
-                OriginalVolumeInUnits = position.VolumeInUnits
+                OriginalVolumeInUnits = position.VolumeInUnits,
+                PipPrice = StrategyPip
             };
 
             if (!FsLedgerSync(_managed[position.Id]))
@@ -1643,8 +1646,8 @@ namespace cAlgo.Robots
             CandEnd(s, Server.Time, CandidateTerminalStage.Filled, "managed_fill");
             _lastAcceptedSignalUtc = timeUtc;
             _lastEvent = DirectionText(s.Direction) + " OPEN " + _managed[position.Id].SetupType + " Q" + score;
-            Log("OPEN {0}: type={1}, score={2}, entry={3:F2}, SL={4:F2} ({5:F1}p), TP1={6:F2} ({7:F1}p), TP2={8:F2} ({9:F1}p), TP1-RR={10:F2}, setup={11}.",
-                DirectionText(s.Direction), _managed[position.Id].SetupType, score, actualEntry, stop, riskPips, tp1, tp1Pips, tp2, tp2Pips, tp1Pips / riskPips, _managed[position.Id].SetupName);
+            Log("OPEN {0}: type={1}, score={2}, entry={3}, SL={4} ({5:F1}p), TP1={6} ({7:F1}p), TP2={8} ({9:F1}p), TP1-RR={10:F2}, setup={11}.",
+                DirectionText(s.Direction), _managed[position.Id].SetupType, score, Px(actualEntry), Px(stop), riskPips, Px(tp1), tp1Pips, Px(tp2), tp2Pips, tp1Pips / riskPips, _managed[position.Id].SetupName);
 
             s.Reset();
         }
@@ -1696,7 +1699,7 @@ namespace cAlgo.Robots
                 if (tp1Floor >= tp2Pips - 1e-9)
                     return false;
                 tp1Pips = tp1Floor;
-                tp1 = s.Direction > 0 ? entry + tp1Pips * PricePerStrategyPip : entry - tp1Pips * PricePerStrategyPip;
+                tp1 = s.Direction > 0 ? entry + tp1Pips * StrategyPip : entry - tp1Pips * StrategyPip;
             }
             return rr >= required;
         }
@@ -1726,7 +1729,7 @@ namespace cAlgo.Robots
             TradeType tradeType = s.Direction > 0 ? TradeType.Buy : TradeType.Sell;
             double estimatedEntry = tradeType == TradeType.Buy ? Symbol.Ask : Symbol.Bid;
             double stop = BuildStructuralStop(s, i, atr, estimatedEntry);
-            double riskPips = Math.Abs(estimatedEntry - stop) / PricePerStrategyPip;
+            double riskPips = Math.Abs(estimatedEntry - stop) / StrategyPip;
             double tp1;
             double tp2;
             string tp1Name;
@@ -1813,7 +1816,7 @@ namespace cAlgo.Robots
             List<LiquidityLevel> levels = BuildLiquidityLevels(timeUtc,
                 IgnoreConsumedLiquidity == SmcConsumedLiquidity.Sweeps || IgnoreConsumedLiquidity == SmcConsumedLiquidity.Both ? _exec.OpenTimes[i] : DateTime.MinValue);
             int wantedSide = direction > 0 ? -1 : 1;
-            double minSweep = Math.Max(MinimumSweepPips * PricePerStrategyPip, atr * MinimumSweepAtr);
+            double minSweep = Math.Max(MinimumSweepPips * StrategyPip, atr * MinimumSweepAtr);
             double tol = Math.Max(Symbol.TickSize * 2.0, atr * 0.015);
             double prevClose = _exec.ClosePrices[Math.Max(0, i - 1)];
 
@@ -1933,7 +1936,7 @@ namespace cAlgo.Robots
                     lo = Math.Min(lo, _consumedLow[k - _consumedFirst]);
                 }
             }
-            double through = Math.Max(Symbol.TickSize * 2.0, MinimumSweepPips * PricePerStrategyPip);
+            double through = Math.Max(Symbol.TickSize * 2.0, MinimumSweepPips * StrategyPip);
             return level.Side > 0 ? hi > level.Price + through : lo < level.Price - through;
         }
 
@@ -2076,7 +2079,7 @@ namespace cAlgo.Robots
             if (s == null || !EnableCrtContextLayer || i < 0)
                 return;
 
-            double minSweep = Math.Max(MinimumSweepPips * PricePerStrategyPip, atr * MinimumSweepAtr);
+            double minSweep = Math.Max(MinimumSweepPips * StrategyPip, atr * MinimumSweepAtr);
             double close = _exec.ClosePrices[i];
 
             if (s.CrtH1 != null && s.CrtH1.Valid)
@@ -2154,8 +2157,8 @@ namespace cAlgo.Robots
                 return false;
 
             double stop = BuildStructuralStop(s, i, atr, entry);
-            double riskPips = Math.Abs(entry - stop) / PricePerStrategyPip;
-            double roomPips = Math.Max(0, Math.Abs(opposite - entry) / PricePerStrategyPip - TargetLiquidityBufferPips);
+            double riskPips = Math.Abs(entry - stop) / StrategyPip;
+            double roomPips = Math.Max(0, Math.Abs(opposite - entry) / StrategyPip - TargetLiquidityBufferPips);
             return riskPips > 0 && roomPips / riskPips >= CrtTargetRoomMinimumR;
         }
 
@@ -2701,7 +2704,7 @@ namespace cAlgo.Robots
             if (ob != null && !overlaps)
             {
                 double gap = bestFvg.High < ob.Low ? ob.Low - bestFvg.High : bestFvg.Low > ob.High ? bestFvg.Low - ob.High : 0;
-                obGapPips = gap / PricePerStrategyPip;
+                obGapPips = gap / StrategyPip;
             }
             bool bridge = ob != null && !overlaps && BridgeNearbyFvgOb && obGapPips <= MaxFvgObBridgePips;
             if (overlaps)
@@ -2765,8 +2768,8 @@ namespace cAlgo.Robots
             if (!UseBroadTradeZone || zone == null || s.ImpulseHigh <= s.ImpulseLow)
                 return zone;
 
-            double maxWidth = TradeZoneMaximumPips * PricePerStrategyPip;
-            double targetWidth = Math.Min(TradeZoneMaximumPips, Math.Max(0, TradeZoneTargetPips)) * PricePerStrategyPip;
+            double maxWidth = TradeZoneMaximumPips * StrategyPip;
+            double targetWidth = Math.Min(TradeZoneMaximumPips, Math.Max(0, TradeZoneTargetPips)) * StrategyPip;
             if (targetWidth <= 0)
                 return zone;
             if (zone.Width >= targetWidth && zone.Width <= maxWidth)
@@ -3136,12 +3139,12 @@ namespace cAlgo.Robots
             if (s.EntryTrigger == "CeTouch" && CeStopAnchor == SmcCeStopAnchor.SweepExtreme && s.SweepExtreme > 0)
                 localExtreme = s.Direction > 0 ? Math.Min(localExtreme, s.SweepExtreme) : Math.Max(localExtreme, s.SweepExtreme);
 
-            double buffer = Math.Max(StopBufferMinimumPips * PricePerStrategyPip, Math.Max(Symbol.Spread * 1.2, atr * StopBufferAtr));
+            double buffer = Math.Max(StopBufferMinimumPips * StrategyPip, Math.Max(Symbol.Spread * 1.2, atr * StopBufferAtr));
             double stop = s.Direction > 0 ? localExtreme - buffer : localExtreme + buffer;
-            double riskPips = Math.Abs(entry - stop) / PricePerStrategyPip;
+            double riskPips = Math.Abs(entry - stop) / StrategyPip;
 
             if (riskPips < MinimumStopPips)
-                stop = s.Direction > 0 ? entry - MinimumStopPips * PricePerStrategyPip : entry + MinimumStopPips * PricePerStrategyPip;
+                stop = s.Direction > 0 ? entry - MinimumStopPips * StrategyPip : entry + MinimumStopPips * StrategyPip;
             return stop;
         }
 
@@ -3161,7 +3164,7 @@ namespace cAlgo.Robots
                 IgnoreConsumedLiquidity == SmcConsumedLiquidity.Targets || IgnoreConsumedLiquidity == SmcConsumedLiquidity.Both ? timeUtc : DateTime.MinValue);
             var candidates = levels
                 .Where(x => direction > 0 ? (x.Side > 0 && x.Price > entry) : (x.Side < 0 && x.Price < entry))
-                .Select(x => new { Level = x, Pips = Math.Abs(x.Price - entry) / PricePerStrategyPip })
+                .Select(x => new { Level = x, Pips = Math.Abs(x.Price - entry) / StrategyPip })
                 .OrderBy(x => x.Pips)
                 .ToList();
 
@@ -3192,7 +3195,7 @@ namespace cAlgo.Robots
                 bool eqAhead = direction > 0 ? eq > entry : eq < entry;
                 if (eqAhead)
                 {
-                    double eqPips = Math.Abs(eq - entry) / PricePerStrategyPip - TargetLiquidityBufferPips;
+                    double eqPips = Math.Abs(eq - entry) / StrategyPip - TargetLiquidityBufferPips;
                     if (eqPips >= MinimumTargetPips && eqPips < tp1Pips)
                     {
                         tp1Pips = eqPips;
@@ -3201,7 +3204,7 @@ namespace cAlgo.Robots
                 }
             }
 
-            tp1 = direction > 0 ? entry + tp1Pips * PricePerStrategyPip : entry - tp1Pips * PricePerStrategyPip;
+            tp1 = direction > 0 ? entry + tp1Pips * StrategyPip : entry - tp1Pips * StrategyPip;
 
             double tp1PipsForRunner = tp1Pips;
             var runner = candidates.FirstOrDefault(x => x.Pips - TargetLiquidityBufferPips >= Math.Max(MinimumRunnerTargetPips, tp1PipsForRunner + 10));
@@ -3230,21 +3233,21 @@ namespace cAlgo.Robots
                 bool targetAhead = direction > 0 ? opposite > entry : opposite < entry;
                 if (targetAhead)
                 {
-                    double crtRoom = Math.Abs(opposite - entry) / PricePerStrategyPip - TargetLiquidityBufferPips;
+                    double crtRoom = Math.Abs(opposite - entry) / StrategyPip - TargetLiquidityBufferPips;
                     if (crtRoom >= Math.Max(MinimumRunnerTargetPips, tp1Pips + 10))
                     {
                         double crtTp2Pips = Math.Min(PreferredRunnerTargetPips, crtRoom);
                         crtTp2Pips = Math.Max(crtTp2Pips, Math.Min(crtRoom, Math.Max(MinimumRunnerTargetPips, tp1Pips + 10)));
                         tp2Pips = crtTp2Pips;
                         tp2Name = crtTp2Pips + TargetLiquidityBufferPips >=
-                                  Math.Abs(opposite - entry) / PricePerStrategyPip - 0.01
+                                  Math.Abs(opposite - entry) / StrategyPip - 0.01
                             ? (direction > 0 ? "CRT H1 High" : "CRT H1 Low")
                             : (direction > 0 ? "Toward CRT H1 High" : "Toward CRT H1 Low");
                     }
                 }
             }
 
-            tp2 = direction > 0 ? entry + tp2Pips * PricePerStrategyPip : entry - tp2Pips * PricePerStrategyPip;
+            tp2 = direction > 0 ? entry + tp2Pips * StrategyPip : entry - tp2Pips * StrategyPip;
             return tp2Pips > tp1Pips;
         }
 
@@ -3262,8 +3265,9 @@ namespace cAlgo.Robots
 
                 double exitPrice = position.TradeType == TradeType.Buy ? Symbol.Bid : Symbol.Ask;
                 double signed = state.Direction > 0 ? exitPrice - state.EntryPrice : state.EntryPrice - exitPrice;
-                double currentPips = signed / PricePerStrategyPip;
-                double riskPips = state.InitialRiskPrice / PricePerStrategyPip;
+                double pip = TradePip(state, StrategyPip);   // v2.61-dev: the pip the trade was opened with
+                double currentPips = signed / pip;
+                double riskPips = state.InitialRiskPrice / pip;
                 if (riskPips <= 0) continue;
 
                 state.MaxFavorablePips = Math.Max(state.MaxFavorablePips, currentPips);
@@ -3334,8 +3338,8 @@ namespace cAlgo.Robots
                     }
 
                     double tp1Be = state.Direction > 0
-                        ? state.EntryPrice + AfterTp1BreakEvenBufferPips * PricePerStrategyPip
-                        : state.EntryPrice - AfterTp1BreakEvenBufferPips * PricePerStrategyPip;
+                        ? state.EntryPrice + AfterTp1BreakEvenBufferPips * pip
+                        : state.EntryPrice - AfterTp1BreakEvenBufferPips * pip;
                     if (MoveStopIfBetter(position, tp1Be))
                         state.BreakEvenApplied = true;
 
@@ -3355,9 +3359,9 @@ namespace cAlgo.Robots
                 bool fallbackTrigger = beAllowed && armed && currentR >= BreakEvenFallbackR;
                 if (!state.BreakEvenApplied && (protectedTrigger || fallbackTrigger))
                 {
-                    double spreadPips = CurrentSpreadStrategyPips();
+                    double spreadPips = TradingCostPrice() / pip;
                     double protectPips = Math.Max(BreakEvenCostBufferPips, spreadPips + 0.5);
-                    double beStop = state.Direction > 0 ? state.EntryPrice + protectPips * PricePerStrategyPip : state.EntryPrice - protectPips * PricePerStrategyPip;
+                    double beStop = state.Direction > 0 ? state.EntryPrice + protectPips * pip : state.EntryPrice - protectPips * pip;
                     if (MoveStopIfBetter(position, beStop))
                     {
                         state.BreakEvenApplied = true;
@@ -3368,8 +3372,8 @@ namespace cAlgo.Robots
                 if (EnableStructureProfitLock && state.BreakEvenApplied && state.LastProtectedSwing != 0 && currentR >= StructureLockFromR)
                 {
                     double lockStop = state.Direction > 0
-                        ? state.LastProtectedSwing - StructureLockBufferPips * PricePerStrategyPip
-                        : state.LastProtectedSwing + StructureLockBufferPips * PricePerStrategyPip;
+                        ? state.LastProtectedSwing - StructureLockBufferPips * pip
+                        : state.LastProtectedSwing + StructureLockBufferPips * pip;
                     MoveStopIfBetter(position, lockStop);
                 }
 
@@ -3659,9 +3663,10 @@ namespace cAlgo.Robots
             if (state == null || position == null || !state.Tp1Taken || !state.BreakEvenApplied || !position.StopLoss.HasValue)
                 return false;
 
+            double pip = TradePip(state, StrategyPip);
             double lockedPips = state.Direction > 0
-                ? (position.StopLoss.Value - state.EntryPrice) / PricePerStrategyPip
-                : (state.EntryPrice - position.StopLoss.Value) / PricePerStrategyPip;
+                ? (position.StopLoss.Value - state.EntryPrice) / pip
+                : (state.EntryPrice - position.StopLoss.Value) / pip;
             return lockedPips + 1e-9 >= ProtectedRunnerMinimumLockedPips;
         }
 
@@ -3670,7 +3675,7 @@ namespace cAlgo.Robots
             if (setup == null || setup.LiquidityPrice <= 0)
                 return false;
 
-            double tolerancePrice = DuplicateLiquidityTolerancePips * PricePerStrategyPip;
+            double tolerancePrice = DuplicateLiquidityTolerancePips * StrategyPip;
             foreach (ManagedTrade state in _managed.Values)
             {
                 Position p = Positions.FindById(state.PositionId);
@@ -3686,7 +3691,7 @@ namespace cAlgo.Robots
 
         private double CalculateVolumeInUnits(double riskStrategyPips, TradeType sizingSide, bool quiet = false)
         {
-            double stopPriceDistance = riskStrategyPips * PricePerStrategyPip;
+            double stopPriceDistance = riskStrategyPips * StrategyPip;
             double stopSymbolPips = stopPriceDistance / Symbol.PipSize;
             if (stopSymbolPips <= 0) return 0;
 
@@ -4348,6 +4353,7 @@ namespace cAlgo.Robots
             DateTime d = ToNewYork(utc).Date;
             if (!force && d == _nyTradeDate) return;
             _nyTradeDate = d;
+            UpdateStrategyPip(utc, false);
             _tradesToday = 0;
             _consecutiveLosses = 0;
             _dayStartBalance = Account.Balance;
@@ -4524,7 +4530,7 @@ namespace cAlgo.Robots
 
         private double CurrentSpreadStrategyPips()
         {
-            return (Symbol.Ask - Symbol.Bid) / PricePerStrategyPip;
+            return TradingCostPrice() / StrategyPip;
         }
 
         private double NormalizePrice(double price)
@@ -4537,6 +4543,8 @@ namespace cAlgo.Robots
             if (!string.IsNullOrWhiteSpace(RequiredSymbolPrefix) && !SymbolName.StartsWith(RequiredSymbolPrefix, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("This bot is configured for symbols beginning with " + RequiredSymbolPrefix + ".");
             if (PricePerStrategyPip <= 0) throw new InvalidOperationException("Price per Strategy Pip must be > 0.");
+            if (StrategyPipMode == SmcStrategyPipMode.AdrNormalized && (AdrReferenceStrategyPips <= 0 || AdrLookbackDays < 5))
+                throw new InvalidOperationException("ADR-normalised strategy pip needs ADR Reference Strategy Pips > 0 and ADR Lookback Days >= 5.");
             if (LondonEndNy <= LondonStartNy) throw new InvalidOperationException("London End NY must be above London Start NY.");
             if (NyAmEndNy <= NyAmStartNy) throw new InvalidOperationException("NY AM End NY must be above NY AM Start NY.");
             if (NyPmEndNy <= NyPmStartNy) throw new InvalidOperationException("NY PM End NY must be above NY PM Start NY.");
@@ -4858,6 +4866,7 @@ namespace cAlgo.Robots
             public double LastProtectedSwing;
             public string ExitOverride;
             public string PendingCloseReason;
+            public double PipPrice;            // v2.61-dev: strategy pip at entry (0 = unknown, e.g. restored from the ledger)
         }
     }
 }

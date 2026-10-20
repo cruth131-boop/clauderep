@@ -11,7 +11,7 @@ namespace cAlgo.Robots
     // v2.54-dev G3 fail-safes (F1-F7 review fixes): bot-side wiring. Decision logic lives in FailSafe.cs (offline tested).
     public partial class IctGoldV259Dev
     {
-        private const string BotVersion = "v2.60-dev";
+        private const string BotVersion = "v2.61-dev";
 
         // ---- parameters (defaults keep the historical backtest behaviour; live start validation below demands them)
         [Parameter("Atomic SL/TP With Order", DefaultValue = true, Group = "12 G3 Fail-safes")]

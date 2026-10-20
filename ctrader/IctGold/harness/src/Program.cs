@@ -1,7 +1,9 @@
 // Offline backtest runner for the ICT Gold cBot (test harness, not the cTrader backtester).
 //   IctGoldHarness --data m1.csv --from 2020-01-01 --to 2022-01-01 [--set Name=Value ...] [--out dir] [--tag name] [--log]
-// Ticks per M1 candle: open, first extreme, second extreme, close (bullish: low first). Spread fixed 0.20 USD,
-// commission 0, swap 0, EUR 5,000, account currency EUR (USD->EUR 0.92 fixed), no news calendar.
+//                  [--symbol-spec xauusd|eurusd|gbpusd|audusd|usdjpy|xagusd|nas100|us30|ger40] [--spread x] [--symbol NAME]
+// Ticks per M1 candle: open, first extreme, second extreme, close (bullish: low first). Spread fixed (XAUUSD 0.20 USD),
+// commission 0, swap 0, EUR 5,000, account currency EUR (quote->EUR fixed per spec), no news calendar unless the bot's
+// file calendar is enabled with --set.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -21,6 +23,8 @@ namespace IctGoldHarness
             DateTime from = DateTime.MinValue, to = DateTime.MaxValue;
             bool log = false;
             int substeps = 1;
+            string spec = "xauusd", symbolName = null;
+            double spread = double.NaN;
             var sets = new List<KeyValuePair<string, string>>();
             for (int a = 0; a < args.Length; a++)
             {
@@ -33,6 +37,9 @@ namespace IctGoldHarness
                     case "--tag": tag = args[++a]; break;
                     case "--log": log = true; break;
                     case "--substeps": substeps = int.Parse(args[++a], CultureInfo.InvariantCulture); break;
+                    case "--symbol-spec": spec = args[++a].ToLowerInvariant(); break;
+                    case "--symbol": symbolName = args[++a]; break;
+                    case "--spread": spread = double.Parse(args[++a], CultureInfo.InvariantCulture); break;
                     case "--set":
                         string kv = args[++a]; int e = kv.IndexOf('=');
                         sets.Add(new KeyValuePair<string, string>(kv.Substring(0, e), kv.Substring(e + 1))); break;
@@ -43,6 +50,7 @@ namespace IctGoldHarness
             StreamWriter logWriter = log ? new StreamWriter(Path.Combine(outDir, tag + ".log"), false, new UTF8Encoding(false)) : null;
 
             var engine = new Engine(5000.0);
+            ApplySymbolSpec(engine, spec, symbolName, spread);
             engine.Logger = s => { if (logWriter != null) logWriter.WriteLine(engine.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) + " " + s); };
             var bot = new cAlgo.Robots.IctGoldV259Dev();
             bot.HarnessEngine = engine;
@@ -53,7 +61,7 @@ namespace IctGoldHarness
             foreach (var bar in ReadM1(data))
             {
                 if (bar.Time >= to) break;
-                foreach (var tick in Ticks(bar, substeps))
+                foreach (var tick in Ticks(bar, substeps, engine.Symbol.TickSize))
                 {
                     engine.PushTick(tick.Key, tick.Value);
                     if (!started)
@@ -83,6 +91,33 @@ namespace IctGoldHarness
             if (logWriter != null) logWriter.Dispose();
             WriteReport(engine, bot, tradingDays.Count, outDir, tag, sets);
             return 0;
+        }
+
+        // Contract specs of a typical EUR-account CFD/FX broker; quote->EUR conversions are fixed test constants.
+        private static void ApplySymbolSpec(Engine e, string spec, string name, double spread)
+        {
+            var s = e.Symbol;
+            switch (spec)
+            {
+                case "xauusd": break;   // defaults (unchanged gold tests)
+                case "xagusd": Set(s, "XAGUSD", 0.001, 0.0001, 5000, 1, 1, 500000, 0.92, 10); e.Spread = 0.025; break;
+                case "eurusd": Set(s, "EURUSD", 0.0001, 0.00001, 100000, 1000, 1000, 10000000, 0.92, 30); e.Spread = 0.00008; break;
+                case "gbpusd": Set(s, "GBPUSD", 0.0001, 0.00001, 100000, 1000, 1000, 10000000, 0.92, 30); e.Spread = 0.00012; break;
+                case "audusd": Set(s, "AUDUSD", 0.0001, 0.00001, 100000, 1000, 1000, 10000000, 0.92, 20); e.Spread = 0.0001; break;
+                case "usdjpy": Set(s, "USDJPY", 0.01, 0.001, 100000, 1000, 1000, 10000000, 0.92 / 110.0, 30); e.Spread = 0.009; break;
+                case "nas100": Set(s, "NAS100", 1.0, 0.01, 1, 0.01, 0.01, 500, 0.92, 20); e.Spread = 1.5; break;
+                case "us30": Set(s, "US30", 1.0, 0.01, 1, 0.01, 0.01, 500, 0.92, 20); e.Spread = 2.0; break;
+                case "ger40": Set(s, "GER40", 1.0, 0.01, 1, 0.01, 0.01, 500, 1.0, 20); e.Spread = 1.2; break;
+                default: throw new ArgumentException("unknown --symbol-spec " + spec);
+            }
+            if (name != null) s.Name = name;
+            if (!double.IsNaN(spread)) e.Spread = spread;
+        }
+
+        private static void Set(Symbol s, string name, double pip, double tick, double lot, double min, double step, double max, double q2a, double lev)
+        {
+            s.Name = name; s.PipSize = pip; s.TickSize = tick; s.LotSize = lot; s.VolumeInUnitsMin = min; s.VolumeInUnitsStep = step;
+            s.VolumeInUnitsMax = max; s.QuoteToAccount = q2a; s.SymbolLeverage = lev;
         }
 
         private static void ApplyParameters(object bot, List<KeyValuePair<string, string>> sets)
@@ -134,8 +169,9 @@ namespace IctGoldHarness
 
         // Anchor ticks O, first extreme, second extreme, C at 0/15/30/59 s; with substeps > 1 every leg between two anchors
         // is filled with linearly interpolated ticks, so a level inside the candle is crossed close to its price.
-        private static IEnumerable<KeyValuePair<DateTime, double>> Ticks(M1 b, int substeps)
+        private static IEnumerable<KeyValuePair<DateTime, double>> Ticks(M1 b, int substeps, double tickSize)
         {
+            int digits = Math.Max(0, (int)Math.Round(-Math.Log10(tickSize)));
             bool lowFirst = b.C >= b.O;
             double[] px = { b.O, lowFirst ? b.L : b.H, lowFirst ? b.H : b.L, b.C };
             double[] sec = { 0, 15, 30, 59 };
@@ -145,7 +181,7 @@ namespace IctGoldHarness
                 {
                     double f = k / (double)substeps;
                     yield return new KeyValuePair<DateTime, double>(b.Time.AddSeconds(sec[leg - 1] + f * (sec[leg] - sec[leg - 1])),
-                        Math.Round(px[leg - 1] + f * (px[leg] - px[leg - 1]), 2));
+                        Math.Round(px[leg - 1] + f * (px[leg] - px[leg - 1]), digits));
                 }
         }
 
@@ -161,6 +197,8 @@ namespace IctGoldHarness
             var sb = new StringBuilder();
             sb.AppendLine("tag=" + tag);
             sb.AppendLine("params=" + string.Join(" ", sets.Select(s => s.Key + "=" + s.Value)));
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "symbol={0} pip={1} tick={2} spread={3} limit_fills={4} limit_cancels={5} limit_expiries={6} limit_rejects={7}",
+                engine.Symbol.Name, engine.Symbol.PipSize, engine.Symbol.TickSize, engine.Spread, engine.LimitFills, engine.LimitCancels, engine.LimitExpiries, engine.LimitRejects));
             sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
                 "signals={0} ny_days={1} signals_per_day={2:F3} win_rate={3:F1}% net_eur={4:F2} pf_eur={5:F2} sum_r={6:F2} avg_r={7:F3} pf_r={8:F2} max_dd_eur={9:F2} max_dd_pct={10:F2}",
                 recs.Count, days, days > 0 ? recs.Count / (double)days : 0, recs.Count > 0 ? 100.0 * wins / recs.Count : 0,
@@ -182,14 +220,14 @@ namespace IctGoldHarness
             File.WriteAllText(Path.Combine(outDir, tag + ".summary.txt"), sb.ToString());
             Console.Write(sb.ToString().Split(new[] { "funnel:" }, StringSplitOptions.None)[0]);
 
-            var csv = new StringBuilder("position_id,side,entry_time,entry,initial_stop,units,risk_eur,realized_eur,r,mfe_r,exit_time,setup\n");
+            var csv = new StringBuilder("position_id,side,entry_time,entry,initial_stop,units,risk_eur,realized_eur,r,mfe_r,exit_time,setup,via_limit\n");
             foreach (var r in recs)
                 csv.AppendLine(string.Join(",", r.PositionId, r.Side, r.EntryTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
-                    r.EntryPrice.ToString("F2", CultureInfo.InvariantCulture), r.InitialStop.ToString("F2", CultureInfo.InvariantCulture), r.Units,
+                    r.EntryPrice.ToString("F" + engine.Symbol.Digits, CultureInfo.InvariantCulture), r.InitialStop.ToString("F" + engine.Symbol.Digits, CultureInfo.InvariantCulture), r.Units,
                     r.InitialRiskEur.ToString("F2", CultureInfo.InvariantCulture), r.Realized.ToString("F2", CultureInfo.InvariantCulture),
                     (r.InitialRiskEur > 0 ? r.Realized / r.InitialRiskEur : 0).ToString("F3", CultureInfo.InvariantCulture),
                     r.Mfe.ToString("F2", CultureInfo.InvariantCulture), r.ExitTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
-                    "\"" + (r.OpenLog ?? "").Replace("\"", "'") + "\""));
+                    "\"" + (r.OpenLog ?? "").Replace("\"", "'") + "\"", r.ViaLimit ? "1" : "0"));
             File.WriteAllText(Path.Combine(outDir, tag + ".trades.csv"), csv.ToString());
         }
 

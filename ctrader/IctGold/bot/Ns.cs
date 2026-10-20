@@ -451,7 +451,7 @@ namespace cAlgo.Robots
             {
                 double gap = Math.Max(0, Math.Max(c.FvgEvidence.Low - c.ObEvidence.High, c.ObEvidence.Low - c.FvgEvidence.High));
                 pair = NsOverlap(c.FvgEvidence, c.ObEvidence.Low, c.ObEvidence.High) ||
-                    (BridgeNearbyFvgOb && gap / PricePerStrategyPip <= MaxFvgObBridgePips);
+                    (BridgeNearbyFvgOb && gap / StrategyPip <= MaxFvgObBridgePips);
             }
             return NsQualify(c.State, new ZoneInfo { Low = low, High = high, SourceIndex = sourceIndex,
                 HasFvg = fvg, HasOrderBlock = ob, Composite = pair, Label = label }, c.ZoneAtr > 0 ? c.ZoneAtr : c.SourceAtr, sourceQuality);
@@ -666,7 +666,7 @@ namespace cAlgo.Robots
             {
                 if ((d > 0 && !EnableLongs) || (d < 0 && !EnableShorts)) continue;
                 if (mi != _nsLastM15 && (EnableBreaker || EnableMitigation))
-                    foreach (var p in Patterns.Detect(m15, 15, d, Symbol.TickSize, MinimumSweepPips * PricePerStrategyPip, MinimumSweepAtr, MssAtrBuffer))
+                    foreach (var p in Patterns.Detect(m15, 15, d, Symbol.TickSize, MinimumSweepPips * StrategyPip, MinimumSweepAtr, MssAtrBuffer))
                         if ((p.Core == "K03" && EnableBreaker) || (p.Core == "K04" && EnableMitigation))
                         {
                             NsFE(NsModP(p), "detector_hit", "dir=" + p.Direction + "|id=" + p.Id);
@@ -675,7 +675,7 @@ namespace cAlgo.Robots
                             else CandEndById(cand, t, CandidateTerminalStage.FormationRejected, "pattern_build_rejected");
                         }
                 if (hi != _nsLastH1 && EnableAtm)
-                    foreach (var p in Patterns.Detect(h1, 60, d, Symbol.TickSize, MinimumSweepPips * PricePerStrategyPip, MinimumSweepAtr, MssAtrBuffer))
+                    foreach (var p in Patterns.Detect(h1, 60, d, Symbol.TickSize, MinimumSweepPips * StrategyPip, MinimumSweepAtr, MssAtrBuffer))
                     {
                         NsFE(NsModP(p), "detector_hit", "dir=" + p.Direction + "|id=" + p.Id);
                         string cand = CandBeginPattern(p, t); var c = NsAcceptPattern(p, i, atr, t);
@@ -703,7 +703,7 @@ namespace cAlgo.Robots
             if (s.NsOte && !EntryGeometry.Contains(entry, s.Zone.Low, s.Zone.High))
             { NsFE(mod, "rej:pf:quote_outside_ote_zone", "dir=" + s.Direction + "|entry=" + Fi(entry) + "|zone=" + Fi(s.Zone.Low) + "-" + Fi(s.Zone.High)); return false; }
             double stop = EntryGeometry.StopTick(BuildStructuralStop(s, i, atr, entry), s.Direction, Symbol.TickSize);
-            double risk = Math.Abs(entry - stop) / PricePerStrategyPip;
+            double risk = Math.Abs(entry - stop) / StrategyPip;
             if (!NsFinite(entry) || !NsFinite(stop) || !NsFinite(risk) || s.Direction * (entry - stop) <= 0) return NsRejB(mod, "pf:stop_geometry");
             if (risk < MinimumStopPips - 1e-9 || risk > EffectiveMaximumStopPips(s) + 1e-9)
             { NsFE(mod, "rej:pf:stop_distance", "dir=" + s.Direction + "|riskPips=" + Fi(risk) + "|max=" + Fi(EffectiveMaximumStopPips(s))); return false; }
@@ -770,7 +770,7 @@ namespace cAlgo.Robots
                 return;
             }
             NsF("JUDAS", "bar_in_window");
-            double sweep = Math.Max(MinimumSweepPips * PricePerStrategyPip, MinimumSweepAtr * atr);
+            double sweep = Math.Max(MinimumSweepPips * StrategyPip, MinimumSweepAtr * atr);
             double tol = Math.Max(Symbol.TickSize * 2, .015 * atr), buffer = Math.Max(Symbol.TickSize, atr * MssAtrBuffer);
             bool longRaid = _exec.LowPrices[i] < _nsAsiaLow - sweep && _exec.ClosePrices[i - 1] >= _nsAsiaLow - tol;
             bool shortRaid = _exec.HighPrices[i] > _nsAsiaHigh + sweep && _exec.ClosePrices[i - 1] <= _nsAsiaHigh + tol;

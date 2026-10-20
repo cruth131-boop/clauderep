@@ -22,6 +22,8 @@ namespace cAlgo.API
     public enum HorizontalAlignment { Left, Center, Right }
     public enum ErrorCode { TechnicalError, BadVolume, NoMoney, MarketClosed, Disconnected, EntityNotFound, Timeout, InvalidRequest }
     public enum PositionCloseReason { Closed, StopLoss, TakeProfit, StopOut }
+    public enum PendingOrderType { Limit, Stop, StopLimit }
+    public enum PendingOrderCancellationReason { Cancelled, Expired, Rejected }
 
     [AttributeUsage(AttributeTargets.Class)]
     public sealed class RobotAttribute : Attribute
@@ -138,17 +140,19 @@ namespace cAlgo.API
 
     public sealed class Symbol
     {
+        // Defaults = XAUUSD as used by all v2.59/v2.60 gold tests; the runner overrides them for other instruments (--symbol-spec).
         public string Name { get; internal set; }
         public double Bid { get; internal set; }
         public double Ask { get; internal set; }
-        public double TickSize { get { return 0.01; } }
-        public double PipSize { get { return 0.1; } }
-        public double LotSize { get { return 100; } }
-        public double VolumeInUnitsMin { get { return 1; } }
-        public double VolumeInUnitsStep { get { return 1; } }
-        public double VolumeInUnitsMax { get { return 10000; } }
-        internal double QuoteToAccount = 0.92;     // USD -> EUR, fixed for the test
+        public double TickSize { get; internal set; } = 0.01;
+        public double PipSize { get; internal set; } = 0.1;
+        public double LotSize { get; internal set; } = 100;
+        public double VolumeInUnitsMin { get; internal set; } = 1;
+        public double VolumeInUnitsStep { get; internal set; } = 1;
+        public double VolumeInUnitsMax { get; internal set; } = 10000;
+        internal double QuoteToAccount = 0.92;     // quote currency -> EUR, fixed for the test
         internal double SymbolLeverage = 20;
+        internal int Digits { get { return Math.Max(0, (int)Math.Round(-Math.Log10(TickSize))); } }
         public double Spread { get { return Ask - Bid; } }
         public double PipValue { get { return PipSize * QuoteToAccount; } }
         public double TickValue { get { return TickSize * QuoteToAccount; } }
@@ -189,9 +193,28 @@ namespace cAlgo.API
     public sealed class PendingOrder
     {
         public int Id { get; internal set; }
+        public PendingOrderType OrderType { get; internal set; }
+        public TradeType TradeType { get; internal set; }
+        public double TargetPrice { get; internal set; }
+        public double VolumeInUnits { get; internal set; }
+        public double? StopLossPips { get; internal set; }
+        public double? TakeProfitPips { get; internal set; }
+        public DateTime? ExpirationTime { get; internal set; }
         public string Label { get; internal set; }
         public string SymbolName { get; internal set; }
         public string Comment { get; internal set; }
+    }
+
+    public sealed class PendingOrderFilledEventArgs
+    {
+        public PendingOrder PendingOrder { get; internal set; }
+        public Position Position { get; internal set; }
+    }
+
+    public sealed class PendingOrderCancelledEventArgs
+    {
+        public PendingOrder PendingOrder { get; internal set; }
+        public PendingOrderCancellationReason Reason { get; internal set; }
     }
 
     public sealed class HistoricalTrade
@@ -215,6 +238,7 @@ namespace cAlgo.API
     {
         public bool IsSuccessful { get; internal set; }
         public Position Position { get; internal set; }
+        public PendingOrder PendingOrder { get; internal set; }
         public ErrorCode? Error { get; internal set; }
     }
 
@@ -238,8 +262,14 @@ namespace cAlgo.API
 
     public sealed class PendingOrders : IEnumerable<PendingOrder>
     {
-        public IEnumerator<PendingOrder> GetEnumerator() { return Enumerable.Empty<PendingOrder>().GetEnumerator(); }
+        internal readonly List<PendingOrder> Open = new List<PendingOrder>();
+        public event Action<PendingOrderFilledEventArgs> Filled;
+        public event Action<PendingOrderCancelledEventArgs> Cancelled;
+        public int Count { get { return Open.Count; } }
+        public IEnumerator<PendingOrder> GetEnumerator() { return Open.ToList().GetEnumerator(); }
         IEnumerator IEnumerable.GetEnumerator() { return GetEnumerator(); }
+        internal void RaiseFilled(PendingOrder o, Position p) { var h = Filled; if (h != null) h(new PendingOrderFilledEventArgs { PendingOrder = o, Position = p }); }
+        internal void RaiseCancelled(PendingOrder o, PendingOrderCancellationReason r) { var h = Cancelled; if (h != null) h(new PendingOrderCancelledEventArgs { PendingOrder = o, Reason = r }); }
     }
 
     public sealed class History : IEnumerable<HistoricalTrade>
@@ -299,7 +329,9 @@ namespace cAlgo.API
         public TradeResult ModifyPosition(Position position, double? stopLoss, double? takeProfit, ProtectionType protectionType)
         { return HarnessEngine.Modify(position, stopLoss, takeProfit); }
         public TradeResult ClosePosition(Position position) { return HarnessEngine.Close(position, PositionCloseReason.Closed, null); }
-        public TradeResult CancelPendingOrder(PendingOrder order) { return new TradeResult { IsSuccessful = false, Error = ErrorCode.EntityNotFound }; }
+        public TradeResult PlaceLimitOrder(TradeType tradeType, string symbolName, double volume, double targetPrice, string label, double? stopLossPips, double? takeProfitPips, DateTime? expiryTime, string comment)
+        { return HarnessEngine.PlaceLimit(tradeType, volume, targetPrice, label, stopLossPips, takeProfitPips, expiryTime, comment); }
+        public TradeResult CancelPendingOrder(PendingOrder order) { return HarnessEngine.CancelPending(order, PendingOrderCancellationReason.Cancelled); }
     }
 
     // ------------------------------------------------------------------ engine
@@ -308,11 +340,13 @@ namespace cAlgo.API
         public int PositionId; public TradeType Side; public DateTime EntryTime; public double EntryPrice, InitialStop, Units, InitialRiskEur;
         public string Comment, OpenLog; public double Realized; public DateTime ExitTime; public bool Closed; public int Fills;
         public double Mfe;
+        public bool ViaLimit;
     }
 
     public sealed class Engine
     {
         public readonly Symbol Symbol = new Symbol { Name = "XAUUSD" };
+        public int LimitFills, LimitCancels, LimitExpiries, LimitRejects;
         internal readonly MarketData MarketData;
         internal readonly Positions Positions = new Positions();
         internal readonly PendingOrders PendingOrders = new PendingOrders();
@@ -352,9 +386,10 @@ namespace cAlgo.API
             bool gap = _lastTick != DateTime.MinValue && (t - _lastTick).TotalMinutes > 5;
             _lastTick = t;
             Now = t;
-            Symbol.Bid = Math.Round(bid, 2);
-            Symbol.Ask = Math.Round(bid + Spread, 2);
+            Symbol.Bid = Math.Round(bid, Symbol.Digits);
+            Symbol.Ask = Math.Round(bid + Spread, Symbol.Digits);
             foreach (var b in _bars.Values) b.OnTick(t, Symbol.Bid);
+            CheckPending(gap);
             CheckStops(gap);
         }
 
@@ -402,6 +437,58 @@ namespace cAlgo.API
             Records[p.Id] = new FillRecord { PositionId = p.Id, Side = side, EntryTime = Now, EntryPrice = price, Units = volume, Comment = comment,
                 InitialStop = p.StopLoss ?? 0, InitialRiskEur = p.StopLoss.HasValue ? Math.Abs(price - p.StopLoss.Value) * volume * Symbol.QuoteToAccount : 0 };
             return new TradeResult { IsSuccessful = true, Position = p };
+        }
+
+        // Limit orders: a buy limit must rest below the Ask, a sell limit above the Bid (otherwise the server rejects it).
+        internal TradeResult PlaceLimit(TradeType side, double volume, double target, string label, double? slPips, double? tpPips, DateTime? expiry, string comment)
+        {
+            if (volume < Symbol.VolumeInUnitsMin || Math.Abs(volume / Symbol.VolumeInUnitsStep - Math.Round(volume / Symbol.VolumeInUnitsStep)) > 1e-9)
+                return new TradeResult { IsSuccessful = false, Error = ErrorCode.BadVolume };
+            double t = Tick(target);
+            if (side == TradeType.Buy ? t >= Symbol.Ask : t <= Symbol.Bid) { LimitRejects++; return new TradeResult { IsSuccessful = false, Error = ErrorCode.InvalidRequest }; }
+            if (expiry.HasValue && expiry.Value <= Now) { LimitRejects++; return new TradeResult { IsSuccessful = false, Error = ErrorCode.InvalidRequest }; }
+            var o = new PendingOrder { Id = _nextId++, OrderType = PendingOrderType.Limit, TradeType = side, TargetPrice = t, VolumeInUnits = volume, StopLossPips = slPips,
+                TakeProfitPips = tpPips, ExpirationTime = expiry, Label = label, SymbolName = Symbol.Name, Comment = comment };
+            PendingOrders.Open.Add(o);
+            return new TradeResult { IsSuccessful = true, PendingOrder = o };
+        }
+
+        internal TradeResult CancelPending(PendingOrder o, PendingOrderCancellationReason reason)
+        {
+            if (o == null || !PendingOrders.Open.Remove(o)) return new TradeResult { IsSuccessful = false, Error = ErrorCode.EntityNotFound };
+            if (reason == PendingOrderCancellationReason.Expired) LimitExpiries++; else LimitCancels++;
+            PendingOrders.RaiseCancelled(o, reason);
+            return new TradeResult { IsSuccessful = true, PendingOrder = o };
+        }
+
+        // Fill at the limit price (or better after a gap); protection is placed relative to the fill price.
+        private void CheckPending(bool gap)
+        {
+            foreach (var o in PendingOrders.Open.ToList())
+            {
+                if (!PendingOrders.Open.Contains(o)) continue;
+                if (o.ExpirationTime.HasValue && Now >= o.ExpirationTime.Value) { CancelPending(o, PendingOrderCancellationReason.Expired); continue; }
+                bool buy = o.TradeType == TradeType.Buy;
+                double px = buy ? Symbol.Ask : Symbol.Bid;
+                if (buy ? px > o.TargetPrice : px < o.TargetPrice) continue;
+                double fill = gap ? px : o.TargetPrice;
+                if (o.VolumeInUnits * fill * Symbol.QuoteToAccount / Symbol.SymbolLeverage > Account.FreeMargin)
+                { PendingOrders.Open.Remove(o); LimitRejects++; PendingOrders.RaiseCancelled(o, PendingOrderCancellationReason.Rejected); continue; }
+                PendingOrders.Open.Remove(o);
+                int dir = buy ? 1 : -1;
+                var p = new Position
+                {
+                    E = this, Id = _nextId++, TradeType = o.TradeType, EntryPrice = fill, VolumeInUnits = o.VolumeInUnits, Label = o.Label, SymbolName = Symbol.Name,
+                    Comment = o.Comment, EntryTime = Now,
+                    StopLoss = o.StopLossPips.HasValue ? Tick(fill - dir * o.StopLossPips.Value * Symbol.PipSize) : (double?)null,
+                    TakeProfit = o.TakeProfitPips.HasValue ? Tick(fill + dir * o.TakeProfitPips.Value * Symbol.PipSize) : (double?)null
+                };
+                Positions.Open.Add(p);
+                Records[p.Id] = new FillRecord { PositionId = p.Id, Side = o.TradeType, EntryTime = Now, EntryPrice = fill, Units = o.VolumeInUnits, Comment = o.Comment,
+                    InitialStop = p.StopLoss ?? 0, InitialRiskEur = p.StopLoss.HasValue ? Math.Abs(fill - p.StopLoss.Value) * o.VolumeInUnits * Symbol.QuoteToAccount : 0, ViaLimit = true };
+                LimitFills++;
+                PendingOrders.RaiseFilled(o, p);
+            }
         }
 
         internal TradeResult Modify(Position p, double? sl, double? tp)

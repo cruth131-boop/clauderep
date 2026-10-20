@@ -21,7 +21,8 @@ data at ~1800 USD would otherwise test a different regime.
 
 Usage:
   make_m1_from_m15.py --m15 XAUUSDm15.csv --start 2020-01-01 --end 2022-01-01 \
-      --out xau_m1.csv [--target-day-range 55] [--seed 20261019]
+      --out xau_m1.csv [--target-day-range 55] [--seed 20261019] [--micro-noise 0.15]
+  raw FX (no normalisation): --price-divisor 100000 --decimals 5   (USDJPY: --price-divisor 1000 --decimals 3)
 """
 import argparse
 import csv
@@ -46,7 +47,7 @@ def server_to_utc(t):
     return u if us_dst_utc(u) else t - dt.timedelta(hours=2)
 
 
-def load_m15(path, start, end):
+def load_m15(path, start, end, divisor=100.0):
     rows = []
     with open(path, newline="") as f:
         r = csv.reader(f)
@@ -55,7 +56,7 @@ def load_m15(path, start, end):
             t = server_to_utc(dt.datetime.strptime(line[0], "%Y-%m-%d %H:%M:%S"))
             if t < start or t >= end:
                 continue
-            o, h, l, c = (float(x) / 100.0 for x in line[1:5])
+            o, h, l, c = (float(x) / divisor for x in line[1:5])
             if not (h >= max(o, c) and l <= min(o, c) and h >= l):
                 continue
             rows.append((t, o, h, l, c))
@@ -86,14 +87,14 @@ def bridge(rng, a, b, n, sigma):
     return a + walk - k * walk[-1] + k * (b - a)
 
 
-def build_minutes(rng, o, h, l, c, micro=0.0):
+def build_minutes(rng, o, h, l, c, micro=0.0, min_range=0.01):
     sub = 4                      # sub points per minute -> intra-minute high/low
     n = 15 * sub
     # time of high / low inside the candle; bullish candles tend to print the low first
     i1, i2 = sorted(rng.choice(np.arange(1, n), size=2, replace=False))
     low_first = rng.random() < (0.62 if c >= o else 0.38)
     a, b = (l, h) if low_first else (h, l)
-    rngp = max(h - l, 0.01)
+    rngp = max(h - l, min_range)
     sigma = rngp * 0.18 / np.sqrt(sub)
     p = np.concatenate([
         bridge(rng, o, a, i1, sigma)[:-1],
@@ -123,11 +124,14 @@ def main():
     ap.add_argument("--seed", type=int, default=20261019)
     ap.add_argument("--micro-noise", type=float, default=0.0,
                     help="i.i.d. noise per sub point as a fraction of the M15 range (0 = smooth bridge)")
+    ap.add_argument("--price-divisor", type=float, default=100.0,
+                    help="source price scale (ejtraderLabs: XAUUSD 100, EUR/GBP/AUDUSD 100000, USDJPY 1000)")
+    ap.add_argument("--decimals", type=int, default=2, help="price decimals of the output (XAUUSD 2, EURUSD 5, USDJPY 3)")
     args = ap.parse_args()
 
     start = dt.datetime.fromisoformat(args.start)
     end = dt.datetime.fromisoformat(args.end)
-    rows = load_m15(args.m15, start, end)
+    rows = load_m15(args.m15, start, end, args.price_divisor)
     med, ndays = median_day_range(rows)
     k = args.target_day_range / med if args.target_day_range > 0 else 1.0
     rng = np.random.default_rng(args.seed)
@@ -136,9 +140,9 @@ def main():
         w = csv.writer(f)
         w.writerow(["time", "open", "high", "low", "close"])
         for t, o, h, l, c in rows:
-            for m, (mo, mh, ml, mc) in enumerate(build_minutes(rng, o * k, h * k, l * k, c * k, args.micro_noise)):
-                w.writerow([(t + dt.timedelta(minutes=m)).strftime("%Y-%m-%d %H:%M"),
-                            f"{mo:.2f}", f"{mh:.2f}", f"{ml:.2f}", f"{mc:.2f}"])
+            for m, (mo, mh, ml, mc) in enumerate(build_minutes(rng, o * k, h * k, l * k, c * k, args.micro_noise, 10.0 ** -args.decimals)):
+                w.writerow([(t + dt.timedelta(minutes=m)).strftime("%Y-%m-%d %H:%M")] +
+                           [f"{x:.{args.decimals}f}" for x in (mo, mh, ml, mc)])
                 n += 1
     print(f"m15 rows={len(rows)} ny_days={ndays} median_day_range={med:.2f} scale={k:.4f} m1_rows={n}")
 
