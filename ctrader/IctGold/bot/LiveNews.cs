@@ -17,9 +17,50 @@ using System.Text.Json;
 //    valid generation exists). Transport defects (directory unreadable) keep the last valid generation, but only
 //    until the stale/coverage limits; the age is always measured from the snapshot's own source_as_of_utc, so a
 //    reload can never make data younger.
-//  * USD/HIGH rows with time_status TENTATIVE/ALL_DAY (regardless of "enabled") block their whole UTC day.
+//  * USD/HIGH rows with time_status TENTATIVE/ALL_DAY (regardless of "enabled") follow TentativeNews (v2.61-dev): by default
+//    they block their whole UTC day; the backtest file calendar applies the SAME rule (v2.60 ignored such rows in backtests).
 namespace FailSafe
 {
+    // v2.61-dev: what a HIGH event without an exact time does to entries. One rule for the live feed and the backtest calendar.
+    //  WholeDay          the UTC day of the event is closed for entries (v2.54 live behaviour, default)
+    //  UsReleaseWindows  USD events block the usual US release times of that day (08:30, 10:00, 14:00 New York) with the normal
+    //                    HIGH windows (and the close-before rule for open positions); other currencies keep WholeDay
+    //  Ignore            no block (the v2.60 backtest behaviour); backtest comparison only, refused in live mode
+    public enum TentativeNewsPolicy { WholeDay, UsReleaseWindows, Ignore }
+
+    public static class TentativeNews
+    {
+        public static readonly int[] UsReleaseMinutesNy = { 8 * 60 + 30, 10 * 60, 14 * 60 };
+
+        public static void Apply(TentativeNewsPolicy policy, DateTime eventUtc, string currency, string title, int level,
+            ISet<DateTime> blockedDays, ICollection<NewsItem> events)
+        {
+            if (level < 3 || policy == TentativeNewsPolicy.Ignore) return;
+            DateTime day = eventUtc.Date;
+            if (policy == TentativeNewsPolicy.WholeDay || !string.Equals(currency, "USD", StringComparison.Ordinal))
+            {
+                blockedDays.Add(day);
+                return;
+            }
+            foreach (int m in UsReleaseMinutesNy)
+                events.Add(new NewsItem
+                {
+                    Title = title + " [time unknown, " + (m / 60).ToString("00", CultureInfo.InvariantCulture) + ":" + (m % 60).ToString("00", CultureInfo.InvariantCulture) + " NY window]",
+                    Currency = currency, Impact = level, TimeUtc = NyTime.FromNy(day.AddMinutes(m))
+                });
+        }
+
+        // True when a blocked UTC day intersects [now - lag, now + lead] (lead = look-ahead, lag = past-event window).
+        public static bool DayBlocked(ICollection<DateTime> blockedDays, DateTime nowUtc, int leadMinutes, int lagMinutes)
+        {
+            if (blockedDays == null || blockedDays.Count == 0) return false;
+            DateTime r0 = nowUtc.AddMinutes(-Math.Max(0, lagMinutes)), r1 = nowUtc.AddMinutes(Math.Max(0, leadMinutes));
+            for (DateTime day = r0.Date; day <= r1.Date; day = day.AddDays(1))
+                if (blockedDays.Contains(day)) return true;
+            return false;
+        }
+    }
+
     public sealed class LiveNewsSnapshot
     {
         public string Generation;                 // resolved generation directory
@@ -105,6 +146,7 @@ namespace FailSafe
 
         private readonly string _csvPath;
         private readonly ISet<string> _currencies;
+        public TentativeNewsPolicy TentativePolicy = TentativeNewsPolicy.WholeDay;
         private DateTime _lastPollUtc = DateTime.MinValue;
 
         public LiveNewsSnapshot Current { get; private set; }
@@ -154,9 +196,8 @@ namespace FailSafe
             DateTime r0 = nowUtc.AddMinutes(-Math.Max(0, afterMin)), r1 = nowUtc.AddMinutes(Math.Max(0, beforeMin));
             if (r0 < s.CoverageStartUtc || r1 > s.CoverageEndUtc)
                 return "news calendar coverage " + Fmt(s.CoverageStartUtc) + ".." + Fmt(s.CoverageEndUtc) + " does not cover " + Fmt(r0) + ".." + Fmt(r1);
-            for (DateTime day = r0.Date; day <= r1.Date; day = day.AddDays(1))
-                if (s.BlockedDays.Contains(day))
-                    return "news USD/HIGH tentative or all-day event on this UTC day";
+            if (TentativeNews.DayBlocked(s.BlockedDays, nowUtc, beforeMin, afterMin))
+                return "news USD/HIGH tentative or all-day event on this UTC day";
             return null;
         }
 
@@ -311,8 +352,8 @@ namespace FailSafe
                 if (level <= 0) continue;
                 if (status == "TENTATIVE" || status == "ALL_DAY")
                 {
-                    // exact time unknown: the whole UTC day is closed for entries (HIGH only), whatever "enabled" says
-                    if (level >= 3) s.BlockedDays.Add(utc.Date);
+                    // exact time unknown (HIGH only, whatever "enabled" says): whole UTC day or the US release windows
+                    TentativeNews.Apply(TentativePolicy, utc, cur, r[9], level, s.BlockedDays, s.Events);
                     continue;
                 }
                 if (status == "CANCELLED" || r[10] != "true") continue;

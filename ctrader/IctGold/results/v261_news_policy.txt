@@ -1,0 +1,18 @@
+# v2.61-dev tentative/all-day HIGH news: one rule live and in backtests (FailSafe.TentativeNews)
+# test calendar: tools/make_test_calendar.py --tentative-per-year 8 (APPROXIMATE NFP/CPI/FOMC + 8 synthetic tentative/all-day USD HIGH days per year)
+
+## parser self-test (harness --selftest-news): live feed vs backtest file calendar
+WholeDay          live events=129 days=40 | backtest events=129 days=40 | IDENTICAL
+UsReleaseWindows  live events=249 days=0 | backtest events=249 days=0 | IDENTICAL
+Ignore            live events=129 days=0 | backtest events=129 days=0 | IDENTICAL
+
+## K2, gold vol55 rough 2020-2021, with the test calendar
+WholeDay: signals=574 signals_per_day=1.108 win_rate=34.3% avg_r=0.313 pf_r=1.48
+UsReleaseWindows: signals=587 signals_per_day=1.133 win_rate=34.6% avg_r=0.322 pf_r=1.49
+Ignore: signals=592 signals_per_day=1.143 win_rate=34.8% avg_r=0.326 pf_r=1.50
+
+## tools/news_tentative_stats.py on the Ignore run (= what a v2.60 backtest showed)
+runs/news/K2_Ignore.trades.csv
+  all signals 592, on tentative days 18 (3.0%), sum R 13.3, PF 2.48
+  WholeDay drops all 18; UsReleaseWindows keeps 13 (sum R 9.1, PF 2.30)
+WholeDay run: trades on blocked days = 0; UsReleaseWindows run: 13 trades on those days, all outside 08:30/10:00/14:00 NY -20/+15 min

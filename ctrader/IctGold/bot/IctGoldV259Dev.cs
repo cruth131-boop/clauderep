@@ -658,6 +658,11 @@ namespace cAlgo.Robots
         [Parameter("News Calendar Path", DefaultValue = "", Group = "09 Live News")]
         public string NewsCalendarPath { get; set; }
 
+        // v2.61-dev: HIGH events without an exact time (TENTATIVE / ALL_DAY) follow the same rule live and in the backtest
+        // calendar (see FailSafe.TentativeNews). v2.60 blocked the whole UTC day live but ignored such rows in backtests.
+        [Parameter("Tentative HIGH News Policy", DefaultValue = FailSafe.TentativeNewsPolicy.WholeDay, Group = "09 Live News")]
+        public FailSafe.TentativeNewsPolicy TentativeHighNewsPolicy { get; set; }
+
         // ========================= UI =========================
         [Parameter("Show Dashboard", DefaultValue = true, Group = "10 Dashboard")]
         public bool ShowDashboard { get; set; }
@@ -746,6 +751,7 @@ namespace cAlgo.Robots
         private DateTime _lastDashboardUtc = DateTime.MinValue;
         private readonly Dictionary<int, ManagedTrade> _managed = new Dictionary<int, ManagedTrade>();
         private readonly List<EconomicNewsEvent> _newsEvents = new List<EconomicNewsEvent>();
+        private readonly HashSet<DateTime> _newsBlockedDays = new HashSet<DateTime>();   // v2.61-dev: backtest tentative/all-day days
         private DateTime _lastNewsRefreshUtc = DateTime.MinValue;
         private DateTime _lastNewsSuccessUtc = DateTime.MinValue;
         private string _newsStatus = "News not loaded";
@@ -3866,7 +3872,7 @@ namespace cAlgo.Robots
 
         private void LiveNewsStart()
         {
-            _liveNews = new LiveNewsGate(new LiveNewsFeed(NewsCalendarPath, ParseCsvSet(NewsCurrencies)));
+            _liveNews = new LiveNewsGate(new LiveNewsFeed(NewsCalendarPath, ParseCsvSet(NewsCurrencies)) { TentativePolicy = TentativeHighNewsPolicy });
             LiveNewsPoll(true);
         }
 
@@ -3934,7 +3940,7 @@ namespace cAlgo.Robots
                 throw new InvalidOperationException("NEWS: manifest coverage window is empty or inverted.");
 
             List<EconomicNewsEvent> parsed = ParseNewsCalendarCsv(Encoding.UTF8.GetString(csvBytes));
-            if (parsed.Count == 0 && !ReadJsonBool(manifestText, "empty_coverage_confirmed"))
+            if (parsed.Count == 0 && _newsBlockedDays.Count == 0 && !ReadJsonBool(manifestText, "empty_coverage_confirmed"))
                 throw new InvalidOperationException(
                     "NEWS: calendar yields no blocking events and empty_coverage_confirmed is not set.");
 
@@ -3948,8 +3954,8 @@ namespace cAlgo.Robots
 
             EnsureNewsCoverage(Server.Time);
             UpdateNextNewsText(Server.Time);
-            Log("NEWS: file calendar loaded, {0} blocking events, sha256 {1}, coverage {2:yyyy-MM-ddTHH:mm:ssZ}..{3:yyyy-MM-ddTHH:mm:ssZ}.",
-                parsed.Count, actualHash, _newsCoverageStartUtc, _newsCoverageEndUtc);
+            Log("NEWS: file calendar loaded, {0} blocking events, sha256 {1}, coverage {2:yyyy-MM-ddTHH:mm:ssZ}..{3:yyyy-MM-ddTHH:mm:ssZ}, tentative policy {4}, blocked days {5}.",
+                parsed.Count, actualHash, _newsCoverageStartUtc, _newsCoverageEndUtc, TentativeHighNewsPolicy, _newsBlockedDays.Count);
         }
 
         // Coverage must include the widest filter window in use, otherwise a
@@ -3992,6 +3998,8 @@ namespace cAlgo.Robots
             var currencies = ParseCsvSet(NewsCurrencies);
             int max = Math.Max(cTime, Math.Max(cCurrency, Math.Max(cImpact,
                 Math.Max(cEnabled, Math.Max(cStatus, cTitle)))));
+            _newsBlockedDays.Clear();
+            var tentativeEvents = new List<FailSafe.NewsItem>();
 
             for (int i = 1; i < lines.Count; i++)
             {
@@ -4004,6 +4012,13 @@ namespace cAlgo.Robots
                 if (!FileNewsValidator.Validate(row[cTime], row[cCurrency], row[cImpact], row[cEnabled], row[cStatus], row[cTitle], out valid, out validationError))
                     throw new InvalidOperationException("NEWS: calendar CSV row " + (i + 1) + " " + validationError + ".");
 
+                // v2.61-dev: rows without an exact time follow the live rule (FailSafe.TentativeNews), whatever "enabled" says.
+                if (string.Equals(valid.Status, "TENTATIVE", StringComparison.Ordinal) || string.Equals(valid.Status, "ALL_DAY", StringComparison.Ordinal))
+                {
+                    if (currencies.Count == 0 || currencies.Contains(valid.Currency))
+                        FailSafe.TentativeNews.Apply(TentativeHighNewsPolicy, valid.TimeUtc, valid.Currency, valid.Title, MapCalendarImpact(valid.Impact), _newsBlockedDays, tentativeEvents);
+                    continue;
+                }
                 // The whole row is schema-validated before any policy filtering. v1 blocks only exact, enabled events.
                 if (!valid.Enabled || !string.Equals(valid.Status, "EXACT", StringComparison.Ordinal))
                     continue;
@@ -4021,6 +4036,7 @@ namespace cAlgo.Robots
                     TimeUtc = valid.TimeUtc
                 });
             }
+            events.AddRange(tentativeEvents.Select(x => new EconomicNewsEvent { Title = x.Title, Currency = x.Currency, Impact = x.Impact, TimeUtc = x.TimeUtc }));
             return events;
         }
 
@@ -4155,6 +4171,18 @@ namespace cAlgo.Robots
             {
                 reason = "news feed stale";
                 return true;
+            }
+
+            // v2.61-dev: backtest twin of the live tentative-day check (live: LiveNewsBlock above), same windows as LiveNewsWindows().
+            if (!FsLive && FileCalendarActive())
+            {
+                FailSafe.NewsWindows w = LiveNewsWindows();
+                if (FailSafe.TentativeNews.DayBlocked(_newsBlockedDays, utc, w.Lead, w.Lag))
+                {
+                    reason = "news USD/HIGH tentative or all-day event on this UTC day";
+                    FsJournalNewsBlock(reason, utc);
+                    return true;
+                }
             }
 
             foreach (EconomicNewsEvent e in _newsEvents)
@@ -4575,6 +4603,8 @@ namespace cAlgo.Robots
                 throw new InvalidOperationException("UseLiveNewsInBacktest must be False while UseFileNewsCalendar is True: the HTTP live feed is not admissible in a backtest.");
             if (UseFileNewsCalendar && !UseNewsFilter)
                 throw new InvalidOperationException("UseFileNewsCalendar requires UseNewsFilter=True.");
+            if (RunningMode == RunningMode.RealTime && TentativeHighNewsPolicy == FailSafe.TentativeNewsPolicy.Ignore)
+                throw new InvalidOperationException("Tentative HIGH News Policy = Ignore is a backtest comparison setting and not admissible live.");
             if (RunningMode == RunningMode.RealTime && UseNewsFilter && !UseFileNewsCalendar)
                 throw new InvalidOperationException("v2.50 live: news comes only from the local MQL5 generation; Use File News Calendar must be True (HTTP is not reachable for news).");
             if (UseFileNewsCalendar && string.IsNullOrWhiteSpace(NewsCalendarPath))

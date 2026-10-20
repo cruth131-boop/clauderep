@@ -19,6 +19,7 @@ namespace IctGoldHarness
     {
         public static int Main(string[] args)
         {
+            if (args.Length == 2 && args[0] == "--selftest-news") return SelfTestNews(args[1]);
             string data = null, outDir = ".", tag = "run";
             DateTime from = DateTime.MinValue, to = DateTime.MaxValue;
             bool log = false;
@@ -118,6 +119,40 @@ namespace IctGoldHarness
         {
             s.Name = name; s.PipSize = pip; s.TickSize = tick; s.LotSize = lot; s.VolumeInUnitsMin = min; s.VolumeInUnitsStep = step;
             s.VolumeInUnitsMax = max; s.QuoteToAccount = q2a; s.SymbolLeverage = lev;
+        }
+
+        // v2.61-dev: the live feed (FailSafe.LiveNewsFeed) and the backtest file calendar (bot) must derive the SAME blocked days and
+        // blocking events from one calendar for every tentative policy. Returns 0 when both agree.
+        private static int SelfTestNews(string csvPath)
+        {
+            int failures = 0;
+            foreach (FailSafe.TentativeNewsPolicy policy in Enum.GetValues(typeof(FailSafe.TentativeNewsPolicy)))
+            {
+                var feed = new FailSafe.LiveNewsFeed(csvPath, new HashSet<string> { "USD" }) { TentativePolicy = policy };
+                feed.Poll(new DateTime(2100, 1, 1), true);
+                if (feed.Current == null) { Console.WriteLine("live feed failed: " + (feed.Fault ?? feed.Transport)); return 2; }
+                var engine = new Engine(5000.0);
+                var bot = new cAlgo.Robots.IctGoldV259Dev();
+                bot.HarnessEngine = engine;
+                ApplyParameters(bot, new List<KeyValuePair<string, string>> { new KeyValuePair<string, string>("TentativeHighNewsPolicy", policy.ToString()) });
+                var t = bot.GetType();
+                var parse = t.GetMethod("ParseNewsCalendarCsv", BindingFlags.Instance | BindingFlags.NonPublic);
+                var list = (System.Collections.IEnumerable)parse.Invoke(bot, new object[] { File.ReadAllText(csvPath) });
+                var days = (HashSet<DateTime>)t.GetField("_newsBlockedDays", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(bot);
+                var bt = new List<string>();
+                foreach (object e in list)
+                {
+                    var et = e.GetType();
+                    bt.Add(((DateTime)et.GetField("TimeUtc").GetValue(e)).ToString("s") + "|" + et.GetField("Impact").GetValue(e) + "|" + et.GetField("Title").GetValue(e));
+                }
+                var live = feed.Current.Events.Select(e => e.TimeUtc.ToString("s") + "|" + e.Impact + "|" + e.Title).ToList();
+                bt.Sort(StringComparer.Ordinal); live.Sort(StringComparer.Ordinal);
+                bool eventsEqual = bt.SequenceEqual(live), daysEqual = days.SetEquals(feed.Current.BlockedDays);
+                Console.WriteLine("{0,-17} live events={1} days={2} | backtest events={3} days={4} | {5}", policy, live.Count, feed.Current.BlockedDays.Count,
+                    bt.Count, days.Count, eventsEqual && daysEqual ? "IDENTICAL" : "MISMATCH");
+                if (!eventsEqual || !daysEqual) failures++;
+            }
+            return failures == 0 ? 0 : 1;
         }
 
         private static void ApplyParameters(object bot, List<KeyValuePair<string, string>> sets)

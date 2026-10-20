@@ -27,6 +27,12 @@ namespace FailSafe
             int delta = ((int)DayOfWeek.Sunday - (int)d.DayOfWeek + 7) % 7;
             return d.AddDays(delta + 7 * (occurrence - 1));
         }
+        // New York wall-clock time -> UTC (for a clock time inside the spring-forward gap the EST reading is used).
+        public static DateTime FromNy(DateTime ny)
+        {
+            DateTime edt = ny.AddHours(4);
+            return ToNy(edt) == ny ? edt : ny.AddHours(5);
+        }
         public static string DayKey(DateTime utc) { return ToNy(utc).Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture); }
         public static string WeekKey(DateTime utc)
         {
