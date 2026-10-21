@@ -3,7 +3,8 @@
 import sys
 
 COL = {"Red": "#e53935", "LimeGreen": "#2e7d32", "IndianRed": "#cd5c5c", "MediumSeaGreen": "#3cb371", "Silver": "#555",
-       "DodgerBlue": "#1e88e5", "Gray": "#888"}
+       "DodgerBlue": "#1e88e5", "Gray": "#888", "MediumPurple": "#9370db", "DarkOrange": "#ff8c00", "DeepSkyBlue": "#00a5d6",
+       "Goldenrod": "#daa520", "Orchid": "#c05bc0"}
 
 
 def col(c):
@@ -22,7 +23,7 @@ def main():
         elif f[0] == "text":
             texts.append((int(f[1]), float(f[2]), f[3], f[4], f[5], f[6]))
         elif f[0] == "line":
-            lines.append((int(f[1]), float(f[2]), int(f[3]), float(f[4]), f[5], f[6]))
+            lines.append((int(f[1]), float(f[2]), int(f[3]), float(f[4]), f[5], f[6], int(f[7]) if len(f) > 7 else 1))
         elif f[0] == "rect":
             rects.append((int(f[1]), float(f[2]), int(f[3]), float(f[4]), f[5]))
         elif f[0] == "static":
@@ -49,11 +50,11 @@ def main():
         top, bot = max(ya, yb), min(ya, yb)
         out.append(f'<rect x="{x(a)-cw/2:.1f}" y="{y(top):.1f}" width="{max(1, x(b)-x(a)+cw/2):.1f}" height="{max(1, y(bot)-y(top)):.1f}" '
                    f'fill="{cc}" fill-opacity="{min(0.35, al+0.05):.2f}" stroke="{cc}" stroke-dasharray="2,3"/>')
-    for a, ya, b, yb, c, style in lines:
+    for a, ya, b, yb, c, style, th in lines:
         a = max(a, i0)
         cc, al = col(c)
         dash = ' stroke-dasharray="2,3"' if style.startswith("Dots") else (' stroke-dasharray="6,3,1,3"' if style == "LinesDots" else "")
-        out.append(f'<line x1="{x(a):.1f}" x2="{x(b):.1f}" y1="{y(ya):.1f}" y2="{y(yb):.1f}" stroke="{cc}" stroke-opacity="{al}"{dash}/>')
+        out.append(f'<line x1="{x(a):.1f}" x2="{x(b):.1f}" y1="{y(ya):.1f}" y2="{y(yb):.1f}" stroke="{cc}" stroke-opacity="{al}" stroke-width="{th}"{dash}/>')
     for i, p, txt, c, va, ha in texts:
         cc, al = col(c)
         dy = -5 if va == "Top" else (13 if va == "Bottom" else 4)

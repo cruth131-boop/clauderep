@@ -19,10 +19,10 @@ namespace cAlgo.API
         private TimeFrame(int m, string n) { Minutes = m; Name = n; }
         public static readonly TimeFrame Minute = new TimeFrame(1, "Minute"), Minute2 = new TimeFrame(2, "Minute2"), Minute3 = new TimeFrame(3, "Minute3"),
             Minute5 = new TimeFrame(5, "Minute5"), Minute10 = new TimeFrame(10, "Minute10"), Minute15 = new TimeFrame(15, "Minute15"),
-            Minute30 = new TimeFrame(30, "Minute30"), Hour = new TimeFrame(60, "Hour"), Hour4 = new TimeFrame(240, "Hour4"), Daily = new TimeFrame(1440, "Daily");
+            Minute30 = new TimeFrame(30, "Minute30"), Hour = new TimeFrame(60, "Hour"), Hour4 = new TimeFrame(240, "Hour4"), Daily = new TimeFrame(1440, "Daily"), Weekly = new TimeFrame(10080, "Weekly");
         public static TimeFrame Parse(string n)
         {
-            foreach (var t in new[] { Minute, Minute2, Minute3, Minute5, Minute10, Minute15, Minute30, Hour, Hour4, Daily }) if (t.Name == n) return t;
+            foreach (var t in new[] { Minute, Minute2, Minute3, Minute5, Minute10, Minute15, Minute30, Hour, Hour4, Daily, Weekly }) if (t.Name == n) return t;
             throw new ArgumentException(n);
         }
         public override string ToString() { return Name; }
@@ -73,6 +73,11 @@ namespace cAlgo.API
         public static Color DodgerBlue { get { return FromName("DodgerBlue"); } }
         public static Color Gray { get { return FromName("Gray"); } }
         public static Color Orange { get { return FromName("Orange"); } }
+        public static Color Orchid { get { return FromName("Orchid"); } }
+        public static Color Goldenrod { get { return FromName("Goldenrod"); } }
+        public static Color DeepSkyBlue { get { return FromName("DeepSkyBlue"); } }
+        public static Color DarkOrange { get { return FromName("DarkOrange"); } }
+        public static Color MediumPurple { get { return FromName("MediumPurple"); } }
         public override string ToString() { return Name + (A < 255 ? "@" + A : ""); }
     }
 

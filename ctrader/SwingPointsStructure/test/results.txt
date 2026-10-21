@@ -1,13 +1,13 @@
 == real M15 2021, chart M15
 base candles: 23581 Minute15 (2021-01-03 .. 2021-12-31), chart Minute15, structure Minute15
-SwingPointsStructure v2.1: chart 0m, 0 bars; layers M0 0 Kerzen, 0 Swings, H1* 0 Kerzen, 0 Swings, H4* 0 Kerzen, 0 Swings
+SwingPointsStructure v2.2: chart 0m, 0 bars; layers M0 0 Kerzen, 0 Swings, H1* 0 Kerzen, 0 Swings, H4* 0 Kerzen, 0 Swings
 look-ahead violations (a layer used a candle that was not closed yet): 0
 swings: 2312, labels: EQH=34, EQL=31, H=1, HH=553, HL=584, L=1, LH=568, LL=540, replaced later: 323
 swings that are not pivots: 0
 alternation violations: 0
 label rule violations: 0
 active zones 49 (9 merged from equal swings), closed through but active: 0
-chart objects 843 (cap 2290), draws 19243, removes 13322
+chart objects 863 (cap 2290), draws 27243, removes 13322
 indicator on Minute15 chart vs standalone engine on Minute15 candles: identical
 alerts (live part only): popups 17, e-mails 0, telegram 0
   XAUUSD M15: CHoCH bullish @ 1807.79 (candle closed 14:00 UTC)
@@ -15,13 +15,29 @@ alerts (live part only): popups 17, e-mails 0, telegram 0
   XAUUSD H1: buy-side liquidity swept @ 1813.47 (candle closed 06:00 UTC)
   XAUUSD H1: buy-side liquidity swept @ 1815.55 (candle closed 08:00 UTC)
   live since 2021-12-27 11:00
-status line: Swing Points Structure v2.1 | M15 23581 Kerzen, 2312 Swings | H1* 5900 Kerzen, 890 Swings | H4* 1595 Kerzen, 272 Swings
+status line: Swing Points Structure v2.2 | M15 23581 Kerzen, 2312 Swings | H1* 5900 Kerzen, 890 Swings | H4* 1595 Kerzen, 272 Swings
 table:
   Swing Structure M15   Uptrend
   Last High   HH 1827.47
   Last Low    HL 1820.26
   H1 Structure   Uptrend
   H4 Structure   Uptrend
+key levels at 2021-12-31 18:45 UTC:
+  session asia: expected 1818.90/1814.57, drawn 1818.90/1814.57 ok
+  session london: expected 1820.12/1815.08, drawn 1820.12/1815.08 ok
+  session ny: expected 1827.47/1818.60, drawn 1827.47/1818.60 ok
+  previous day : expected 1817.21/1796.12, drawn 1817.21/1796.12, thickness 2, style Solid ok
+  previous week: expected 1810.63/1785.00, drawn 1810.63/1785.00, thickness 2, style Solid ok
+ALL CHECKS PASSED
+
+== real M15, preloaded like cTrader
+preloaded like cTrader; look-ahead violations: 0
+indicator on Minute15 chart vs standalone engine on Minute15 candles: identical
+  session asia: expected 1818.90/1814.57, drawn 1818.90/1814.57 ok
+  session london: expected 1820.12/1815.08, drawn 1820.12/1815.08 ok
+  session ny: expected 1827.47/1818.60, drawn 1827.47/1818.60 ok
+  previous day : expected 1817.21/1796.12, drawn 1817.21/1796.12, thickness 2, style Solid ok
+  previous week: expected 1810.63/1785.00, drawn 1810.63/1785.00, thickness 2, style Solid ok
 ALL CHECKS PASSED
 
 == real M15, no alternation
@@ -38,7 +54,12 @@ alternation violations: 0
 label rule violations: 0
 active zones 33 (5 merged from equal swings), closed through but active: 0
 indicator on Minute chart vs standalone engine on Minute5 candles: identical
-status line: Swing Points Structure v2.1 | M5* 17757 Kerzen, 1618 Swings | H1* 1481 Kerzen, 212 Swings | H4* 401 Kerzen, 81 Swings
+status line: Swing Points Structure v2.2 | M5* 17757 Kerzen, 1618 Swings | H1* 1481 Kerzen, 212 Swings | H4* 401 Kerzen, 81 Swings
+  session asia: expected 1790.30/1783.00, drawn 1790.30/1783.00 ok
+  session london: expected 1798.50/1789.97, drawn 1798.50/1789.97 ok
+  session ny: expected 1808.74/1783.22, drawn 1808.74/1783.22 ok
+  previous day : expected 1808.74/1769.82, drawn 1808.74/1769.82, thickness 2, style Solid ok
+  previous week: expected 1849.15/1778.54, drawn 1849.15/1778.54, thickness 2, style Solid ok
 ALL CHECKS PASSED
 
 == chart Minute5, structure Minute5 (Sep-Nov 2021)
@@ -49,7 +70,12 @@ alternation violations: 0
 label rule violations: 0
 active zones 33 (5 merged from equal swings), closed through but active: 0
 indicator on Minute5 chart vs standalone engine on Minute5 candles: identical
-status line: Swing Points Structure v2.1 | M5 17757 Kerzen, 1618 Swings | H1* 1481 Kerzen, 212 Swings | H4* 401 Kerzen, 81 Swings
+status line: Swing Points Structure v2.2 | M5 17757 Kerzen, 1618 Swings | H1* 1481 Kerzen, 212 Swings | H4* 401 Kerzen, 81 Swings
+  session asia: expected 1790.30/1783.00, drawn 1790.30/1783.00 ok
+  session london: expected 1798.50/1789.97, drawn 1798.50/1789.97 ok
+  session ny: expected 1808.74/1783.22, drawn 1808.74/1783.22 ok
+  previous day : expected 1808.74/1769.82, drawn 1808.74/1769.82, thickness 2, style Solid ok
+  previous week: expected 1849.15/1778.54, drawn 1849.15/1778.54, thickness 2, style Solid ok
 ALL CHECKS PASSED
 
 == chart Minute, structure Minute (Sep-Nov 2021)
@@ -60,49 +86,12 @@ alternation violations: 0
 label rule violations: 0
 active zones 75 (13 merged from equal swings), closed through but active: 0
 indicator on Minute chart vs standalone engine on Minute candles: identical
-status line: Swing Points Structure v2.1 | M1 88785 Kerzen, 9095 Swings | H1* 1481 Kerzen, 212 Swings | H4* 401 Kerzen, 81 Swings
+status line: Swing Points Structure v2.2 | M1 88785 Kerzen, 9095 Swings | H1* 1481 Kerzen, 212 Swings | H4* 401 Kerzen, 81 Swings
+  session asia: expected 1790.30/1783.00, drawn 1790.30/1783.00 ok
+  session london: expected 1798.50/1789.97, drawn 1798.50/1789.97 ok
+  session ny: expected 1808.74/1783.22, drawn 1808.74/1783.22 ok
+  previous day : expected 1808.74/1769.82, drawn 1808.74/1769.82, thickness 2, style Solid ok
+  previous week: expected 1849.15/1778.54, drawn 1849.15/1778.54, thickness 2, style Solid ok
 ALL CHECKS PASSED
 
-== PRELOADED (cTrader-like): real M15
-base candles: 23581 Minute15 (2021-01-03 .. 2021-12-31), chart Minute15, structure Minute15
-SwingPointsStructure v2.1: chart 15m, 23581 bars; layers M15 23581 Kerzen, 0 Swings, H1* 5900 Kerzen, 0 Swings, H4* 1595 Kerzen, 0 Swings
-preloaded like cTrader; look-ahead violations: 0
-swings: 2312, labels: EQH=34, EQL=31, H=1, HH=553, HL=584, L=1, LH=568, LL=540, replaced later: 323
-swings that are not pivots: 0
-alternation violations: 0
-label rule violations: 0
-active zones 49 (9 merged from equal swings), closed through but active: 0
-chart objects 843 (cap 2290), draws 6716, removes 12460
-indicator on Minute15 chart vs standalone engine on Minute15 candles: identical
-alerts (live part only): popups 0, e-mails 0, telegram 0
-  live since 2021-12-31 18:45
-status line: Swing Points Structure v2.1 | M15 23581 Kerzen, 2312 Swings | H1* 5900 Kerzen, 890 Swings | H4* 1595 Kerzen, 272 Swings
-table:
-  Swing Structure M15   Uptrend
-  Last High   HH 1827.47
-  Last Low    HL 1820.26
-  H1 Structure   Uptrend
-  H4 Structure   Uptrend
-ALL CHECKS PASSED
-
-== PRELOADED chart Minute, structure Minute5
-preloaded like cTrader; look-ahead violations: 0
-swings: 1618, labels: EQH=36, EQL=28, H=1, HH=360, HL=390, L=1, LH=412, LL=390, replaced later: 265
---
-indicator on Minute chart vs standalone engine on Minute5 candles: identical
---
-status line: Swing Points Structure v2.1 | M5* 17757 Kerzen, 1618 Swings | H1* 1481 Kerzen, 212 Swings | H4* 401 Kerzen, 81 Swings
-table:
---
-ALL CHECKS PASSED
-
-== PRELOADED chart Minute5, structure Minute5
-preloaded like cTrader; look-ahead violations: 0
-swings: 1618, labels: EQH=36, EQL=28, H=1, HH=360, HL=390, L=1, LH=412, LL=390, replaced later: 265
---
-indicator on Minute5 chart vs standalone engine on Minute5 candles: identical
---
-status line: Swing Points Structure v2.1 | M5 17757 Kerzen, 1618 Swings | H1* 1481 Kerzen, 212 Swings | H4* 401 Kerzen, 81 Swings
-table:
---
-ALL CHECKS PASSED
+== key levels, 6 times x 2 broker day conventions: see commit message

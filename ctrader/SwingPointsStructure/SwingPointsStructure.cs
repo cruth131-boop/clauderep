@@ -1,4 +1,4 @@
-// Swing Points Structure v2.1 for cTrader (indicator, overlay). Built for manual XAUUSD trading on M1-M5 charts.
+// Swing Points Structure v2.2 for cTrader (indicator, overlay). Built for manual XAUUSD trading on M1-M5 charts.
 //
 //  * Main structure on its own timeframe (default M5), also drawn on smaller charts (M1, M2, M3): swing highs/lows as fractal
 //    pivots, confirmed after "Right Bars" CLOSED candles and never moved afterwards; labels HH / LH / EQH and HL / LL / EQL.
@@ -9,6 +9,8 @@
 //    is a liquidity sweep (x).
 //  * Pending swings: a potential pivot whose confirmation candles are not complete yet (grey, "?"), may still disappear.
 //  * Higher timeframes (H1, H4, each switchable): their zones and structure (table row), optionally their labels.
+//  * Key levels (each switchable, solid lines one point thicker than the structure lines): Asia / London / New York session
+//    high and low (session times in New York time, DST handled), previous day and previous week high / low (broker D1 / W1).
 //  * Alerts on CHoCH / BOS / sweep (each switchable): popup on the desktop, e-mail through cTrader's e-mail settings,
 //    Telegram (push to the phone). Alerts fire only for candles that close while the chart is running, never for history.
 //
@@ -174,6 +176,58 @@ namespace cAlgo.Indicators
         [Parameter("Table Color", DefaultValue = "Silver", Group = "6 Colors")]
         public Color TableColor { get; set; }
 
+        // ---------------- key levels: solid lines, one point thicker than the structure lines
+        [Parameter("Show Asia High/Low", DefaultValue = true, Group = "7 Key Levels")]
+        public bool ShowAsia { get; set; }
+
+        [Parameter("Asia Start (NY hour)", DefaultValue = 20.0, MinValue = 0, MaxValue = 24, Step = 0.25, Group = "7 Key Levels")]
+        public double AsiaStartNy { get; set; }
+
+        [Parameter("Asia End (NY hour)", DefaultValue = 0.0, MinValue = 0, MaxValue = 24, Step = 0.25, Group = "7 Key Levels")]
+        public double AsiaEndNy { get; set; }
+
+        [Parameter("Show London High/Low", DefaultValue = true, Group = "7 Key Levels")]
+        public bool ShowLondon { get; set; }
+
+        [Parameter("London Start (NY hour)", DefaultValue = 2.0, MinValue = 0, MaxValue = 24, Step = 0.25, Group = "7 Key Levels")]
+        public double LondonStartNy { get; set; }
+
+        [Parameter("London End (NY hour)", DefaultValue = 5.0, MinValue = 0, MaxValue = 24, Step = 0.25, Group = "7 Key Levels")]
+        public double LondonEndNy { get; set; }
+
+        [Parameter("Show New York High/Low", DefaultValue = true, Group = "7 Key Levels")]
+        public bool ShowNewYork { get; set; }
+
+        [Parameter("New York Start (NY hour)", DefaultValue = 7.0, MinValue = 0, MaxValue = 24, Step = 0.25, Group = "7 Key Levels")]
+        public double NewYorkStartNy { get; set; }
+
+        [Parameter("New York End (NY hour)", DefaultValue = 11.0, MinValue = 0, MaxValue = 24, Step = 0.25, Group = "7 Key Levels")]
+        public double NewYorkEndNy { get; set; }
+
+        [Parameter("Show Previous Day High/Low", DefaultValue = true, Group = "7 Key Levels")]
+        public bool ShowPreviousDay { get; set; }
+
+        [Parameter("Show Previous Week High/Low", DefaultValue = true, Group = "7 Key Levels")]
+        public bool ShowPreviousWeek { get; set; }
+
+        [Parameter("Key Level Thickness", DefaultValue = 2, MinValue = 1, MaxValue = 5, Group = "7 Key Levels")]
+        public int KeyLevelThickness { get; set; }
+
+        [Parameter("Asia Color", DefaultValue = "MediumPurple", Group = "7 Key Levels")]
+        public Color AsiaColor { get; set; }
+
+        [Parameter("London Color", DefaultValue = "DarkOrange", Group = "7 Key Levels")]
+        public Color LondonColor { get; set; }
+
+        [Parameter("New York Color", DefaultValue = "DeepSkyBlue", Group = "7 Key Levels")]
+        public Color NewYorkColor { get; set; }
+
+        [Parameter("Previous Day Color", DefaultValue = "Goldenrod", Group = "7 Key Levels")]
+        public Color PreviousDayColor { get; set; }
+
+        [Parameter("Previous Week Color", DefaultValue = "Orchid", Group = "7 Key Levels")]
+        public Color PreviousWeekColor { get; set; }
+
         [Output("Swing High", LineColor = "Red", PlotType = PlotType.Points, Thickness = 1)]
         public IndicatorDataSeries SwingHigh { get; set; }
 
@@ -187,7 +241,7 @@ namespace cAlgo.Indicators
         private string _lastTable = "";
         private readonly HashSet<string> _alerted = new HashSet<string>();
 
-        private const string Version = "v2.1";
+        private const string Version = "v2.2";
         private string _error = "";
         private int _chartMinutes;
 
@@ -222,6 +276,7 @@ namespace cAlgo.Indicators
                     foreach (Layer l in _layers)
                         l.RenderLive(index, changed);
                     if (ShowTable) DrawTable();
+                    DrawKeyLevels(index);
                     if (ShowStatus && _error.Length == 0)
                         Status("Swing Points Structure " + Version + " | " + string.Join(" | ", _layers.ConvertAll(x => x.Describe())), TableColor);
                 }
@@ -269,6 +324,122 @@ namespace cAlgo.Indicators
                 if (b.OpenTimes[mid] <= t) { ans = mid; lo = mid + 1; } else hi = mid - 1;
             }
             return ans;
+        }
+
+        // ------------------------------------------------------------------ key levels
+        private Bars _m5, _d1, _w1;
+        private readonly Dictionary<string, string> _keyDrawn = new Dictionary<string, string>();
+
+        // Latest Asia / London / New York session (running or completed) and the previous broker day / week, drawn from their
+        // start to the current candle. Only redrawn when a value changes.
+        private void DrawKeyLevels(int index)
+        {
+            DateTime now = Bars.OpenTimes[index];
+            if (ShowAsia || ShowLondon || ShowNewYork)
+            {
+                if (_m5 == null) _m5 = MarketData.GetBars(TimeFrame.Minute5);
+                SessionLevels("asia", "Asia", ShowAsia, AsiaStartNy, AsiaEndNy, AsiaColor, now);
+                SessionLevels("london", "London", ShowLondon, LondonStartNy, LondonEndNy, LondonColor, now);
+                SessionLevels("ny", "New York", ShowNewYork, NewYorkStartNy, NewYorkEndNy, NewYorkColor, now);
+            }
+            else foreach (string k in new[] { "asia", "london", "ny" }) KeyRemove(k);
+            if (ShowPreviousDay)
+            {
+                if (_d1 == null) _d1 = MarketData.GetBars(TimeFrame.Daily);
+                PreviousBarLevels("pd", "PDH", "PDL", _d1, PreviousDayColor, now);
+            }
+            else KeyRemove("pd");
+            if (ShowPreviousWeek)
+            {
+                if (_w1 == null) _w1 = MarketData.GetBars(TimeFrame.Weekly);
+                PreviousBarLevels("pw", "PWH", "PWL", _w1, PreviousWeekColor, now);
+            }
+            else KeyRemove("pw");
+        }
+
+        private void SessionLevels(string key, string name, bool show, double startNy, double endNy, Color color, DateTime now)
+        {
+            if (!show) { KeyRemove(key); return; }
+            DateTime nyToday = NyTime(now).Date;
+            for (int back = 0; back < 7; back++)   // newest instance that has started and has candles (skips weekends)
+            {
+                DateTime endDay = nyToday.AddDays(-back);
+                DateTime sNy = endDay.AddHours(startNy), eNy = endDay.AddHours(endNy);
+                if (eNy <= sNy) sNy = sNy.AddDays(-1);      // over midnight, e.g. Asia 20:00 (previous day) .. 00:00
+                DateTime s = UtcFromNy(sNy), e = UtcFromNy(eNy);
+                if (s > now) continue;
+                double hi = double.MinValue, lo = double.MaxValue;
+                for (int k = Math.Max(0, IndexAtOrBefore(_m5, s)); k < _m5.Count && _m5.OpenTimes[k] < e && _m5.OpenTimes[k] <= now; k++)
+                {
+                    if (_m5.OpenTimes[k] < s) continue;
+                    hi = Math.Max(hi, _m5.HighPrices[k]);
+                    lo = Math.Min(lo, _m5.LowPrices[k]);
+                }
+                if (hi < lo) continue;
+                bool running = now < e;
+                KeyPair(key, name + " H" + (running ? "*" : ""), name + " L" + (running ? "*" : ""), hi, lo, s, now, color);
+                return;
+            }
+            KeyRemove(key);
+        }
+
+        // Previous closed candle of the broker's D1 / W1 series. Brokers whose day starts at 00:00 UTC have a Sunday stub candle
+        // (opened Sunday 00:00 UTC, trading only from the evening): it is skipped. NY-close brokers open Monday's candle on
+        // Sunday 21:00/22:00 UTC; that is a full trading day and stays.
+        private void PreviousBarLevels(string key, string hiName, string loName, Bars b, Color color, DateTime now)
+        {
+            int k = IndexAtOrBefore(b, now) - 1;
+            while (k >= 0 && ReferenceEquals(b, _d1) && b.OpenTimes[k].DayOfWeek == DayOfWeek.Sunday && b.OpenTimes[k].TimeOfDay.TotalHours < 12) k--;
+            if (k < 0) { KeyRemove(key); return; }
+            KeyPair(key, hiName, loName, b.HighPrices[k], b.LowPrices[k], b.OpenTimes[k], now, color);
+        }
+
+        private void KeyPair(string key, string hiText, string loText, double hi, double lo, DateTime from, DateTime to, Color color)
+        {
+            string sig = hiText + "|" + loText + "|" + hi + "|" + lo + "|" + from.Ticks + "|" + to.Ticks;
+            string old;
+            if (_keyDrawn.TryGetValue(key, out old) && old == sig) return;
+            _keyDrawn[key] = sig;
+            DateTime start = Bars.Count > 0 && from < Bars.OpenTimes[0] ? Bars.OpenTimes[0] : from;
+            foreach (var x in new[] { Tuple.Create("h", hiText, hi, VerticalAlignment.Top), Tuple.Create("l", loText, lo, VerticalAlignment.Bottom) })
+            {
+                string n = Prefix + "key_" + key + "_" + x.Item1;
+                Chart.DrawTrendLine(n, start, x.Item3, to, x.Item3, color, KeyLevelThickness, LineStyle.Solid);
+                ChartText t = Chart.DrawText(n + "_t", x.Item2, to, x.Item3, color);
+                t.HorizontalAlignment = HorizontalAlignment.Right;   // ends at the current candle; zone labels start there
+                t.VerticalAlignment = x.Item4;
+                t.FontSize = Math.Max(6, FontSize - 1);
+            }
+        }
+
+        private void KeyRemove(string key)
+        {
+            if (!_keyDrawn.Remove(key)) return;
+            foreach (string side in new[] { "h", "l" })
+            {
+                Chart.RemoveObject(Prefix + "key_" + key + "_" + side);
+                Chart.RemoveObject(Prefix + "key_" + key + "_" + side + "_t");
+            }
+        }
+
+        // New York time (US daylight saving: 2nd Sunday of March 02:00 .. 1st Sunday of November 02:00).
+        internal static DateTime NyTime(DateTime utc)
+        {
+            DateTime dstStart = NthSunday(utc.Year, 3, 2).AddHours(7), dstEnd = NthSunday(utc.Year, 11, 1).AddHours(6);
+            return utc.AddHours(utc >= dstStart && utc < dstEnd ? -4 : -5);
+        }
+
+        internal static DateTime UtcFromNy(DateTime ny)
+        {
+            DateTime edt = ny.AddHours(4);
+            return NyTime(edt) == ny ? edt : ny.AddHours(5);
+        }
+
+        private static DateTime NthSunday(int year, int month, int n)
+        {
+            var d = new DateTime(year, month, 1);
+            d = d.AddDays((7 - (int)d.DayOfWeek) % 7);
+            return d.AddDays(7 * (n - 1));
         }
 
         // ------------------------------------------------------------------ table

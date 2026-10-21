@@ -1,17 +1,18 @@
-# Swing Points Structure v2.1 (cTrader-Indikator)
+# Swing Points Structure v2.2 (cTrader-Indikator)
 
 Nachbau von „Swing Points by MATA“ (TradingView) für cTrader, ausgebaut für manuelles Gold-Trading auf M1–M5 nach ICT.
 Eine Datei: `SwingPointsStructure.cs`.
 
 ![M5-Chart](preview_m5.png)
 ![M1-Chart mit M5-Struktur](preview_m1.png)
+![Key Levels: Sessions, Vortag, Vorwoche](preview_keylevels.png)
 
 ## Installation (cTrader Desktop für Mac)
 
 1. cTrader öffnen → **Algo** → **Indicators** → **+ New** → Namen vergeben (z. B. `SwingPointsStructure`).
 2. Den gesamten Inhalt von `SwingPointsStructure.cs` hineinkopieren (den Vorlagen-Code ersetzen) → **Build**.
 3. Im Chart (XAUUSD, M1/M2/M3/M5) über **Indicators** → **Custom** → `SwingPointsStructure` hinzufügen.
-4. Oben links erscheint die **Statuszeile**, z. B. `Swing Points Structure v2.1 | M5 12000 Kerzen, 1100 Swings | H1* ... | H4* ...`.
+4. Oben links erscheint die **Statuszeile**, z. B. `Swing Points Structure v2.2 | M5 12000 Kerzen, 1100 Swings | H1* ... | H4* ...`.
    Steht dort `FEHLER ...`, bitte den Text schicken (er steht auch im Log: Algo → Indikator → Log).
    Erscheint gar keine Statuszeile, ist der Indikator nicht auf dem Chart aktiv.
 
@@ -30,6 +31,7 @@ solange cTrader auf dem Mac geöffnet ist. Die Alarme kommen trotzdem aufs Handy
 | **Liquiditätszonen** | ungebrochene Swing-Levels als gepunktete Linie. Liegen mehrere Hochs/Tiefe innerhalb 0,25 × ATR beieinander, werden sie zu **einer Zone** („RESISTANCE ZONE (3x)“): Equal Highs/Lows = Liquiditätspool. Ein Schlusskurs jenseits der äußeren Kante beendet die Zone |
 | **Sweep (x)** | Docht durch die Zone, Schlusskurs zurück = Liquidität abgeholt |
 | **H1 / H4 (blau, je abschaltbar)** | eigene Zonen und Strukturzeile in der Tabelle; optional Labels. Liegt eine H1-Zone auf einer H4-Zone, wird nur die H4-Zone gezeichnet |
+| **Key Levels (v2.2, je abschaltbar)** | durchgezogene Linien, 1 px dicker als die Strukturlinien (`Key Level Thickness` = 2): Hoch/Tief der jeweils letzten **Asia-, London- und New-York-Session** (laufende Session mit `*`, aktualisiert sich live) sowie **PDH/PDL** und **PWH/PWL** aus der Tages- bzw. Wochenkerze des Brokers. Jede Linie beginnt am Start ihrer Session/Kerze und läuft bis zur aktuellen Kerze |
 | **Alarme** | CHoCH, BOS, Sweep, je abschaltbar; Popup am Mac, E-Mail, Telegram-Push. Nur für Kerzen, die schließen, während der Chart läuft (nie für die Historie), nur im Zeitfenster `Alert From/To Hour (UTC)` |
 
 ## Handy-Push einrichten
@@ -60,6 +62,17 @@ Sweep-Alarme gibt es auf M5 nur für Pools mit mindestens 2 gleichen Swings (`Sw
 | 4 Alerts | `Alerts`, `Alert on CHoCH / BOS / Sweep`, `Alert on H1/H4 Events` | Ja; Ja / Nein / Ja; Ja |
 | 4 | `Sweep Alert Min Equal Swings`, `Alert From/To Hour (UTC)` | 2, 6–20 |
 | 4 | `Popup`, `E-Mail` (+ From/To), `Telegram Push` (+ Token/Chat Id) | Ja, Nein, Nein |
+| 7 Key Levels | `Show Asia High/Low`, `Asia Start/End (NY hour)` | Ja, 20:00–00:00 New York (ICT Asian Range) |
+| 7 | `Show London High/Low`, `London Start/End (NY hour)` | Ja, 02:00–05:00 New York (London Killzone) |
+| 7 | `Show New York High/Low`, `New York Start/End (NY hour)` | Ja, 07:00–11:00 New York (NY AM) |
+| 7 | `Show Previous Day High/Low`, `Show Previous Week High/Low` | Ja, Ja |
+| 7 | `Key Level Thickness`, Farben je Level | 2; Asia lila, London orange, New York hellblau, Vortag gold, Vorwoche orchidee |
+
+Session-Zeiten sind in **New-York-Zeit** eingestellt; Sommer-/Winterzeit wird automatisch berücksichtigt (für Deutschland:
+Asia 02:00–06:00, London 08:00–11:00, New York 13:00–17:00 MEZ/MESZ, außer in den 2–3 Wochen, in denen die USA und Europa
+unterschiedlich umstellen). Wer die klassischen ganzen Sessions möchte: z. B. London 03:00–11:30, New York 08:00–17:00 eintragen.
+Vortag/Vorwoche kommen aus den D1-/W1-Kerzen deines Brokers. Bei Brokern mit Tageswechsel 00:00 UTC wird die kurze
+Sonntagskerze übersprungen (Montag zeigt den Freitag); bei New-York-Schluss-Brokern (z. B. Pepperstone) gehört der Sonntagabend zum Montag.
 
 ## Tests
 
@@ -69,6 +82,10 @@ Offline gegen eine Nachbildung der cAlgo-API (`test/`), mit echten XAUUSD-M15-Ke
 - **Kein Vorgriff:** Keine Ebene (M5, H1, H4) verarbeitet je eine Kerze, die noch nicht geschlossen ist.
 - **M5-Struktur auf dem M1-Chart = eigenständige Berechnung auf M5-Kerzen** (identische Swings, Labels und Trend).
 - Alarme nur aus dem Live-Teil, Chart-Objekte begrenzt (`Max Objects per Kind`).
+- v2.2: Session-, Vortages- und Vorwochen-Level werden unabhängig aus den Basiskerzen nachgerechnet und mit den gezeichneten
+  Linien verglichen, an 6 Zeitpunkten einer Woche (Sonntagabend, Montagmorgen, laufende NY-Session …) und für beide Broker-
+  Tageswechsel (17:00 New York und 00:00 UTC). Dabei gefunden und behoben: Am Montag/Dienstag wurde bei New-York-Schluss-Brokern
+  der falsche Vortag genommen.
 - v2.1: zusätzlich ein Testmodus wie in cTrader (gesamte Historie vor dem Start geladen); eigene Zeit→Kerzen-Suche statt
   `GetIndexByTime` (liefert in cTrader die *nächstgelegene* Kerze, auch eine spätere); Zeitrahmenlänge aus den Kerzen statt
   aus `TimeFrame`-Vergleichen; jede Ausnahme wird oben links und im Log angezeigt statt den Chart leer zu lassen.

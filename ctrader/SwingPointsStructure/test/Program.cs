@@ -16,6 +16,7 @@ using cAlgo.Indicators;
 public static class Program
 {
     private sealed class Bar { public DateTime T; public double O, H, L, C; }
+    private static bool BrokerUtc;   // D1 from 00:00 UTC (short Sunday candle) instead of 17:00 New York
 
     public static int Main(string[] args)
     {
@@ -39,6 +40,7 @@ public static class Program
                 case "--window": window = int.Parse(args[++a]); break;
                 case "--live": live = int.Parse(args[++a]); break;
                 case "--preload": preload = true; break;
+                case "--broker-utc": BrokerUtc = true; break;
                 case "--set": sets.Add(args[++a].Split(new[] { '=' }, 2)); break;
                 default: throw new ArgumentException(args[a]);
             }
@@ -76,6 +78,8 @@ public static class Program
         if (err.Length > 0) { fail++; Console.WriteLine("INDICATOR ERROR: " + err); }
         var table = ind.Chart.Objects.Values.OfType<ChartStaticText>().FirstOrDefault(o => o.Name == "SPS_table");
         Console.WriteLine("table:\n  " + (table == null ? "-" : table.Text.Replace("\n", "\n  ")));
+        Console.WriteLine("key levels at " + ind.Bars.OpenTimes[ind.Bars.Count - 1].ToString("yyyy-MM-dd HH:mm") + " UTC:");
+        fail += CheckKeyLevels(ind, baseBars, baseTf);
         if (dump != null) Dump(ind, window, dump);
         Console.WriteLine(fail == 0 ? "ALL CHECKS PASSED" : fail + " CHECK(S) FAILED");
         return fail == 0 ? 0 : 1;
@@ -90,8 +94,10 @@ public static class Program
         ind.TimeFrame = chartTf;
         ind.StructureTimeFrame = structureTf;
         var series = new Dictionary<TimeFrame, Bars>();
-        foreach (var tf in new[] { TimeFrame.Minute5, TimeFrame.Minute15, TimeFrame.Hour, TimeFrame.Hour4 })
+        foreach (var tf in new[] { TimeFrame.Minute5, TimeFrame.Minute15, TimeFrame.Hour, TimeFrame.Hour4, TimeFrame.Daily, TimeFrame.Weekly })
             if (tf.Minutes >= baseTf.Minutes && tf != chartTf) { series[tf] = new Bars(); ind.MarketData.Series[tf] = series[tf]; }
+        if (!ind.MarketData.Series.ContainsKey(TimeFrame.Minute5))   // M15 test data: sessions are read from M15 (hour boundaries align)
+            ind.MarketData.Series[TimeFrame.Minute5] = chartTf == TimeFrame.Minute15 ? ind.Bars : series[TimeFrame.Minute15];
         ind.MarketData.Series[chartTf] = ind.Bars;   // cTrader: GetBars(chart timeframe) works as well
         ind.Chart.IndexOf = t => ind.Bars.OpenTimes.AtOrBefore(t);
         ind.TestInit();
@@ -103,7 +109,7 @@ public static class Program
             Bar b = baseBars[i];
             int before = ind.Bars.Count;
             ind.Bars.Merge(Floor(b.T, chartTf.Minutes), b.O, b.H, b.L, b.C);
-            foreach (var kv in series) kv.Value.Merge(Floor(b.T, kv.Key.Minutes), b.O, b.H, b.L, b.C);
+            foreach (var kv in series) kv.Value.Merge(FloorTf(b.T, kv.Key), b.O, b.H, b.L, b.C);
             bool newBar = ind.Bars.Count > before, isLive = i >= liveFrom;
             if (!newBar && !isLive) continue;   // history: one Calculate per chart candle; live: every base candle is a tick update
             int index = ind.Bars.Count - 1;
@@ -135,14 +141,16 @@ public static class Program
         ind.TimeFrame = chartTf;
         ind.StructureTimeFrame = structureTf;
         var series = new Dictionary<TimeFrame, Bars>();
-        foreach (var tf in new[] { TimeFrame.Minute5, TimeFrame.Minute15, TimeFrame.Hour, TimeFrame.Hour4 })
+        foreach (var tf in new[] { TimeFrame.Minute5, TimeFrame.Minute15, TimeFrame.Hour, TimeFrame.Hour4, TimeFrame.Daily, TimeFrame.Weekly })
             if (tf.Minutes >= baseTf.Minutes && tf != chartTf) { series[tf] = new Bars(); ind.MarketData.Series[tf] = series[tf]; }
+        if (!ind.MarketData.Series.ContainsKey(TimeFrame.Minute5))   // M15 test data: sessions are read from M15 (hour boundaries align)
+            ind.MarketData.Series[TimeFrame.Minute5] = chartTf == TimeFrame.Minute15 ? ind.Bars : series[TimeFrame.Minute15];
         ind.MarketData.Series[chartTf] = ind.Bars;
         ind.Chart.IndexOf = t => ind.Bars.OpenTimes.AtOrBefore(t);
         foreach (Bar b in baseBars)
         {
             ind.Bars.Merge(Floor(b.T, chartTf.Minutes), b.O, b.H, b.L, b.C);
-            foreach (var kv in series) kv.Value.Merge(Floor(b.T, kv.Key.Minutes), b.O, b.H, b.L, b.C);
+            foreach (var kv in series) kv.Value.Merge(FloorTf(b.T, kv.Key), b.O, b.H, b.L, b.C);
         }
         ind.TestInit();
         int lookAhead = 0;
@@ -247,6 +255,64 @@ public static class Program
 
     private static DateTime Floor(DateTime t, int minutes) { long span = TimeSpan.TicksPerMinute * minutes; return new DateTime(t.Ticks - t.Ticks % span); }
 
+    // D1 / W1 like a NY-close broker: the day starts at 17:00 New York, the week on Sunday 17:00 New York.
+    private static DateTime FloorTf(DateTime t, TimeFrame tf)
+    {
+        if (tf != TimeFrame.Daily && tf != TimeFrame.Weekly) return Floor(t, tf.Minutes);
+        DateTime server = BrokerUtc ? t : SwingPointsStructure.NyTime(t).AddHours(7);
+        DateTime day = server.Date;
+        if (tf == TimeFrame.Weekly) day = day.AddDays(-(((int)day.DayOfWeek + 6) % 7));
+        return t - (server - day);
+    }
+
+    // Expected key levels computed independently from the base candles, compared with the drawn lines.
+    private static int CheckKeyLevels(SwingPointsStructure ind, List<Bar> bars, TimeFrame baseTf)
+    {
+        int fail = 0;
+        DateTime now = ind.Bars.OpenTimes[ind.Bars.Count - 1];
+        var o = ind.Chart.Objects;
+        Func<string, double> y = n => o.ContainsKey(n) ? ((ChartTrendLine)o[n]).Y1 : double.NaN;
+        var sessions = new[] { Tuple.Create("asia", ind.AsiaStartNy, ind.AsiaEndNy), Tuple.Create("london", ind.LondonStartNy, ind.LondonEndNy),
+                               Tuple.Create("ny", ind.NewYorkStartNy, ind.NewYorkEndNy) };
+        foreach (var se in sessions)
+        {
+            double hi = double.NaN, lo = double.NaN;
+            for (int back = 0; back < 7 && double.IsNaN(hi); back++)
+            {
+                DateTime endDay = SwingPointsStructure.NyTime(now).Date.AddDays(-back);
+                DateTime sNy = endDay.AddHours(se.Item2), eNy = endDay.AddHours(se.Item3);
+                if (eNy <= sNy) sNy = sNy.AddDays(-1);
+                DateTime st = SwingPointsStructure.UtcFromNy(sNy), en = SwingPointsStructure.UtcFromNy(eNy);
+                if (st > now) continue;
+                var inside = bars.Where(b => b.T >= st && b.T < en && Floor(b.T, 5) <= now).ToList();
+                if (inside.Count == 0) continue;
+                hi = inside.Max(b => b.H); lo = inside.Min(b => b.L);
+            }
+            bool ok = Math.Abs(y("SPS_key_" + se.Item1 + "_h") - hi) < 1e-6 && Math.Abs(y("SPS_key_" + se.Item1 + "_l") - lo) < 1e-6;
+            Console.WriteLine("  session " + se.Item1 + ": expected " + hi.ToString("F2") + "/" + lo.ToString("F2") + ", drawn " +
+                y("SPS_key_" + se.Item1 + "_h").ToString("F2") + "/" + y("SPS_key_" + se.Item1 + "_l").ToString("F2") + (ok ? " ok" : " MISMATCH"));
+            if (!ok) fail++;
+        }
+        foreach (var tf in new[] { TimeFrame.Daily, TimeFrame.Weekly })
+        {
+            DateTime cur = FloorTf(now, tf), prev = FloorTf(cur.AddMinutes(-1), tf);
+            var inside = bars.Where(b => b.T >= prev && b.T < cur).ToList();
+            // empty days, and the short Sunday stub of a UTC-day broker, are not a "previous day"
+            while ((inside.Count == 0 || (tf == TimeFrame.Daily && prev.DayOfWeek == DayOfWeek.Sunday && prev.TimeOfDay.TotalHours < 12))
+                   && prev > bars[0].T)
+            { cur = prev; prev = FloorTf(cur.AddMinutes(-1), tf); inside = bars.Where(b => b.T >= prev && b.T < cur).ToList(); }
+            string key = tf == TimeFrame.Daily ? "pd" : "pw";
+            double hi = inside.Max(b => b.H), lo = inside.Min(b => b.L);
+            bool ok = Math.Abs(y("SPS_key_" + key + "_h") - hi) < 1e-6 && Math.Abs(y("SPS_key_" + key + "_l") - lo) < 1e-6;
+            var line = o.ContainsKey("SPS_key_" + key + "_h") ? (ChartTrendLine)o["SPS_key_" + key + "_h"] : null;
+            Console.WriteLine("  " + (key == "pd" ? "previous day " : "previous week") + ": expected " + hi.ToString("F2") + "/" + lo.ToString("F2") + ", drawn " +
+                y("SPS_key_" + key + "_h").ToString("F2") + "/" + y("SPS_key_" + key + "_l").ToString("F2") + ", thickness " + (line == null ? 0 : line.Thickness) +
+                ", style " + (line == null ? "-" : line.LineStyle.ToString()) + (ok ? " ok" : " MISMATCH"));
+            if (!ok || line == null || line.Thickness != ind.KeyLevelThickness || line.LineStyle != LineStyle.Solid) fail++;
+        }
+        return fail;
+    }
+
     private static void Dump(SwingPointsStructure ind, int window, string path)
     {
         var b = ind.Bars;
@@ -259,7 +325,7 @@ public static class Program
             foreach (var o in ind.Chart.Objects.Values)
             {
                 if (o is ChartText t && t.BarIndex >= start) w.WriteLine(string.Join(",", "text", t.BarIndex, F(t.Y), t.Text, t.Color, t.VerticalAlignment, t.HorizontalAlignment));
-                if (o is ChartTrendLine l && l.Index2 >= start) w.WriteLine(string.Join(",", "line", l.Index1, F(l.Y1), l.Index2, F(l.Y2), l.Color, l.LineStyle));
+                if (o is ChartTrendLine l && l.Index2 >= start) w.WriteLine(string.Join(",", "line", l.Index1, F(l.Y1), l.Index2, F(l.Y2), l.Color, l.LineStyle, l.Thickness));
                 if (o is ChartRectangle r && ix(r.T2) >= start) w.WriteLine(string.Join(",", "rect", ix(r.T1), F(r.Y1), ix(r.T2), F(r.Y2), r.Color));
                 if (o is ChartStaticText s) w.WriteLine(string.Join(",", "static", s.Text.Replace("\n", "|"), s.Color));
             }
