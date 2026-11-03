@@ -162,10 +162,10 @@ export class FinaleScene {
   tap(x, y, V) {
     if (this.phase === 'gift' && this.box.landed) {
       this.taps++;
-      this.box.shake = 0.35 + this.taps * 0.05; this.box.squash = 1;
+      this.box.shake = 0.35 + this.taps * 0.035; this.box.squash = 1;
       sfx('tap', this.taps);
       this.p.burst(V.w * 0.6, this.box.y - 30, { n: 8 + this.taps * 2, type: 'confetti', speed: 200 + this.taps * 20, size: 3.5, gravity: 500 });
-      if (this.taps >= 10) this.explode(V);
+      if (this.taps >= 15) this.explode(V);
     } else if (this.phase === 'fireworks' && this.t > 3) {
       this.t = Math.max(this.t, 8.5); // abkürzen
     }
@@ -202,7 +202,7 @@ export class FinaleScene {
       }
       b.shake = Math.max(0, b.shake - dt * 1.5); b.squash = Math.max(0, b.squash - dt * 5);
       // Idle-Wackeln, damit klar ist: anfassen!
-      if (b.landed && this.taps === 0 && Math.floor(this.t * 1.2) % 2 === 0) b.shake = Math.max(b.shake, 0.08);
+      if (b.landed && Math.floor(this.t * 1.2) % 2 === 0 && b.shake < 0.05) b.shake = 0.08; // wackelt von selbst und lädt zum Antippen ein
       this.nextLaunch -= dt;
       if (this.nextLaunch <= 0) { this.nextLaunch = 1.2 + Math.random(); this.fw.launch(V.w * (0.1 + Math.random() * 0.8), launchY, V.groundY * 0.25); }
     } else if (this.phase === 'boom') {
@@ -263,22 +263,21 @@ export class FinaleScene {
       const sq = b.squash * 0.15;
       g.save(); g.translate(cx + sh, b.y); g.rotate(sh * 0.02); g.scale(s * (1 + sq), s * (1 - sq));
       const glow = g.createRadialGradient(0, -35, 5, 0, -35, 90);
-      glow.addColorStop(0, `rgba(255,210,63,${0.25 + this.taps * 0.05})`); glow.addColorStop(1, 'rgba(255,210,63,0)');
+      glow.addColorStop(0, `rgba(255,210,63,${0.25 + this.taps * 0.035})`); glow.addColorStop(1, 'rgba(255,210,63,0)');
       g.fillStyle = glow; g.beginPath(); g.arc(0, -35, 90, 0, 7); g.fill();
       g.fillStyle = '#ff4fa3'; roundRect(g, -34, -60, 68, 60, 6); g.fill();
       g.fillStyle = '#ffd23f'; g.fillRect(-6, -60, 12, 60);
       // Deckel hüpft mit jedem Tippen höher
-      const lid = -Math.abs(Math.sin(this.t * 18)) * this.taps * 0.9 * (b.shake > 0.1 ? 1 : 0.2);
+      const lid = -Math.abs(Math.sin(this.t * 18)) * this.taps * 0.6 * (b.shake > 0.1 ? 1 : 0.2);
       g.fillStyle = '#ff6fb5'; roundRect(g, -38, -72 + lid, 76, 16, 5); g.fill();
       g.fillStyle = '#ffd23f'; g.fillRect(-6, -72 + lid, 12, 16);
       g.beginPath(); g.ellipse(-13, -78 + lid, 13, 8, -0.5, 0, 7); g.ellipse(13, -78 + lid, 13, 8, 0.5, 0, 7); g.fill();
       g.fillStyle = '#e6b800'; g.beginPath(); g.arc(0, -76 + lid, 5, 0, 7); g.fill();
       g.fillStyle = 'rgba(255,255,255,0.8)';
-      for (let i = 0; i < this.taps; i++) star(g, -30 + (i % 5) * 15, -45 + Math.floor(i / 5) * 25, 3);
+      for (let i = 0; i < this.taps; i++) star(g, -26 + (i % 5) * 13, -50 + Math.floor(i / 5) * 16, 2.6);
       g.restore();
       if (b.landed) {
-        caption(g, V, assets.config.finale?.giftPrompt || 'Tipp 10× auf dein Geschenk!', Math.max(40, V.groundY * 0.25), Math.min(22, V.w / 22));
-        caption(g, V, `${this.taps} / 10`, Math.max(40, V.groundY * 0.25) + 34, 30, '#ffd23f');
+        caption(g, V, assets.config.finale?.giftPrompt || 'Moment… da ist noch was! 🎁', Math.max(40, V.groundY * 0.25), Math.min(22, V.w / 22));
       }
     } else {
       const k = this.revealT;

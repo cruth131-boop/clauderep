@@ -91,7 +91,7 @@ export const DEFAULT_CONFIG = {
   ],
   finale: {
     headline: 'HAPPY BIRTHDAY!',
-    giftPrompt: 'Moment… da ist noch was! Tipp 10× auf dein Geschenk!',
+    giftPrompt: 'Moment… da ist noch was! 🎁',
   },
   gift: {
     kicker: 'Dein Geschenk',
