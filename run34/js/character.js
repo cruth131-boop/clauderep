@@ -878,3 +878,106 @@ export function drawFaceOn(g, key, expr, x, y, unit) {
   const k = unit / d;
   g.drawImage(img, x - m.chin[0] * W * k, y - m.chin[1] * H * k + unit * 0.12, W * k, H * k);
 }
+
+// ---------------------------------------------------------------------------
+// Super-Christoph (Superheld; im Horror-Modus als Zombie-Superheld)
+// ---------------------------------------------------------------------------
+const zombieCache = new WeakMap();
+function zombieFace(img) {
+  if (zombieCache.has(img)) return zombieCache.get(img);
+  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+  const z = c.getContext('2d');
+  z.drawImage(img, 0, 0);
+  z.globalCompositeOperation = 'source-atop';
+  z.fillStyle = 'rgba(90,170,70,0.5)'; z.fillRect(0, 0, c.width, c.height);
+  z.fillStyle = 'rgba(40,20,40,0.25)';
+  for (let i = 0; i < 6; i++) { z.beginPath(); z.arc(c.width * (0.25 + (i * 0.37) % 0.5), c.height * (0.35 + (i * 0.23) % 0.4), c.width * 0.05, 0, 7); z.fill(); }
+  zombieCache.set(img, c);
+  return c;
+}
+
+function heroHead(g, x, y, unit, zombie) {
+  const { img, name } = getFace('him', 'hero');
+  const m = faceMeta(name);
+  const src = zombie ? zombieFace(img) : img;
+  const W = img.width, H = img.height;
+  const d = Math.hypot((m.chin[0] - m.eye[0]) * W, (m.chin[1] - m.eye[1]) * H) || H * 0.35;
+  const k = unit / d;
+  g.drawImage(src, x - m.chin[0] * W * k, y - m.chin[1] * H * k + unit * 0.12, W * k, H * k);
+  if (zombie) {
+    g.strokeStyle = '#3b2a1e'; g.lineWidth = 0.9;
+    g.beginPath(); g.moveTo(x - 6, y - unit * 1.4); g.lineTo(x + 2, y - unit * 1.2);
+    for (let i = 0; i < 4; i++) { g.moveTo(x - 5 + i * 2.2, y - unit * 1.45 + i * 0.5); g.lineTo(x - 4.4 + i * 2.2, y - unit * 1.2 + i * 0.5); }
+    g.stroke();
+  }
+}
+
+/**
+ * pose: 'fly' (waagrecht, Faust voraus), 'land' (Superhelden-Landung), 'punch', 'hover'
+ * (x, y) = Fußpunkt bzw. Körpermitte unten
+ */
+export function drawHero(g, x, y, { pose = 'fly', t = 0, zombie = false, scale = 1 } = {}) {
+  const suit = zombie ? '#5b6b52' : '#1f4fd6', suit2 = zombie ? '#3e4a38' : '#163a9e';
+  const cape = zombie ? '#6e1f2a' : '#d62839', trunk = zombie ? '#4a3a3a' : '#d62839', belt = zombie ? '#7a7a3a' : '#ffd23f';
+  g.save(); g.translate(x, y); g.scale(scale, scale);
+  const capePiece = (sx, sy, ex, ey, wave) => ({
+    path: (g) => {
+      g.moveTo(sx - 7, sy);
+      g.quadraticCurveTo((sx + ex) / 2 - 12 + wave, (sy + ey) / 2, ex - 12 + wave * 1.5, ey);
+      if (zombie) { for (let i = 0; i < 4; i++) g.lineTo(ex - 9 + i * 5 + wave, ey - (i % 2 ? 6 : 0)); }
+      else g.lineTo(ex + 8 + wave, ey + 2);
+      g.quadraticCurveTo((sx + ex) / 2 + 6 + wave * 0.5, (sy + ey) / 2, sx + 7, sy);
+      g.closePath();
+    },
+    fill: (g) => { const gr = g.createLinearGradient(sx, sy, ex, ey); gr.addColorStop(0, shade(cape, 1.1)); gr.addColorStop(1, shade(cape, 0.75)); return gr; },
+  });
+  const emblem = (cx, cy) => ({
+    path: (g) => { g.moveTo(cx, cy - 6); g.lineTo(cx + 6, cy); g.lineTo(cx, cy + 6); g.lineTo(cx - 6, cy); g.closePath(); },
+    fill: zombie ? '#9a9a5a' : '#ffd23f',
+    detail: (g) => { g.fillStyle = zombie ? '#3e4a38' : '#d62839'; g.font = '900 7px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('C', cx, cy + 0.5); },
+  });
+  const fist = (p) => ({ path: (g) => g.arc(p[0], p[1], 4.8, 0, Math.PI * 2), fill: zombie ? '#8fae7a' : '#e8e8ee' });
+  const boot = (a, b) => cap(a, b, 8.6, 8.2, zombie ? '#4a3a3a' : '#d62839', 1);
+
+  if (pose === 'land') {
+    const wave = Math.sin(t * 10) * 2;
+    const hip = [0, -24], sh = [9, -50];
+    drawGroup(g, [capePiece(sh[0] - 2, sh[1], -26, -2, wave)]);
+    drawGroup(g, [cap(hip, [-10, -4], 11, 9.5, suit2, 0.85), cap([-10, -4], [-24, -2], 9.5, 8, suit2, 0.85), boot([-18, -2], [-26, -1])]);
+    drawGroup(g, [cap(sh, [-4, -38], 9.5, 8, suit2, 0.85), cap([-4, -38], [-10, -26], 8, 7, suit2, 0.85), fist([-10, -26])]);
+    drawGroup(g, [{ path: (g) => capPath(g, hip, sh, 20, 22), fill: (g) => cylFill(g, hip, sh, 22, suit, 1) }, { path: (g) => capPath(g, [hip[0] - 1, hip[1] - 2], [hip[0] + 1, hip[1] + 3], 18, 18), fill: trunk }, emblem(6, -40)]);
+    drawGroup(g, [cap(hip, [12, -14], 12, 10, suit, 1), cap([12, -14], [14, -3], 10, 8.5, suit, 1), boot([13, -6], [16, -1])]);
+    drawGroup(g, [cap(sh, [15, -30], 9.5, 8, suit, 1), cap([15, -30], [17, -6], 8, 7, suit, 1), fist([17, -5])]);
+    g.fillStyle = belt; g.fillRect(-9, -27, 17, 3);
+    heroHead(g, sh[0] + 4, sh[1] - 3, 19, zombie);
+  } else {
+    // aufrecht zeichnen und für den Flug drehen
+    const ang = pose === 'fly' ? 1.45 : pose === 'hover' ? 0.5 : 0.25;
+    g.rotate(ang); g.translate(0, 40);
+    const wave = Math.sin(t * 16) * 3;
+    const hip = [0, -40], sh = [0, -70];
+    drawGroup(g, [capePiece(sh[0], sh[1] + 2, -2, -8, wave)]);
+    const legSwing = pose === 'punch' ? 0.2 : Math.sin(t * 8) * 0.08;
+    const kB = pt(hip[0], hip[1], -0.08 - legSwing, 20), fB = pt(kB[0], kB[1], -0.1 - legSwing, 20);
+    drawGroup(g, [cap(hip, kB, 11, 9.5, suit2, 0.85), cap(kB, fB, 9.5, 8.2, suit2, 0.85), boot(lerpP(kB, fB, 0.6), fB)]);
+    const armBack = pose === 'punch' ? [[sh[0], sh[1]], [-12, -58], [-16, -48]] : [[sh[0], sh[1]], [-6, -54], [-4, -42]];
+    drawGroup(g, [cap(armBack[0], armBack[1], 9.5, 8, suit2, 0.85), cap(armBack[1], armBack[2], 8, 7, suit2, 0.85), fist(armBack[2])]);
+    drawGroup(g, [{ path: (g) => bodyHero(g), fill: (g) => cylFill(g, hip, sh, 22, suit, 1) }, { path: (g) => { g.moveTo(-10, -46); g.lineTo(10, -46); g.lineTo(9, -38); g.quadraticCurveTo(0, -34, -9, -38); g.closePath(); }, fill: trunk }, emblem(2, -60)]);
+    g.fillStyle = belt; g.fillRect(-10, -47.5, 20, 3);
+    const kF = pt(hip[0], hip[1], 0.1 + legSwing, 20), fF = pt(kF[0], kF[1], 0.05 + legSwing, 20);
+    drawGroup(g, [cap(hip, kF, 11.5, 10, suit, 1), cap(kF, fF, 10, 8.6, suit, 1), boot(lerpP(kF, fF, 0.6), fF)]);
+    heroHead(g, 1, sh[1] - 2, 19, zombie);
+    // Schlagarm: im Flug nach vorne (=oben im Körpersystem), beim Punch nach vorne
+    const armF = pose === 'fly' ? [[sh[0] + 2, sh[1]], [3, -88], [4, -104]] : pose === 'punch' ? [[sh[0] + 2, sh[1]], [18, -72], [34, -76]] : [[sh[0] + 2, sh[1]], [12, -62], [20, -72]];
+    drawGroup(g, [cap(armF[0], armF[1], 9.6, 8.2, suit, 1), cap(armF[1], armF[2], 8.2, 7.2, suit, 1), fist(armF[2])]);
+    if (pose === 'fly' && !zombie) {
+      g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineWidth = 1.5;
+      for (let i = 0; i < 3; i++) { const yy = -30 + i * 14; g.beginPath(); g.moveTo(-16 - i * 3, yy + 16); g.lineTo(-16 - i * 3, yy + 34); g.stroke(); }
+    }
+  }
+  g.restore();
+}
+function bodyHero(g) {
+  g.moveTo(-9, -72); g.quadraticCurveTo(0, -75, 10, -72); g.quadraticCurveTo(13, -60, 9, -52); g.quadraticCurveTo(10, -44, 10, -40);
+  g.lineTo(-10, -40); g.quadraticCurveTo(-11, -47, -9, -53); g.quadraticCurveTo(-12, -62, -9, -72); g.closePath();
+}

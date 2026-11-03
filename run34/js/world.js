@@ -1,5 +1,5 @@
 // Spiellogik: Physik, Hindernisse, Items, Power-ups, Cameos, Hintergründe.
-import { drawCharacter, drawCat, drawPerson, star, roundRect } from './character.js';
+import { drawCharacter, drawCat, drawPerson, drawHero, star, roundRect } from './character.js';
 import { assets, getFace } from './assets.js';
 import { Particles } from './fx.js';
 import { sfx } from './audio.js';
@@ -71,6 +71,7 @@ export class Game {
     this.green = this.outfit.top === 'green' && mode !== 'horror';
     this.hour = new Date().getHours();
     this.boxSpawned = false; this.fipsT = 0; this.savedBiome = null;
+    this.hero = null; this.nextHero = ['birthday', 'endless', 'roadtrip', 'horror'].includes(mode) ? rand(16, 24) : Infinity;
     this.prevBiome = null; this.biomeFade = 1; this.nextBiomeAt = 60;
   }
 
@@ -256,6 +257,7 @@ export class Game {
 
   updateSpecials(dt) {
     const p = this.p, V = this.V;
+    this.updateHero(dt);
     const active = this.state === 'run' || this.state === 'idle';
     // Hagen läuft Kimi hinterher ("Payback!") – holt sie aber nie ein
     if (this.chase) {
@@ -307,6 +309,60 @@ export class Game {
   }
 
   summonFips() { if (!this.dash) this.dash = { x: -50, y: 0, t: 0 }; }
+
+  // Super-Christoph: einfliegen -> landen -> 5 s alles zerstören -> abheben
+  updateHero(dt) {
+    const p = this.p, V = this.V, H = this.cfg.heroLines || {};
+    const zombie = this.mode === 'horror';
+    if (!this.hero) {
+      if (this.state !== 'run' || this.fipsT > 0) return;
+      this.nextHero -= dt;
+      if (this.nextHero <= 0) {
+        this.hero = { ph: 'in', t: 0, x: -90, y: 300, punch: 0 };
+        sfx('launch'); this.events.onAchieve?.('hero');
+      }
+      return;
+    }
+    const h = this.hero; h.t += dt; h.punch = Math.max(0, h.punch - dt);
+    if (this.state !== 'run' && h.ph !== 'out') { h.ph = 'out'; h.t = 0; }
+    if (h.ph === 'in') {
+      const k = Math.min(1, h.t / 1.0), e = k * k;
+      h.x = -90 + (p.x - 70 + 90) * k; h.y = 300 * (1 - e);
+      if (k >= 1) {
+        h.ph = 'land'; h.t = 0; h.y = 0; this.shake = 12; sfx('smash'); sfx('boom');
+        this.fx.burst(h.x, V.groundY, { n: 26, type: 'smoke', colors: ['#d7ccc8', '#ffffff'], speed: 160, size: 6, gravity: -30, spread: Math.PI, angle: -Math.PI / 2 });
+        h.say = zombie ? pick(H.zombieLand || ['BRAAAINS… äh, POW!']) : pick(H.land || ['Keine Angst!']);
+      }
+    } else if (h.ph === 'land') {
+      h.x = p.x - 70;
+      if (h.t > 0.8) { h.ph = 'smash'; h.t = 0; sfx('power'); }
+    } else if (h.ph === 'smash') {
+      const tx = p.x + 150;
+      h.x += (tx - h.x) * Math.min(1, dt * 4); h.y = 24 + Math.sin(h.t * 5) * 6;
+      for (const o of this.obstacles) {
+        if (o.knock || o.secret || o.x > h.x + 170 || o.x < p.x + 5) continue;
+        o.knock = { vx: 520, vy: 820, vr: 11 };
+        const ox = o.x + o.w / 2, oy = this.screenY(o.yOff + 24);
+        this.fx.text(ox, oy - 14, pick(H.pow || ['POW!', 'BAM!', 'KRACH!', 'ZACK!', 'WUMMS!']), { color: pick(['#ffd23f', '#ff4fa3', '#3ee6b4']), size: 24 });
+        this.fx.burst(ox, oy, { n: 18, colors: ['#ffd23f', '#ffffff', '#ff7b39'], speed: 280, size: 3.2 });
+        h.punch = 0.25; this.shake = Math.max(this.shake, 5); sfx('smash');
+      }
+      if (h.t > 5) { h.ph = 'out'; h.t = 0; h.say = pick(H.out || ['Bis später!']); }
+    } else if (h.ph === 'out') {
+      h.x += 380 * dt; h.y += 320 * dt;
+      if (h.y > 420 || h.x > V.w + 120) { this.hero = null; this.nextHero = rand(40, 55); }
+    }
+  }
+
+  drawHeroFx(g) {
+    const h = this.hero; if (!h) return;
+    const V = this.V, zombie = this.mode === 'horror';
+    const pose = h.ph === 'land' ? 'land' : h.ph === 'smash' ? (h.punch > 0 ? 'punch' : 'hover') : 'fly';
+    const yy = V.groundY - h.y;
+    if (h.ph !== 'land') { g.fillStyle = 'rgba(0,0,0,0.15)'; g.beginPath(); g.ellipse(h.x, V.groundY + 2, Math.max(4, 22 - h.y * 0.08), 4, 0, 0, 7); g.fill(); }
+    drawHero(g, h.x, yy, { pose, t: this.t, zombie, scale: CHAR_SCALE * 1.18 });
+    if (h.say && ((h.ph === 'land' && h.t < 0.8) || (h.ph === 'smash' && h.t < 1.2) || (h.ph === 'out' && h.t < 1.0))) speech(g, h.x - 10, yy - 108, h.say);
+  }
 
   makeObstacle(type, x) {
     const o = { type, x, t: 0, yOff: 0, rot: 0, rects: [] };
@@ -577,6 +633,7 @@ export class Game {
       drawCat(g, p.x - 55, V.groundY, { pose: 'sit', scale: 1, t: this.t });
     }
     if (this.dash) drawCat(g, this.dash.x, V.groundY - this.dash.y, { phase: this.t * 16, scale: 0.9, t: this.t });
+    this.drawHeroFx(g);
     this.fx.draw(g);
     for (const pl of this.polaroids) this.drawPolaroid(g, pl);
     if (this.bigNum) {

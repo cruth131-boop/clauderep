@@ -202,6 +202,7 @@ export const ACHIEVEMENTS = {
   challenge: ['Challenge accepted', 'Eine Tages-Challenge geschafft', '🎯'],
   stumble: ['Stolperkönigin', '10× gescheitert', '🤕'],
   roadtrip: ['Auf Achse', 'Den Roadtrip-Modus gespielt', '🚗'],
+  hero: ['Gerettet!', 'Der Superheld ist erschienen', '🦸'],
 };
 
 // Tages-Challenges (je Tag eine, abhängig vom Datum)

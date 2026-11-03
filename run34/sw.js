@@ -1,5 +1,5 @@
 // Offline-Cache (stale-while-revalidate). VERSION erhöhen, um Updates zu erzwingen.
-const VERSION = 'br-v12';
+const VERSION = 'br-v13';
 const FILES = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
   'js/main.js', 'js/assets.js', 'js/audio.js', 'js/character.js', 'js/config.js', 'js/fx.js', 'js/scenes.js', 'js/world.js', 'js/motifs.js', 'js/biomes.js',
