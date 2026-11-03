@@ -4,7 +4,7 @@ export const DEFAULT_CONFIG = {
   title: 'Birthday Run',
   name: 'Geburtstagskind',
   age: 34,
-  birthdayTarget: 100,
+  birthdayTarget: 34,
   menuSubtitle: 'Lauf, Geburtstagskind, lauf!',
   // Sprüche beim Verlieren (allgemein)
   loseLines: [

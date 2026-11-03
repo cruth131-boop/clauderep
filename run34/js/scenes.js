@@ -52,11 +52,12 @@ function photoCard(g, img, cx, cy, W, rot, label) {
 // Mini-Einspieler nach dem Verlieren
 // --------------------------------------------------------------------------
 let lastScene = '';
+const pick2 = (obj, arr) => (obj._p ??= arr[(Math.random() * arr.length) | 0]);
 export class LoseScene {
   constructor(info, onDone) {
     this.info = info; this.onDone = onDone; this.t = 0; this.done = false;
     const cfg = assets.config;
-    const options = ['rain', 'cat', 'zoom', 'violin', 'er'];
+    const options = ['rain', 'zoom', 'violin', 'er', 'sadface'];
     if (assets.images.her_meh_0) options.push('meh', 'meh');
     if ((cfg.cameos || []).some((c) => c.oma)) options.push('oma');
     let k; do { k = pick(options); } while (k === lastScene && options.length > 1);
@@ -64,7 +65,7 @@ export class LoseScene {
     this.kind = lastScene = k;
     this.dur = k === 'er' ? 3.4 : 2.8;
     this.rain = Array.from({ length: 40 }, () => ({ x: Math.random(), y: Math.random(), s: 0.6 + Math.random() * 0.6 }));
-    sfx({ rain: 'sad', cat: 'meow', zoom: 'dun', violin: 'violin', er: 'drumroll', oma: 'sad', meh: 'sad' }[k]);
+    sfx({ rain: 'sad', sadface: 'sad', cat: 'meow', zoom: 'dun', violin: 'violin', er: 'drumroll', oma: 'sad', meh: 'sad' }[k]);
     this.partner = cfg.partnerName || 'Er';
   }
   tap() { if (this.t > 0.4) this.finish(); }
@@ -124,6 +125,10 @@ export class LoseScene {
       if (t > 1.0) photoCard(g, i2, cx + W * 0.5, cy + 8 - (1 - ease((t - 1) / 0.5)) * V.h, W, 0.07, 'Reha: 6 Wochen');
       caption(g, V, `Diagnose: ${pick(['Messlatte überschätzt', 'zu wenig Anlauf', 'Kerzen-Trauma'])}`, V.h * 0.9, 18);
       this.diag ||= null;
+    } else if (this.kind === 'sadface') {
+      const h = S * 0.5;
+      drawFaceAt(g, 'her', 'sad', cx, cy + Math.sin(t * 2) * 3, h);
+      caption(g, V, pick2(this, ['Och nööö…', 'Heul doch nicht, Bish!', 'Das tat weh.']), cy + h * 0.62, 20);
     } else if (this.kind === 'meh') {
       const h = S * 0.55 * (0.85 + ease(t / 0.5) * 0.15);
       drawFaceAt(g, 'her', 'meh', cx, cy, h);

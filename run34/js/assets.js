@@ -111,21 +111,34 @@ const placeholderCache = {};
 /** Liefert {img, exact} – exact=false heißt: Ausdruck wird per Effekt simuliert. */
 export function getFace(key, expr = 'normal') {
   const im = assets.images;
-  // Animierte Gesichter: key_expr_0, key_expr_1, … (Ping-Pong mit ~12 fps)
-  if (im[`${key}_${expr}_0`]) {
+  // Zuordnung Ausdruck -> Bild (z.B. config.faceMap.her.happy = 'her_poser')
+  const mapped = assets.config.faceMap?.[key]?.[expr];
+  const animated = (base) => {
     const frames = [];
-    for (let i = 0; im[`${key}_${expr}_${i}`]; i++) frames.push(im[`${key}_${expr}_${i}`]);
+    for (let i = 0; im[`${base}_${i}`]; i++) frames.push(im[`${base}_${i}`]);
+    if (!frames.length) return null;
     const n = frames.length, seq = n > 1 ? 2 * n - 2 : 1;
     let k = Math.floor(performance.now() / 85) % seq;
     if (k >= n) k = seq - k;
-    return { img: frames[k], exact: true };
+    return { img: frames[k], exact: true, name: `${base}_${k}` };
+  };
+  if (mapped) {
+    if (im[mapped]) return { img: im[mapped], exact: true, name: mapped };
+    const an = animated(mapped); if (an) return an;
   }
-  if (im[`${key}_${expr}`]) return { img: im[`${key}_${expr}`], exact: true };
-  if (im[key]) return { img: im[key], exact: expr === 'normal' };
-  if (expr !== 'normal' && im[`${key}_normal`]) return { img: im[`${key}_normal`], exact: false };
+  const an = animated(`${key}_${expr}`); if (an) return an;
+  if (im[`${key}_${expr}`]) return { img: im[`${key}_${expr}`], exact: true, name: `${key}_${expr}` };
+  const normal = assets.config.faceMap?.[key]?.normal;
+  if (normal && im[normal]) return { img: im[normal], exact: expr === 'normal', name: normal };
+  if (im[key]) return { img: im[key], exact: expr === 'normal', name: key };
   const ck = `${key}:${expr}`;
   if (!placeholderCache[ck]) placeholderCache[ck] = drawPlaceholderFace(key, expr);
-  return { img: placeholderCache[ck], exact: true };
+  return { img: placeholderCache[ck], exact: true, name: null };
+}
+
+/** Augen- und Kinnpunkt (relativ 0..1) eines Gesichtsbildes. */
+export function faceMeta(name) {
+  return (name && assets.config.faceMeta?.[name]) || { eye: [0.5, 0.52], chin: [0.5, 0.86] };
 }
 
 const FACE_STYLES = {

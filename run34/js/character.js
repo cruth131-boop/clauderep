@@ -1,5 +1,5 @@
 // Prozedural gezeichnete Spielfigur (Comic-Körper + Foto-Kopf), Katze & Cameo-Figuren.
-import { getFace } from './assets.js';
+import { getFace, faceMeta } from './assets.js';
 import { OUTFIT_PARTS } from './config.js';
 
 const SKIN = '#f2c3a0';
@@ -277,19 +277,22 @@ function drawScarf(g, neck, lean, t, front) {
 }
 
 function drawHead(g, neck, lean, expr, faceKey, extras, t, opt = {}) {
-  const { img, exact } = getFace(faceKey, expr);
-  const h = 58;
-  const w = h * ((img.width || 200) / (img.height || 240));
+  const { img, exact, name } = getFace(faceKey, expr);
+  const h = 58, w = 40, U = 21; // virtuelle Kopfgröße für Accessoires, U = Augen→Kinn
+  const m = faceMeta(name);
   g.save();
-  const hc = pt(neck[0], neck[1], Math.PI - lean * 0.8, h * 0.42);
-  g.translate(hc[0] + 2, hc[1]);
+  g.translate(neck[0] + 1, neck[1] + 2);
   g.rotate(lean * 0.55 + (expr === 'shock' ? Math.sin(t * 40) * 0.08 : 0));
-  if (opt.swell) g.scale(1 + opt.swell * 0.3, 1 + opt.swell * 0.22);
   // Hals
-  g.fillStyle = SKIN; g.fillRect(-4, h * 0.3, 8, 10);
+  g.fillStyle = SKIN; g.fillRect(-4, -6, 8, 9);
+  if (opt.swell) { g.translate(0, -U * 0.5); g.scale(1 + opt.swell * 0.3, 1 + opt.swell * 0.22); g.translate(0, U * 0.5); }
+  const W = img.width || 200, H = img.height || 240;
+  const d = Math.hypot((m.chin[0] - m.eye[0]) * W, (m.chin[1] - m.eye[1]) * H) || H * 0.35;
+  const k = U / d;
   if (expr === 'sad' && !exact) g.filter = 'grayscale(0.6) brightness(0.9)';
-  g.drawImage(img, -w / 2, -h / 2, w, h);
+  g.drawImage(img, -m.chin[0] * W * k, -m.chin[1] * H * k + 2, W * k, H * k);
   g.filter = 'none';
+  g.translate(0, -U + 4); // Ursprung ≈ Augenhöhe, wie bei den Platzhaltern
   if (!exact) faceFx(g, expr, w, h, t);
   if (opt.swell) {
     g.globalAlpha = Math.min(0.55, opt.swell * 0.6);
@@ -421,9 +424,9 @@ export function drawCat(g, x, footY, { phase = 0, scale = 1, pose = 'run', flip 
 
 function drawCatHead(g, x, y, photo, orange, dark, light, front) {
   if (photo) {
-    const h = 34, w = h * (photo.width / photo.height);
-    g.save(); g.translate(x, y); if (g.getTransform().a < 0) g.scale(-1, 1);
-    g.drawImage(photo, -w / 2, -h * 0.62, w, h); g.restore();
+    g.save(); g.translate(x, y + 8);
+    drawFaceOn(g, 'fips', 'normal', 0, 0, 12);
+    g.restore();
     return;
   }
   g.fillStyle = orange;
@@ -441,9 +444,27 @@ function drawCatHead(g, x, y, photo, orange, dark, light, front) {
 // ---------------------------------------------------------------------------
 // Cameo-Figuren (Eltern, Oma) am Wegesrand
 // ---------------------------------------------------------------------------
-export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wave = true, oma = false, scale = 1, expr = 'happy' }) {
+export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wave = true, oma = false, scale = 1, expr = 'happy', run = false }) {
   g.save(); g.translate(x, footY); g.scale(scale, scale);
   const legC = oma ? '#6b5b4b' : '#333a4a';
+  if (run) {
+    const ph = t * 14, bob = Math.abs(Math.sin(ph)) * 3;
+    g.translate(0, -bob); g.rotate(0.12);
+    for (const off of [Math.PI, 0]) {
+      const a = Math.sin(ph + off) * 0.75;
+      const k = pt(0, -40, a, 20), f = pt(k[0], k[1], a - 0.5 - Math.max(0, -Math.sin(ph + off + 0.9)) * 0.9, 20);
+      seg(g, 0, -40, k[0], k[1], 9, legC); seg(g, k[0], k[1], f[0], f[1], 8, legC);
+      g.fillStyle = '#222'; roundRect(g, f[0] - 5, f[1] - 3, 13, 6, 3); g.fill();
+    }
+    g.fillStyle = color; roundRect(g, -13, -74, 26, 38, 8); g.fill();
+    for (const off of [0, Math.PI]) {
+      const a = -Math.sin(ph + off) * 0.9, e = pt(0, -68, a, 15), h = pt(e[0], e[1], a + 1.4, 13);
+      seg(g, 0, -68, e[0], e[1], 8, color); seg(g, e[0], e[1], h[0], h[1], 7, SKIN);
+    }
+    drawFaceOn(g, faceKey, expr, 0, -74, 21);
+    g.restore();
+    return;
+  }
   seg(g, -5, -40, -6, -4, 9, legC); seg(g, 5, -40, 6, -4, 9, legC);
   g.fillStyle = '#222'; roundRect(g, -13, -6, 12, 6, 3); g.fill(); roundRect(g, 1, -6, 12, 6, 3); g.fill();
   g.fillStyle = oma ? '#8a5aa8' : color;
@@ -456,8 +477,16 @@ export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wav
   const hx = 12 + Math.sin(Math.PI * 0.8 + w) * 22, hy = -70 + Math.cos(Math.PI * 0.8 + w) * 22;
   seg(g, 12, -68, hx, hy, 8, oma ? '#8a5aa8' : color);
   g.fillStyle = SKIN; g.beginPath(); g.arc(hx, hy, 5, 0, 7); g.fill();
-  const { img } = getFace(faceKey, expr);
-  const h = 52, fw = h * (img.width / img.height);
-  g.drawImage(img, -fw / 2, -74 - h * 0.85, fw, h);
+  drawFaceOn(g, faceKey, expr, 0, -74, 21);
   g.restore();
+}
+
+/** Zeichnet ein Gesicht so, dass das Kinn auf (x, y) sitzt und Augen–Kinn = unit ist. */
+export function drawFaceOn(g, key, expr, x, y, unit) {
+  const { img, name } = getFace(key, expr);
+  const m = faceMeta(name, img);
+  const W = img.width, H = img.height;
+  const d = Math.hypot((m.chin[0] - m.eye[0]) * W, (m.chin[1] - m.eye[1]) * H) || H * 0.35;
+  const k = unit / d;
+  g.drawImage(img, x - m.chin[0] * W * k, y - m.chin[1] * H * k + unit * 0.12, W * k, H * k);
 }

@@ -5,7 +5,7 @@ import { Particles } from './fx.js';
 import { sfx } from './audio.js';
 
 export const MODES = {
-  birthday: { start: 330, accel: 4, max: 520, theme: 'birthday', obstacles: { candles: 4, shirt: 2, height: 2, alarm: 1, tax: 1, flyshirt: 2 }, items: 0.28, bad: 0.14 },
+  birthday: { start: 330, accel: 5, max: 540, theme: 'birthday', obstacles: { shirt: 3, height: 2, alarm: 2, tax: 2, flyshirt: 3 }, items: 0.1, bad: 0.16, collect: 'candle' },
   endless: { start: 340, accel: 6, max: 900, theme: 'day', obstacles: { candles: 2, shirt: 2, height: 2, alarm: 2, tax: 2, flyshirt: 2 }, items: 0.28, bad: 0.2 },
   horror: { start: 380, accel: 7, max: 920, theme: 'horror', obstacles: { shirt: 2, flyshirt: 3, ghost: 2, stink: 3, rille: 2, fish: 2, merz: 2, height: 1 }, items: 0.22, bad: 0.5 },
   attract: { start: 230, accel: 0, max: 230, theme: 'birthday', obstacles: {}, items: 0, bad: 0 },
@@ -40,7 +40,7 @@ export class Game {
     this.speedFactor = this.mercy >= 1 ? 0.85 : 1;
     this.speed = this.M.start;
     this.t = 0; this.distance = 0; this.bgOffset = 0;
-    this.score = this.mercy >= 3 ? 80 : 0;
+    this.score = this.mercy >= 3 ? 25 : 0; // im Geburtstags-Modus = Anzahl Kerzen
     this.state = mode === 'attract' ? 'idle' : 'run';
     this.baseExpr = mode === 'horror' ? 'skeptic' : 'normal';
     this.p = { y: 0, vy: 0, duck: false, phase: 0, expr: this.baseExpr, exprT: 0, invuln: 0, swell: 0, x: PLAYER_X, holding: false };
@@ -52,7 +52,10 @@ export class Game {
     this.nextPower = this.mercy >= 1 ? rand(10, 16) : rand(18, 28);
     this.nextCameo = rand(8, 13);
     this.cameoIdx = 0;
-    this.milestones = mode === 'birthday' ? [25, 50, 75].filter((m) => m > this.score) : [];
+    this.milestones = mode === 'birthday' ? [9, 17, 26].filter((m) => m > this.score) : [];
+    this.bigNum = null;
+    this.chase = null; this.nextChase = rand(10, 16);
+    this.dash = null; this.nextDash = mode === 'attract' ? 3 : rand(6, 12);
     this.nextEndlessMemory = 75;
     this.memIdx = 0;
     this.shake = 0; this.flash = 0;
@@ -61,7 +64,7 @@ export class Game {
     this.lightning = 0;
   }
 
-  get target() { return this.cfg.birthdayTarget || 100; }
+  get target() { return this.mode === 'birthday' || this.mode === 'attract' ? (this.cfg.birthdayTarget || 34) : Infinity; }
 
   // ------------------------------------------------------------------ Update
   update(dt, input) {
@@ -92,7 +95,7 @@ export class Game {
       p.y += p.vy * dt;
       if (p.y <= 0) { p.y = 0; p.vy = 0; }
       p.phase += dx / 34;
-      this.score += dx / 400;
+      if (!this.M.collect) this.score += dx / 400;
     } else if (this.state === 'idle') {
       p.phase += dx / 34;
     } else if (this.state === 'dying') {
@@ -105,7 +108,7 @@ export class Game {
       p.phase += Math.max(dx / 34, this.speed > 5 ? 0 : dt * 3);
       if (this.speed <= 0 && !this.finaleSent) { this.finaleSent = true; this.events.onFinale?.(); }
     }
-    p.exprT -= dt; if (p.exprT <= 0) p.expr = this.hammer > 0 ? 'hammer' : this.baseExpr;
+    p.exprT -= dt; if (p.exprT <= 0) p.expr = this.state === 'dying' ? 'sad' : this.hammer > 0 ? 'hammer' : this.baseExpr;
     p.invuln = Math.max(0, p.invuln - dt);
     p.swell = Math.max(0, p.swell - dt / 4);
     this.fips = Math.max(0, this.fips - dt);
@@ -115,7 +118,7 @@ export class Game {
       this.spawn(dx, dt);
       this.collide();
       this.checkMilestones();
-      if (this.mode === 'birthday' && this.score >= this.target) this.startFinale();
+      
       if (this.mode === 'horror') {
         this.lightning -= dt;
         if (this.lightning <= 0) { this.lightning = rand(4, 9); this.flash = 0.9; sfx('thunder'); }
@@ -143,6 +146,8 @@ export class Game {
     for (const c of this.cameos) { c.x -= dx; c.t += dt; }
     this.cameos = this.cameos.filter((c) => c.x > -80);
     this.updateCameos(dt);
+    this.updateSpecials(dt);
+    if (this.bigNum) { this.bigNum.t += dt; if (this.bigNum.t > 1.1) this.bigNum = null; }
     for (const pl of this.polaroids) pl.t += dt;
     this.polaroids = this.polaroids.filter((pl) => pl.t < pl.life);
     this.fx.update(dt, dx);
@@ -157,8 +162,10 @@ export class Game {
       const minGap = sp * 0.95 + 80;
       this.nextGap = (minGap + Math.random() * minGap * 0.9) * (this.mercy ? 1.12 : 1);
       let type = weighted(this.M.obstacles);
-      if (['flyshirt', 'ghost', 'stink'].includes(type) && this.score < 15 && this.mode !== 'horror') type = 'candles';
-      this.obstacles.push(this.makeObstacle(type, V.w + 40));
+      if (['flyshirt', 'ghost', 'stink'].includes(type) && this.distance < 4000 && this.mode !== 'horror') type = this.mode === 'birthday' ? 'tax' : 'candles';
+      const ob = this.makeObstacle(type, V.w + 40);
+      this.obstacles.push(ob);
+      if (this.M.collect === 'candle' && this.candleTimer <= 0) this.candleTimer = 1.8 * this.spawnCandles(ob, V.w + 40) - 0.4;
       // Item in der Lücke
       const gapX = V.w + 40 + this.nextGap * 0.5;
       if (Math.random() < this.M.bad) {
@@ -168,6 +175,7 @@ export class Game {
         this.items.push(this.makeItem(type2, gapX, pick([24, 70, 115])));
       }
     }
+    this.candleTimer = (this.candleTimer ?? 1) - dt;
     this.nextPower -= dt;
     if (this.nextPower <= 0) {
       this.nextPower = this.mercy >= 1 ? rand(12, 18) : rand(22, 34);
@@ -175,6 +183,20 @@ export class Game {
       this.items.push(this.makeItem(type, V.w + 40 + this.nextGap * 0.5, 60));
     }
     if (this.mode !== 'horror') this.spawnCameos(dt);
+  }
+
+  /** Legt ein Kerzen-Muster an und gibt die Anzahl zurück (ca. 1 Kerze alle 2 s). */
+  spawnCandles(ob, x) {
+    const add = (cx, cy) => this.items.push(this.makeItem('candle', cx, cy));
+    const r = Math.random();
+    if (ob.fly === 'mid') { add(x + ob.w / 2, 16); return 1; }
+    if (r < 0.2 && !ob.fly) { // Bogen über dem Hindernis -> Springen lohnt sich
+      add(x - 34, 62); add(x + ob.w / 2, 104); add(x + ob.w + 34, 62); return 3;
+    }
+    const gx = x + ob.w + this.nextGap * 0.45;
+    if (r < 0.45) { add(gx - 18, 18); add(gx + 18, 18); return 2; }
+    if (r < 0.75) { add(gx, 18); return 1; }
+    add(gx, 112); return 1; // hoch: springen!
   }
 
   spawnCameos(dt) {
@@ -194,10 +216,37 @@ export class Game {
       if (c.said) c.sayT += 1 / 60;
       if (c.throws && !c.threw && this.state === 'run' && c.x < PLAYER_X + 330) {
         c.threw = true;
-        const it = this.makeItem(pick(['pizza', 'burger', 'nachos', 'wine']), c.x, 70);
+        const it = this.makeItem(this.M.collect === 'candle' ? 'candle' : pick(['pizza', 'burger', 'nachos', 'wine']), c.x, 70);
         it.flying = true; it.vx = -90; it.vy = 420; it.restY = 70; it.y = 70;
         this.items.push(it);
       }
+    }
+  }
+
+  updateSpecials(dt) {
+    const p = this.p, V = this.V;
+    const active = this.state === 'run' || this.state === 'idle';
+    // Hagen läuft Kimi hinterher ("Payback!") – holt sie aber nie ein
+    if (this.chase) {
+      const c = this.chase; c.t += dt;
+      const target = c.t < 4.2 ? p.x - 78 + Math.sin(c.t * 2.2) * 14 : -120;
+      c.x += (target - c.x) * Math.min(1, dt * (c.t < 4.2 ? 1.8 : 0.9));
+      if (c.t > 4.2 && !c.gaveUp) { c.gaveUp = true; this.fx.text(c.x + 10, V.groundY - 95, 'Puh…', { color: '#fff', size: 14 }); }
+      if (c.t > 7) this.chase = null;
+    } else if (active && this.cfg.chaser && this.mode !== 'horror') {
+      this.nextChase -= dt;
+      if (this.nextChase <= 0) { this.nextChase = rand(22, 32); this.chase = { x: -60, t: 0, face: this.cfg.chaser.face, line: this.cfg.chaser.line }; }
+    }
+    // Fips flitzt durchs Bild, überholt und springt wieder raus
+    if (this.dash) {
+      const d = this.dash; d.t += dt;
+      d.x += (this.state === 'idle' ? 330 : 420) * dt;
+      if (d.x > V.w * 0.62 && !d.jumped) { d.jumped = true; d.vy = 520; this.fx.text(d.x, V.groundY - 60, pick(this.cfg.catLines || ['Miau!']), { color: '#ffb36b', size: 16 }); sfx('meow'); }
+      if (d.jumped) { d.vy -= 1300 * dt; d.y = Math.max(0, d.y + d.vy * dt); }
+      if (d.x > V.w + 80) this.dash = null;
+    } else if (active && this.mode !== 'horror') {
+      this.nextDash -= dt;
+      if (this.nextDash <= 0) { this.nextDash = this.state === 'idle' ? rand(7, 10) : rand(18, 28); this.dash = { x: -50, y: 0, t: 0 }; }
     }
   }
 
@@ -284,7 +333,7 @@ export class Game {
     if (this.hearts > 0) {
       this.hearts--; p.invuln = 1.6; this.shake = 8;
       o.knock = { vx: 380, vy: 600, vr: 7 };
-      p.expr = 'shock'; p.exprT = 0.8;
+      p.expr = 'sad'; p.exprT = 1.0;
       sfx('hurt'); this.events.onHearts?.(this.hearts);
       return;
     }
@@ -306,7 +355,31 @@ export class Game {
       this.events.onToast?.('🔨 Abriss-Modus: Alles wird weggestemmt!');
       return;
     }
+    if (it.type === 'candle') {
+      this.score += 1;
+      const n = Math.floor(this.score);
+      this.bigNum = { n, t: 0 };
+      p.expr = 'happy'; p.exprT = 0.5;
+      this.fx.burst(it.x, this.screenY(iy), { n: 14, colors: ['#ffd23f', '#ff9f1c', '#fff3a0'], speed: 170, size: 2.6 });
+      sfx('candle', n);
+      if (n >= this.target) this.startFinale();
+      return;
+    }
     const def = cfg.items[it.type] || { points: 5 };
+    if (it.bad && this.M.collect) {
+      this.score = Math.max(0, this.score - 2);
+      p.swell = 1; p.expr = 'shock'; p.exprT = 1.2; this.shake = 6;
+      this.fx.text(it.x, this.screenY(iy) - 24, def.line || 'ALLERGIE!', { color: '#ff5b5b', size: 20 });
+      this.fx.text(it.x, this.screenY(iy), '-2 🕯️', { color: '#ff5b5b', size: 18 });
+      sfx('bad');
+      return;
+    }
+    if (this.M.collect) { // Essen im Geburtstags-Modus: nur Spaß, keine Punkte
+      p.expr = 'happy'; p.exprT = 0.7;
+      this.fx.text(it.x, this.screenY(iy) - 18, pick(['Mmmh!', 'Lecker!', 'Yummy!']), { color: '#ffd23f', size: 18 });
+      sfx(it.type === 'wine' ? 'wine' : 'collect');
+      return;
+    }
     if (it.bad) {
       if (this.mode === 'horror' && this.fips <= 0 && this.hammer <= 0 && p.invuln <= 0) { this.die(it.type); return; }
       this.score = Math.max(0, this.score + def.points);
@@ -328,7 +401,7 @@ export class Game {
   die(cause) {
     const p = this.p;
     this.state = 'dying';
-    p.expr = 'shock'; p.exprT = 99; p.vy = 520; p.duck = false;
+    p.expr = 'shock'; p.exprT = 0.45; p.vy = 520; p.duck = false;
     this.shake = 14; this.flash = 0.5;
     this.deathInfo = { cause, score: Math.floor(this.score), mode: this.mode };
     this.polaroids = [];
@@ -337,7 +410,7 @@ export class Game {
 
   startFinale() {
     this.state = 'finale';
-    this.p.expr = 'happy'; this.p.exprT = 999; this.p.duck = false;
+    this.p.expr = 'party'; this.p.exprT = 999; this.p.duck = false;
     for (const o of this.obstacles) {
       this.fx.burst(o.x + o.w / 2, this.screenY(o.yOff + 20), { n: 30, type: 'confetti', speed: 260, size: 4, gravity: 400 });
     }
@@ -373,8 +446,18 @@ export class Game {
     if (this.shake > 0) g.translate(rand(-1, 1) * this.shake * 0.5, rand(-1, 1) * this.shake * 0.5);
     drawBackground(g, V, this.M.theme, this.bgOffset, this.t, night);
     for (const c of this.cameos) this.drawCameo(g, c);
-    for (const o of this.obstacles) this.drawObstacle(g, o);
-    for (const it of this.items) this.drawItem(g, it);
+    outlined(g, this.mode === 'horror' ? 'rgba(225,255,210,0.95)' : 'rgba(40,14,48,0.95)', (lg) => {
+      for (const o of this.obstacles) this.drawObstacle(lg, o);
+      for (const it of this.items) this.drawItem(lg, it);
+    });
+    for (const o of this.obstacles) if (!o.knock && !o.fly) {
+      g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.ellipse(o.x + o.w / 2, V.groundY + 2, o.w * 0.6, 4, 0, 0, 7); g.fill();
+    }
+    if (this.chase) {
+      const c = this.chase;
+      drawPerson(g, c.x, V.groundY, { faceKey: c.face, t: this.t, color: '#5b7bd5', scale: 0.78, run: true, expr: 'happy' });
+      if (c.t > 0.6 && c.t < 4.2) speech(g, c.x - 4, V.groundY - 118, c.line || 'Payback!');
+    }
 
     const p = this.p;
     if (this.fips > 0) {
@@ -396,8 +479,21 @@ export class Game {
     if (this.state === 'finale' && this.speed <= 5) {
       drawCat(g, p.x - 55, V.groundY, { pose: 'sit', scale: 1, t: this.t });
     }
+    if (this.dash) drawCat(g, this.dash.x, V.groundY - this.dash.y, { phase: this.t * 16, scale: 0.9, t: this.t });
     this.fx.draw(g);
     for (const pl of this.polaroids) this.drawPolaroid(g, pl);
+    if (this.bigNum) {
+      const k = this.bigNum.t / 1.1, a = Math.sin(Math.min(1, k) * Math.PI);
+      const size = Math.min(V.h * 0.42, V.w * 0.3) * (0.85 + k * 0.25);
+      g.save(); g.globalAlpha = a * 0.85; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = `900 ${size}px ui-rounded, system-ui, sans-serif`;
+      const cy = Math.min(V.groundY * 0.5, V.groundY - size * 0.9);
+      g.lineWidth = size * 0.08; g.strokeStyle = 'rgba(120,20,70,0.8)'; g.strokeText(String(this.bigNum.n), V.w / 2, cy);
+      g.fillStyle = '#ffd23f'; g.fillText(String(this.bigNum.n), V.w / 2, cy);
+      g.font = `800 ${size * 0.22}px ui-rounded, system-ui, sans-serif`; g.fillStyle = '#fff';
+      g.fillText(`von ${this.target} Kerzen`, V.w / 2, cy + size * 0.62);
+      g.restore();
+    }
     g.restore();
     if (this.flash > 0) {
       g.fillStyle = this.mode === 'horror' ? `rgba(200,255,200,${this.flash * 0.6})` : `rgba(255,255,255,${this.flash * 0.6})`;
@@ -551,12 +647,29 @@ export class Game {
     g.font = '700 10px ui-rounded, system-ui, sans-serif';
     g.fillText(pl.mem?.caption || 'Erinnerung freigeschaltet!', 0, H / 2 - 16, W - 10);
     g.fillStyle = '#ff4fa3'; g.font = '900 9px ui-rounded, system-ui, sans-serif';
-    g.fillText(`★ ${pl.milestone} Punkte ★`, 0, H / 2 - 5);
+    g.fillText(`★ ${pl.milestone} ${this.M.collect ? 'Kerzen' : 'Punkte'} ★`, 0, H / 2 - 5);
     g.restore();
   }
 }
 
 // --------------------------------------------------------------------------
+// Zeichnet etwas mit einer kräftigen Kontur, damit es sich vom Hintergrund abhebt.
+const layerA = document.createElement('canvas'), layerB = document.createElement('canvas');
+function outlined(g, color, fn) {
+  const c = g.canvas;
+  for (const L of [layerA, layerB]) if (L.width !== c.width || L.height !== c.height) { L.width = c.width; L.height = c.height; }
+  const a = layerA.getContext('2d'), b = layerB.getContext('2d');
+  a.setTransform(1, 0, 0, 1, 0, 0); a.clearRect(0, 0, c.width, c.height);
+  a.setTransform(g.getTransform()); fn(a);
+  b.setTransform(1, 0, 0, 1, 0, 0); b.clearRect(0, 0, c.width, c.height);
+  b.globalCompositeOperation = 'source-over';
+  const o = Math.max(2, Math.round(c.height / 260));
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7]]) b.drawImage(layerA, dx * o, dy * o);
+  b.globalCompositeOperation = 'source-in'; b.fillStyle = color; b.fillRect(0, 0, c.width, c.height);
+  b.globalCompositeOperation = 'source-over';
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(layerB, 0, 0); g.drawImage(layerA, 0, 0); g.restore();
+}
+
 function speech(g, x, y, text) {
   g.font = '800 11px ui-rounded, system-ui, sans-serif';
   const w = Math.min(160, g.measureText(text).width + 16);
@@ -602,6 +715,18 @@ function drawJackhammer(g, x, y, t, blink) {
 }
 
 export function drawItemIcon(g, type, t = 0) {
+  if (type === 'candle') {
+    const gl = g.createRadialGradient(0, -12, 1, 0, -12, 18);
+    gl.addColorStop(0, 'rgba(255,220,120,0.8)'); gl.addColorStop(1, 'rgba(255,220,120,0)');
+    g.fillStyle = gl; g.beginPath(); g.arc(0, -12, 18, 0, 7); g.fill();
+    g.fillStyle = '#ff4fa3'; roundRect(g, -4.5, -6, 9, 20, 2); g.fill();
+    g.fillStyle = '#fff'; g.fillRect(-4.5, -1, 9, 3); g.fillRect(-4.5, 6, 9, 3);
+    g.strokeStyle = '#333'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(0, -6); g.lineTo(0, -10); g.stroke();
+    const fl = Math.sin(t * 18) * 1.2;
+    g.fillStyle = '#ff9f1c'; g.beginPath(); g.ellipse(fl * 0.3, -14, 3.6, 6 + fl, 0, 0, 7); g.fill();
+    g.fillStyle = '#fff3a0'; g.beginPath(); g.ellipse(0, -12.5, 1.7, 3, 0, 0, 7); g.fill();
+    return;
+  }
   if (type === 'wine') {
     g.fillStyle = 'rgba(255,255,255,0.65)';
     g.beginPath(); g.moveTo(-8, -12); g.lineTo(8, -12); g.quadraticCurveTo(9, 2, 0, 3); g.quadraticCurveTo(-9, 2, -8, -12); g.fill();

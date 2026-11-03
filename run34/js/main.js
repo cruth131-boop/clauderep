@@ -73,7 +73,7 @@ function toMenu() {
   hb.classList.toggle('locked', !unlocked('birthday'));
   hb.textContent = unlocked('birthday') ? '👻 Horror-Modus' : '🔒 Horror-Modus';
   const bests = [];
-  if (save.best.birthday) bests.push(`🎂 ${save.best.birthday}`);
+  if (save.best.birthday) bests.push(`🕯️ ${Math.min(save.best.birthday, assets.config.birthdayTarget || 34)}`);
   if (save.best.endless) bests.push(`♾️ ${save.best.endless}`);
   if (save.best.horror) bests.push(`👻 ${save.best.horror}`);
   $('menu-hint').textContent = (bests.length ? `Rekorde: ${bests.join('  ·  ')}` : '') + (innerHeight > innerWidth ? '\nTipp: Quer halten = mehr Überblick' : '');
@@ -113,11 +113,11 @@ function startGame(mode) {
   setHud(true);
   if (DEV) window.__game = game;
   $('progress').classList.toggle('hidden', mode !== 'birthday');
-  $('best').textContent = `HI ${save.best[mode] || 0}`;
+  $('best').textContent = mode === 'birthday' ? `von ${game.target} 🕯️` : `HI ${save.best[mode] || 0}`;
   updateHearts(game.hearts);
   playMusic(mode === 'horror' ? 'horror' : 'run');
   if (mode === 'horror') toast(`👻 ${assets.config.horror?.intro || ''}`, 3200);
-  else if (mercy) toast(['', '🐱 Gnadenmodus: Fips hilft & alles etwas langsamer', '❤️❤️ Gnadenmodus: 2 Extra-Leben', '🤫 Schummel-Modus: Start bei 80'][mercy], 3000);
+  else if (mercy) toast(['', '🐱 Gnadenmodus: Fips hilft & alles etwas langsamer', '❤️❤️ Gnadenmodus: 2 Extra-Leben', '🤫 Schummel-Modus: Start mit 25 Kerzen'][mercy], 3000);
   tapHint('Tippen = Springen  ·  ⬇ = Ducken', 2600);
 }
 
@@ -149,7 +149,7 @@ function showGameOver(info, mercyMsg) {
   const pool = specific && Math.random() < 0.6 ? specific : cfg.loseLines;
   $('over-line').textContent = `„${pickL(pool)}"`;
   $('over-score').textContent = info.score;
-  $('over-best').textContent = info.mode === 'birthday' ? `noch ${Math.max(0, (cfg.birthdayTarget || 100) - info.score)} bis zum Ziel 🎂` : `Rekord: ${save.best[info.mode]}`;
+  $('over-best').textContent = info.mode === 'birthday' ? `von ${cfg.birthdayTarget || 34} Kerzen 🕯️ – noch ${Math.max(0, (cfg.birthdayTarget || 34) - info.score)}!` : `Rekord: ${save.best[info.mode]}`;
   $('over-mercy').textContent = mercyMsg;
   $('over-mercy').classList.toggle('hidden', !mercyMsg);
   show('scr-over');
@@ -168,7 +168,7 @@ function showReveal() {
   const gift = assets.config.gift || {};
   const firstWin = !save.won;
   save.won = true;
-  if (Math.floor(game.score) > save.best.birthday) save.best.birthday = Math.floor(game.score);
+  save.best.birthday = Math.max(save.best.birthday || 0, Math.floor(game.score));
   persist();
   $('reveal-kicker').textContent = gift.kicker || 'Dein Geschenk';
   $('reveal-title').textContent = gift.title || '';
