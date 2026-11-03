@@ -104,7 +104,7 @@ export class Game {
       p.phase += Math.max(dx / 34, this.speed > 5 ? 0 : dt * 3);
       if (this.speed <= 0 && !this.finaleSent) { this.finaleSent = true; this.events.onFinale?.(); }
     }
-    p.exprT -= dt; if (p.exprT <= 0) p.expr = 'normal';
+    p.exprT -= dt; if (p.exprT <= 0) p.expr = this.hammer > 0 ? 'hammer' : 'normal';
     p.invuln = Math.max(0, p.invuln - dt);
     p.swell = Math.max(0, p.swell - dt / 4);
     this.fips = Math.max(0, this.fips - dt);
@@ -330,6 +330,7 @@ export class Game {
     p.expr = 'shock'; p.exprT = 99; p.vy = 520; p.duck = false;
     this.shake = 14; this.flash = 0.5;
     this.deathInfo = { cause, score: Math.floor(this.score), mode: this.mode };
+    this.polaroids = [];
     sfx('hit'); sfx('no');
   }
 

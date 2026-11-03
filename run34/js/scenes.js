@@ -15,9 +15,18 @@ function caption(g, V, text, y, size = 22, color = '#fff') {
 }
 
 function drawFaceAt(g, key, expr, cx, cy, h, rot = 0) {
-  const { img } = getFace(key, expr);
+  const { img, exact } = getFace(key, expr);
   const w = h * (img.width / img.height);
-  g.save(); g.translate(cx, cy); g.rotate(rot); g.drawImage(img, -w / 2, -h / 2, w, h); g.restore();
+  g.save(); g.translate(cx, cy); g.rotate(rot);
+  if (!exact && expr === 'sad') g.filter = 'grayscale(0.85) brightness(0.85)';
+  g.drawImage(img, -w / 2, -h / 2, w, h);
+  g.filter = 'none';
+  if (!exact && expr === 'sad') {
+    g.fillStyle = '#7cc6ff';
+    const ty = (performance.now() / 12) % (h * 0.35);
+    for (const sx of [-0.17, 0.17]) { g.beginPath(); g.ellipse(w * sx, -h * 0.02 + ty, h * 0.022, h * 0.035, 0, 0, 7); g.fill(); }
+  }
+  g.restore();
 }
 
 function photoCard(g, img, cx, cy, W, rot, label) {
@@ -48,13 +57,14 @@ export class LoseScene {
     this.info = info; this.onDone = onDone; this.t = 0; this.done = false;
     const cfg = assets.config;
     const options = ['rain', 'cat', 'zoom', 'violin', 'er'];
+    if (assets.images.her_meh_0) options.push('meh', 'meh');
     if ((cfg.cameos || []).some((c) => c.oma)) options.push('oma');
     let k; do { k = pick(options); } while (k === lastScene && options.length > 1);
     // Verletzungsszene etwas seltener, wenn kein Foto da ist
     this.kind = lastScene = k;
     this.dur = k === 'er' ? 3.4 : 2.8;
     this.rain = Array.from({ length: 40 }, () => ({ x: Math.random(), y: Math.random(), s: 0.6 + Math.random() * 0.6 }));
-    sfx({ rain: 'sad', cat: 'meow', zoom: 'dun', violin: 'violin', er: 'drumroll', oma: 'sad' }[k]);
+    sfx({ rain: 'sad', cat: 'meow', zoom: 'dun', violin: 'violin', er: 'drumroll', oma: 'sad', meh: 'sad' }[k]);
     this.partner = cfg.partnerName || 'Er';
   }
   tap() { if (this.t > 0.4) this.finish(); }
@@ -113,6 +123,11 @@ export class LoseScene {
       if (t > 1.0) photoCard(g, i2, cx + W * 0.5, cy + 8 - (1 - ease((t - 1) / 0.5)) * V.h, W, 0.07, 'Reha: 6 Wochen');
       caption(g, V, `Diagnose: ${pick(['Messlatte überschätzt', 'zu wenig Anlauf', 'Kerzen-Trauma'])}`, V.h * 0.9, 18);
       this.diag ||= null;
+    } else if (this.kind === 'meh') {
+      const h = S * 0.55 * (0.85 + ease(t / 0.5) * 0.15);
+      drawFaceAt(g, 'her', 'meh', cx, cy, h);
+      const line = assets.config.loseLines?.[0] || 'Das hab ich mir so nicht vorgestellt!';
+      if (t > 0.5) caption(g, V, line, cy + h * 0.62, Math.min(24, V.w / 20), '#ffd23f');
     } else if (this.kind === 'oma') {
       const h = S * 0.42;
       drawFaceAt(g, 'oma', 'normal', cx, cy, h, Math.sin(t * 9) * 0.18);

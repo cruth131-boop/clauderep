@@ -111,6 +111,15 @@ const placeholderCache = {};
 /** Liefert {img, exact} – exact=false heißt: Ausdruck wird per Effekt simuliert. */
 export function getFace(key, expr = 'normal') {
   const im = assets.images;
+  // Animierte Gesichter: key_expr_0, key_expr_1, … (Ping-Pong mit ~12 fps)
+  if (im[`${key}_${expr}_0`]) {
+    const frames = [];
+    for (let i = 0; im[`${key}_${expr}_${i}`]; i++) frames.push(im[`${key}_${expr}_${i}`]);
+    const n = frames.length, seq = n > 1 ? 2 * n - 2 : 1;
+    let k = Math.floor(performance.now() / 85) % seq;
+    if (k >= n) k = seq - k;
+    return { img: frames[k], exact: true };
+  }
   if (im[`${key}_${expr}`]) return { img: im[`${key}_${expr}`], exact: true };
   if (im[key]) return { img: im[key], exact: expr === 'normal' };
   if (expr !== 'normal' && im[`${key}_normal`]) return { img: im[`${key}_normal`], exact: false };
