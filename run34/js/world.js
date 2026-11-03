@@ -3,6 +3,7 @@ import { drawCharacter, drawCat, drawPerson, star, roundRect } from './character
 import { assets, getFace } from './assets.js';
 import { Particles } from './fx.js';
 import { sfx } from './audio.js';
+import { BIOMES, OBS, drawBiomeBg, drawMonkey, biomeName } from './biomes.js';
 
 export const MODES = {
   birthday: { start: 330, accel: 5, max: 540, theme: 'birthday', obstacles: { shirt: 3, height: 2, alarm: 2, tax: 2, flyshirt: 3 }, items: 0.1, bad: 0.16, collect: 'candle' },
@@ -62,6 +63,8 @@ export class Game {
     this.deadT = 0; this.finaleT = 0;
     this.V = { w: 700, h: 320, groundY: 250 };
     this.lightning = 0;
+    this.biomeIdx = 0; this.biome = mode === 'endless' ? BIOMES[0] : null;
+    this.prevBiome = null; this.biomeFade = 1; this.nextBiomeAt = 60;
   }
 
   get target() { return this.mode === 'birthday' || this.mode === 'attract' ? (this.cfg.birthdayTarget || 34) : Infinity; }
@@ -108,6 +111,7 @@ export class Game {
       p.phase += Math.max(dx / 34, this.speed > 5 ? 0 : dt * 3);
       if (this.speed <= 0 && !this.finaleSent) { this.finaleSent = true; this.events.onFinale?.(); }
     }
+    this.biomeFade = Math.min(1, this.biomeFade + dt / 1.6);
     p.exprT -= dt; if (p.exprT <= 0) p.expr = this.state === 'dying' ? 'sad' : this.hammer > 0 ? 'hammer' : this.baseExpr;
     p.invuln = Math.max(0, p.invuln - dt);
     p.swell = Math.max(0, p.swell - dt / 4);
@@ -119,6 +123,7 @@ export class Game {
       this.collide();
       this.checkMilestones();
       
+      if (this.biome && this.score >= this.nextBiomeAt) this.nextBiome();
       if (this.mode === 'horror') {
         this.lightning -= dt;
         if (this.lightning <= 0) { this.lightning = rand(4, 9); this.flash = 0.9; sfx('thunder'); }
@@ -161,8 +166,8 @@ export class Game {
       const sp = this.speed * this.speedFactor;
       const minGap = sp * 0.95 + 80;
       this.nextGap = (minGap + Math.random() * minGap * 0.9) * (this.mercy ? 1.12 : 1);
-      let type = weighted(this.M.obstacles);
-      if (['flyshirt', 'ghost', 'stink'].includes(type) && this.distance < 4000 && this.mode !== 'horror') type = this.mode === 'birthday' ? 'tax' : 'candles';
+      let type = weighted(this.biome ? this.biome.obstacles : this.M.obstacles);
+      if ((['flyshirt', 'ghost', 'stink'].includes(type) || OBS[type]?.fly) && this.distance < 4000 && this.mode !== 'horror') type = this.mode === 'birthday' ? 'tax' : 'candles';
       const ob = this.makeObstacle(type, V.w + 40);
       this.obstacles.push(ob);
       if (this.M.collect === 'candle' && this.candleTimer <= 0) this.candleTimer = 1.8 * this.spawnCandles(ob, V.w + 40) - 0.4;
@@ -171,7 +176,7 @@ export class Game {
       if (Math.random() < this.M.bad) {
         this.items.push(this.makeItem(pick(['fig', 'shrimp']), gapX, pick([12, 12, 70])));
       } else if (Math.random() < this.M.items) {
-        const type2 = Math.random() < 0.07 ? 'egg' : pick(['wine', 'pizza', 'burger', 'nachos']);
+        const type2 = this.biome?.bonus && Math.random() < 0.55 ? this.biome.bonus : Math.random() < 0.07 ? 'egg' : pick(['wine', 'pizza', 'burger', 'nachos']);
         this.items.push(this.makeItem(type2, gapX, pick([24, 70, 115])));
       }
     }
@@ -206,7 +211,7 @@ export class Game {
   }
 
   spawnCameos(dt) {
-    const list = this.cfg.cameos || [];
+    const list = (this.biome && this.cfg.biomeCameos?.[this.biome.id]) || this.cfg.cameos || [];
     if (!list.length) return;
     this.nextCameo -= dt;
     if (this.nextCameo <= 0) {
@@ -256,8 +261,19 @@ export class Game {
     }
   }
 
+  nextBiome() {
+    this.prevBiome = this.biome; this.biomeFade = 0;
+    this.biomeIdx = (this.biomeIdx + 1) % BIOMES.length; this.biome = BIOMES[this.biomeIdx];
+    this.nextBiomeAt += 60;
+    this.events.onToast?.(`📍 ${biomeName(this.biome)}`);
+    sfx('memory');
+  }
+
   makeObstacle(type, x) {
     const o = { type, x, t: 0, yOff: 0, rot: 0, rects: [] };
+    const def = OBS[type];
+    if (def && !def.fly) { def.make(o); return o; }
+    if (def && def.fly) type = 'flyshirt';
     if (type === 'candles') {
       const n = 1 + ((Math.random() * (this.score > 30 ? 3 : 2)) | 0);
       o.candles = [];
@@ -361,6 +377,13 @@ export class Game {
       this.events.onToast?.('🔨 Abriss-Modus: Alles wird weggestemmt!');
       return;
     }
+    if (it.type === 'monkey') {
+      this.score += 10; p.expr = 'happy'; p.exprT = 0.9;
+      this.fx.text(it.x, this.screenY(iy) - 20, pick(['AFFE! 🐒', 'Uh uh ah ah!', '+10 🐒']), { color: '#ffd23f', size: 22 });
+      this.fx.burst(it.x, this.screenY(iy), { n: 14, colors: ['#7b4a26', '#e9c39b', '#ffd23f'], speed: 170 });
+      sfx('cheer');
+      return;
+    }
     if (it.type === 'heart') {
       this.hearts = Math.min(3, this.hearts + 1);
       this.fx.text(it.x, this.screenY(iy) - 20, '+1 ❤️', { color: '#ff6b8a', size: 22 });
@@ -455,10 +478,21 @@ export class Game {
   // ------------------------------------------------------------------ Draw
   draw(g) {
     const V = this.V;
-    const night = this.mode === 'endless' ? Math.max(0, Math.sin((this.score / 400) * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5) ** 2 : 0;
+    const night = 0;
     g.save();
     if (this.shake > 0) g.translate(rand(-1, 1) * this.shake * 0.5, rand(-1, 1) * this.shake * 0.5);
-    drawBackground(g, V, this.M.theme, this.bgOffset, this.t, night);
+    if (this.biome) {
+      const bg = (b) => { if (!drawBiomeBg(g, V, b.id, this.bgOffset, this.t)) drawBackground(g, V, 'day', this.bgOffset, this.t, 0); };
+      if (this.prevBiome && this.biomeFade < 1) { bg(this.prevBiome); g.save(); g.globalAlpha = this.biomeFade; bg(this.biome); g.restore(); }
+      else bg(this.biome);
+      if (this.biomeFade < 1) {
+        const a = Math.sin(this.biomeFade * Math.PI);
+        g.save(); g.globalAlpha = a; g.textAlign = 'center'; g.font = `900 ${Math.min(34, V.w / 14)}px ui-rounded, system-ui, sans-serif`;
+        g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,0.5)'; const ty = V.groundY * 0.35;
+        g.strokeText(`📍 ${biomeName(this.biome)}`, V.w / 2, ty, V.w - 30); g.fillStyle = '#fff'; g.fillText(`📍 ${biomeName(this.biome)}`, V.w / 2, ty, V.w - 30);
+        g.restore();
+      }
+    } else drawBackground(g, V, this.M.theme, this.bgOffset, this.t, night);
     for (const c of this.cameos) this.drawCameo(g, c);
     outlined(g, this.mode === 'horror' ? 'rgba(225,255,210,0.95)' : 'rgba(40,14,48,0.95)', (lg) => {
       for (const o of this.obstacles) this.drawObstacle(lg, o);
@@ -531,6 +565,7 @@ export class Game {
     const x = o.x, base = V.groundY - o.yOff;
     g.save();
     if (o.knock) { g.translate(x + o.w / 2, base - 20); g.rotate(o.rot); g.translate(-(x + o.w / 2), -(base - 20)); }
+    if (OBS[o.type]) { OBS[o.type].draw(g, x, base, o); g.restore(); return; }
     if (o.type === 'candles') {
       for (const c of o.candles) {
         const cx = x + c.dx;
@@ -729,6 +764,7 @@ function drawJackhammer(g, x, y, t, blink) {
 }
 
 export function drawItemIcon(g, type, t = 0) {
+  if (type === 'monkey') { drawMonkey(g, 0, 2, t, 1.25, Math.sin(t * 2) > 0); return; }
   if (type === 'heart') {
     const s = 1 + Math.sin(t * 7) * 0.08;
     g.save(); g.scale(s, s);
