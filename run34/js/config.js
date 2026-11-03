@@ -94,7 +94,6 @@ export const DEFAULT_CONFIG = {
     giftPrompt: 'Moment… da ist noch was! 🎁',
   },
   gift: {
-    kicker: 'Dein Geschenk',
     title: 'Überraschung!',
     date: '',
     stops: ['Zuhause', 'Ziel'],

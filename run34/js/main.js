@@ -260,7 +260,8 @@ function showReveal(fromMenu = false) {
   }
   if (!fromMenu) save.best.birthday = Math.max(save.best.birthday || 0, Math.floor(game.score));
   persist();
-  $('reveal-kicker').textContent = gift.kicker || 'Dein Geschenk';
+  $('reveal-kicker').textContent = gift.kicker || '';
+  $('reveal-kicker').classList.toggle('hidden', !gift.kicker);
   $('reveal-title').textContent = gift.title || '';
   $('reveal-date').textContent = gift.date || '';
   $('reveal-text').textContent = gift.text || '';
