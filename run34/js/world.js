@@ -265,6 +265,9 @@ export class Game {
     this.prevBiome = this.biome; this.biomeFade = 0;
     this.biomeIdx = (this.biomeIdx + 1) % BIOMES.length; this.biome = BIOMES[this.biomeIdx];
     this.nextBiomeAt += 60;
+    // Cameos der alten Welt, die noch nicht im Bild sind, nicht mit rübernehmen
+    this.cameos = this.cameos.filter((c) => c.x < this.V.w);
+    this.nextCameo = Math.max(this.nextCameo, 3);
     this.events.onToast?.(`📍 ${biomeName(this.biome)}`);
     sfx('memory');
   }
