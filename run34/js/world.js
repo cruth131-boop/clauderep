@@ -3,12 +3,13 @@ import { drawCharacter, drawCat, drawPerson, star, roundRect } from './character
 import { assets, getFace } from './assets.js';
 import { Particles } from './fx.js';
 import { sfx } from './audio.js';
-import { BIOMES, OBS, drawBiomeBg, drawMonkey, biomeName } from './biomes.js';
+import { BIOMES, BIOMES_RT, FIPSLAND, OBS, ITEM_ICONS, drawAnyBiomeBg as drawBiomeBg, drawMonkey, biomeName } from './biomes.js';
 
 export const MODES = {
   birthday: { start: 330, accel: 5, max: 540, theme: 'birthday', obstacles: { shirt: 3, height: 2, alarm: 2, tax: 2, flyshirt: 3 }, items: 0.1, bad: 0.16, collect: 'candle' },
   endless: { start: 340, accel: 6, max: 900, theme: 'day', obstacles: { candles: 2, shirt: 2, height: 2, alarm: 2, tax: 2, flyshirt: 2 }, items: 0.28, bad: 0.2 },
   horror: { start: 380, accel: 7, max: 920, theme: 'horror', obstacles: { shirt: 2, flyshirt: 3, ghost: 2, stink: 3, rille: 2, fish: 2, merz: 2, height: 1 }, items: 0.22, bad: 0.5 },
+  roadtrip: { start: 360, accel: 6, max: 900, theme: 'day', obstacles: { cone: 1 }, items: 0.35, bad: 0.15 },
   attract: { start: 230, accel: 0, max: 230, theme: 'birthday', obstacles: {}, items: 0, bad: 0 },
 };
 
@@ -31,7 +32,7 @@ function weighted(obj) {
 }
 
 export class Game {
-  constructor(mode, { outfit, mercy = 0, events = {} } = {}) {
+  constructor(mode, { outfit, mercy = 0, events = {}, eggHead = false } = {}) {
     this.mode = mode;
     this.M = MODES[mode];
     this.cfg = assets.config;
@@ -63,7 +64,13 @@ export class Game {
     this.deadT = 0; this.finaleT = 0;
     this.V = { w: 700, h: 320, groundY: 250 };
     this.lightning = 0;
-    this.biomeIdx = 0; this.biome = mode === 'endless' ? BIOMES[0] : null;
+    this.worldList = mode === 'roadtrip' ? BIOMES_RT : BIOMES;
+    this.biomeIdx = 0; this.biome = mode === 'endless' || mode === 'roadtrip' ? this.worldList[0] : null;
+    this.stats = { items: {}, passed: {}, bad: false, worlds: new Set(this.biome ? [this.biome.id] : []), chases: 0 };
+    this.eggT = eggHead ? 30 : 0;
+    this.green = this.outfit.top === 'green' && mode !== 'horror';
+    this.hour = new Date().getHours();
+    this.boxSpawned = false; this.fipsT = 0; this.savedBiome = null;
     this.prevBiome = null; this.biomeFade = 1; this.nextBiomeAt = 60;
   }
 
@@ -123,7 +130,9 @@ export class Game {
       this.collide();
       this.checkMilestones();
       
-      if (this.biome && this.score >= this.nextBiomeAt) this.nextBiome();
+      if (this.biome && this.biome !== FIPSLAND && this.score >= this.nextBiomeAt) this.nextBiome();
+      if (this.fipsT > 0) { this.fipsT -= dt; if (this.fipsT <= 0) this.leaveFipsland(); }
+      this.eggT = Math.max(0, this.eggT - dt);
       if (this.mode === 'horror') {
         this.lightning -= dt;
         if (this.lightning <= 0) { this.lightning = rand(4, 9); this.flash = 0.9; sfx('thunder'); }
@@ -135,6 +144,9 @@ export class Game {
     for (const o of this.obstacles) {
       o.x -= dx + (o.extraV || 0) * dt;
       o.t += dt;
+      if (!o.passed && !o.knock && this.state === 'run' && o.x + o.w < this.p.x - 14) {
+        o.passed = true; this.stats.passed[o.type] = (this.stats.passed[o.type] || 0) + 1; this.events.onPass?.(o.type);
+      }
       if (o.knock) {
         o.knock.vy -= 1400 * dt; o.x += o.knock.vx * dt; o.yOff += o.knock.vy * dt; o.rot += o.knock.vr * dt;
       }
@@ -161,13 +173,20 @@ export class Game {
   spawn(dx, dt) {
     const V = this.V;
     this.sinceSpawn += dx;
-    if (this.sinceSpawn >= this.nextGap && Object.keys(this.M.obstacles).length) {
+    const obsList = this.biome ? this.biome.obstacles : this.M.obstacles;
+    if (this.sinceSpawn >= this.nextGap && this.biome === FIPSLAND) {
+      this.sinceSpawn = 0; this.nextGap = 220 + Math.random() * 120;
+      for (let i = 0; i < 4; i++) this.items.push(this.makeItem('treat', V.w + 40 + i * 30, 20 + Math.sin(i) * 30 + Math.random() * 60));
+      if (!this.dash) this.summonFips();
+    } else if (this.sinceSpawn >= this.nextGap && Object.keys(obsList).length) {
       this.sinceSpawn = 0;
       const sp = this.speed * this.speedFactor;
       const minGap = sp * 0.95 + 80;
       this.nextGap = (minGap + Math.random() * minGap * 0.9) * (this.mercy ? 1.12 : 1);
       let type = weighted(this.biome ? this.biome.obstacles : this.M.obstacles);
       if ((['flyshirt', 'ghost', 'stink'].includes(type) || OBS[type]?.fly) && this.distance < 4000 && this.mode !== 'horror') type = this.mode === 'birthday' ? 'tax' : 'candles';
+      if (this.hour === 6 && Math.random() < 0.3) type = 'alarm';
+      if (!this.boxSpawned && this.biome && this.t > 25 && Math.random() < 0.05) { this.boxSpawned = true; type = 'fipsbox'; }
       const ob = this.makeObstacle(type, V.w + 40);
       this.obstacles.push(ob);
       if (this.M.collect === 'candle' && this.candleTimer <= 0) this.candleTimer = 1.8 * this.spawnCandles(ob, V.w + 40) - 0.4;
@@ -176,7 +195,8 @@ export class Game {
       if (Math.random() < this.M.bad) {
         this.items.push(this.makeItem(pick(['fig', 'shrimp']), gapX, pick([12, 12, 70])));
       } else if (Math.random() < this.M.items) {
-        const type2 = this.biome?.bonus && Math.random() < 0.55 ? this.biome.bonus : Math.random() < 0.07 ? 'egg' : pick(['wine', 'pizza', 'burger', 'nachos']);
+        const food = this.biome?.items || ['wine', 'pizza', 'burger', 'nachos'];
+        const type2 = this.biome?.bonus && Math.random() < 0.55 ? this.biome.bonus : Math.random() < 0.07 ? 'egg' : pick(food);
         this.items.push(this.makeItem(type2, gapX, pick([24, 70, 115])));
       }
     }
@@ -242,7 +262,7 @@ export class Game {
       const c = this.chase; c.t += dt;
       const target = c.t < 4.2 ? p.x - 78 + Math.sin(c.t * 2.2) * 14 : -120;
       c.x += (target - c.x) * Math.min(1, dt * (c.t < 4.2 ? 1.8 : 0.9));
-      if (c.t > 4.2 && !c.gaveUp) { c.gaveUp = true; this.fx.text(c.x + 10, V.groundY - 95, 'Puh…', { color: '#fff', size: 14 }); }
+      if (c.t > 4.2 && !c.gaveUp) { c.gaveUp = true; if (this.state === 'run') { this.stats.chases++; this.events.onChase?.(); } this.fx.text(c.x + 10, V.groundY - 95, 'Puh…', { color: '#fff', size: 14 }); }
       if (c.t > 7) this.chase = null;
     } else if (active && this.cfg.chaser && this.mode !== 'horror') {
       this.nextChase -= dt;
@@ -252,7 +272,7 @@ export class Game {
     if (this.dash) {
       const d = this.dash; d.t += dt;
       d.x += (this.state === 'idle' ? 330 : 420) * dt;
-      if (d.x > V.w * 0.62 && !d.jumped) { d.jumped = true; d.vy = 520; this.fx.text(d.x, V.groundY - 60, pick(this.cfg.catLines || ['Miau!']), { color: '#ffb36b', size: 16 }); sfx('meow'); }
+      if (d.x > V.w * 0.62 && !d.jumped) { d.jumped = true; d.vy = 520; this.fx.text(d.x, V.groundY - 60, this.green ? 'Igitt, grün! 🤢' : pick(this.cfg.catLines || ['Miau!']), { color: '#ffb36b', size: 16 }); sfx('meow'); }
       if (d.jumped) { d.vy -= 1300 * dt; d.y = Math.max(0, d.y + d.vy * dt); }
       if (d.x > V.w + 80) this.dash = null;
     } else if (active && this.mode !== 'horror') {
@@ -263,7 +283,8 @@ export class Game {
 
   nextBiome() {
     this.prevBiome = this.biome; this.biomeFade = 0;
-    this.biomeIdx = (this.biomeIdx + 1) % BIOMES.length; this.biome = BIOMES[this.biomeIdx];
+    this.biomeIdx = (this.biomeIdx + 1) % this.worldList.length; this.biome = this.worldList[this.biomeIdx];
+    this.stats.worlds.add(this.biome.id); this.events.onWorld?.(this.biome.id, this.stats.worlds.size);
     this.nextBiomeAt += 60;
     // Cameos der alten Welt, die noch nicht im Bild sind, nicht mit rübernehmen
     this.cameos = this.cameos.filter((c) => c.x < this.V.w);
@@ -271,6 +292,21 @@ export class Game {
     this.events.onToast?.(`📍 ${biomeName(this.biome)}`);
     sfx('memory');
   }
+
+  enterFipsland() {
+    this.savedBiome = this.biome; this.prevBiome = this.biome; this.biome = FIPSLAND; this.biomeFade = 0;
+    this.fipsT = 14; this.obstacles = []; this.items = this.items.filter((i) => !i.bad);
+    this.flash = 0.8; sfx('power'); sfx('meow');
+    this.events.onToast?.('📦 Fips’ Geheimversteck! Sammle Leckerlis! 🐾');
+    this.events.onAchieve?.('fipsbox');
+  }
+
+  leaveFipsland() {
+    this.prevBiome = this.biome; this.biome = this.savedBiome || this.worldList[this.biomeIdx]; this.biomeFade = 0;
+    this.events.onToast?.(`📍 Zurück: ${biomeName(this.biome)}`);
+  }
+
+  summonFips() { if (!this.dash) this.dash = { x: -50, y: 0, t: 0 }; }
 
   makeObstacle(type, x) {
     const o = { type, x, t: 0, yOff: 0, rot: 0, rects: [] };
@@ -339,6 +375,7 @@ export class Game {
 
   hit(o) {
     const p = this.p;
+    if (o.secret) { o.knock = { vx: 0, vy: -2000, vr: 0 }; o.yOff = -500; this.enterFipsland(); return; }
     const ox = o.x + o.w / 2, oy = this.screenY(o.yOff + 20);
     if (this.hammer > 0) {
       o.knock = { vx: 0, vy: -2000, vr: 0 }; o.yOff = -500;
@@ -368,6 +405,14 @@ export class Game {
   collect(it, iy) {
     const p = this.p, cfg = this.cfg;
     it.taken = true;
+    this.stats.items[it.type] = (this.stats.items[it.type] || 0) + 1;
+    if (it.bad) this.stats.bad = true;
+    this.events.onCollect?.(it.type);
+    if (it.type === 'treat') {
+      this.score += 3;
+      this.fx.text(it.x, this.screenY(iy) - 16, pick(['Leckerli!', '+3 🐾', 'Mjam!']), { color: '#ff6fae', size: 16 });
+      sfx('collect'); return;
+    }
     if (it.type === 'fips') {
       this.fips = 7; sfx('meow');
       this.fx.text(it.x, this.screenY(iy) - 20, `${cfg.catName || 'Fips'} hilft!`, { color: '#ffb36b', size: 22 });
@@ -389,6 +434,7 @@ export class Game {
     }
     if (it.type === 'heart') {
       this.hearts = Math.min(3, this.hearts + 1);
+      if (this.hearts >= 3) this.events.onAchieve?.('hearts');
       this.fx.text(it.x, this.screenY(iy) - 20, '+1 ❤️', { color: '#ff6b8a', size: 22 });
       this.fx.burst(it.x, this.screenY(iy), { n: 16, colors: ['#ff4f6d', '#ffb3c1', '#fff'], speed: 190, size: 2.8 });
       p.expr = 'happy'; p.exprT = 0.7;
@@ -443,7 +489,7 @@ export class Game {
     this.state = 'dying';
     p.expr = 'shock'; p.exprT = 0.45; p.vy = 520; p.duck = false;
     this.shake = 14; this.flash = 0.5;
-    this.deathInfo = { cause, score: Math.floor(this.score), mode: this.mode };
+    this.deathInfo = { cause, score: Math.floor(this.score), mode: this.mode, stats: this.stats, time: this.t };
     this.polaroids = [];
     sfx('hit'); sfx('no');
   }
@@ -522,7 +568,7 @@ export class Game {
       g.fillStyle = 'rgba(0,0,0,0.18)';
       g.beginPath(); g.ellipse(p.x + 2, V.groundY + 2, Math.max(6, 20 - p.y * 0.08), 4, 0, 0, 7); g.fill();
       drawCharacter(g, p.x, V.groundY - p.y, {
-        pose, phase: p.phase, outfit: this.outfit, expr: p.expr, scale: CHAR_SCALE, t: this.t, swell: p.swell,
+        pose, phase: p.phase, outfit: this.outfit, expr: p.expr, scale: CHAR_SCALE, t: this.t, swell: p.swell, headScale: this.eggT > 0 ? 1.9 : 0,
         rot: this.state === 'dying' ? -Math.min(1.2, this.deadT * 4) : 0,
       });
       if (this.hammer > 0 && this.state === 'run') drawJackhammer(g, p.x + 22, V.groundY - p.y - 28, this.t, this.hammer < 1.5);
@@ -550,6 +596,7 @@ export class Game {
       g.fillStyle = this.mode === 'horror' ? `rgba(200,255,200,${this.flash * 0.6})` : `rgba(255,255,255,${this.flash * 0.6})`;
       g.fillRect(0, 0, V.w, V.h);
     }
+    if (this.green) { g.fillStyle = 'rgba(70,200,70,0.13)'; g.fillRect(0, 0, V.w, V.h); }
     if (this.mode === 'horror') {
       const gr = g.createRadialGradient(p.x, V.groundY - 50, 80, p.x, V.groundY - 50, Math.max(V.w, V.h));
       gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,0.75)');
@@ -767,6 +814,7 @@ function drawJackhammer(g, x, y, t, blink) {
 }
 
 export function drawItemIcon(g, type, t = 0) {
+  if (ITEM_ICONS[type]) { ITEM_ICONS[type](g, t); return; }
   if (type === 'monkey') { drawMonkey(g, 0, 2, t, 1.25, Math.sin(t * 2) > 0); return; }
   if (type === 'heart') {
     const s = 1 + Math.sin(t * 7) * 0.08;

@@ -55,8 +55,11 @@
       <button class="btn primary big" data-mode="birthday">🎂 Geburtstags-Modus</button>
       <button class="btn big" data-mode="endless">♾️ Endlos-Modus</button>
       <button class="btn big horror" data-mode="horror" id="btn-horror">👻 Horror-Modus</button>
+      <button class="btn big roadtrip" data-mode="roadtrip" id="btn-roadtrip">🚗 Roadtrip</button>
       <div class="row">
         <button class="btn" id="btn-wardrobe">👗 Kleiderschrank</button>
+        <button class="btn" id="btn-ach">🏆 Erfolge</button>
+        <button class="btn" id="btn-shake" title="Schüttel mich!">📳</button>
         <button class="btn" id="btn-mute">🔊</button>
       </div>
     </div>
@@ -79,6 +82,17 @@
     </div>
     <div id="wardrobe-cats"></div>
     <p id="wardrobe-msg" class="hint"></p>
+  </div>
+</section>
+
+<!-- Erfolge -->
+<section id="scr-ach" class="screen hidden">
+  <div class="panel ach">
+    <div class="wardrobe-head">
+      <h2>🏆 Erfolge <small id="ach-count"></small></h2>
+      <button class="btn" id="btn-ach-done">Fertig ✓</button>
+    </div>
+    <div id="ach-list"></div>
   </div>
 </section>
 

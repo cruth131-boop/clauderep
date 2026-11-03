@@ -78,6 +78,11 @@ export const DEFAULT_CONFIG = {
     shrimp: { label: 'Garnele', points: -10, bad: true, line: 'Garnele?! Allergie!' },
     egg: { label: 'Eierkopf', points: 15 },
     monkey: { label: 'Affe', points: 10 },
+    poffertjes: { label: 'Poffertjes', points: 5 },
+    fries: { label: 'Pommes', points: 5 },
+    waffle: { label: 'Waffel', points: 5 },
+    stroop: { label: 'Stroopwafel', points: 5 },
+    treat: { label: 'Leckerli', points: 3 },
   },
   allergyLines: ['ALLERGIE-ALARM!', 'Igitt, eine Feige!', 'Garnele?! Bloß nicht!'],
   hammerLines: ['ABRISS!', 'Bauleiterin am Werk!', 'Weg mit den Fliesen!'],
@@ -108,6 +113,8 @@ export const OUTFIT_PARTS = {
       ripp: { label: 'Ripp-Shirt' },
       tank: { label: 'Enges Top' },
       princess: { label: 'Prinzessin', unlock: 'birthday' },
+      blazer: { label: 'Blazer', unlock: 'world:office' },
+      glitter: { label: 'Glitzer-Top', unlock: 'world:party' },
       green: { label: 'Grünes T-Shirt', refuse: true },
     },
   },
@@ -157,6 +164,10 @@ export const OUTFIT_PARTS = {
       shades: { label: 'Sonnenbrille' },
       party: { label: 'Partybrille' },
       sash: { label: 'Schärpe', unlock: 'birthday' },
+      apron: { label: 'Gartenschürze', unlock: 'world:garden' },
+      safari: { label: 'Safari-Hut', unlock: 'world:zoo' },
+      tote: { label: 'Jutebeutel', unlock: 'world:market' },
+      chef: { label: 'Kochmütze', unlock: 'world:kitchen' },
     },
   },
 };
@@ -166,3 +177,43 @@ export const PRESETS = {
   casual: { top: 'ripp', topColor: 'b', bottom: 'jeans', socks: 'ringel', shoes: 'docs', extra: ['scarf'] },
   princess: { top: 'princess', topColor: 'f', bottom: 'tutu', socks: 'plain', shoes: 'sneaker', extra: ['crown', 'sash'] },
 };
+
+// Titel nach Anzahl der Fehlversuche ("Das hab ich mir so nicht vorgestellt!"-Zähler)
+export const FAIL_TITLES = [
+  [0, 'Frischling'], [5, 'Anfängerin'], [10, 'Stolperkönigin'], [25, 'Profi-Pechvogel'],
+  [50, 'Bish of Pain'], [100, 'Legende des Scheiterns'], [200, 'Unkaputtbar'],
+];
+
+// Erfolge: id -> [Titel, Beschreibung, Emoji]
+export const ACHIEVEMENTS = {
+  birthday: ['Geburtstagskind', 'Den Geburtstags-Modus geschafft', '🎂'],
+  allergy: ['Allergikerin', '45 Sekunden ohne Feige oder Garnele', '🦐'],
+  monkeys: ['Affenliebe', '10 Affen gesammelt', '🐒'],
+  worlds: ['Weltenbummlerin', 'Alle 7 Welten in einem Lauf', '🌍'],
+  payback: ['Payback-Profi', '3× vor Hagen geflüchtet', '💳'],
+  mop: ['Wischsauger-Bezwingerin', '10 Wischsaugern ausgewichen', '🧹'],
+  hearts: ['Volles Herz', 'Mit 3 Herzen gleichzeitig unterwegs', '❤️'],
+  score500: ['Marathon-Bish', '500 Punkte im Endlos-Modus', '🏃‍♀️'],
+  egghead: ['Eierkopf', 'Den geheimen Eierkopf-Modus gefunden', '🥚'],
+  green: ['Grün ist das neue Schwarz', 'Das grüne T-Shirt angezogen', '👕'],
+  nightowl: ['Nachteule', 'Nach 23 Uhr gespielt', '🦉'],
+  shake: ['Erdbeben', 'Fips per Schütteln gerufen', '📳'],
+  fipsbox: ['Katzen-Klappe', 'Fips’ Geheimgang gefunden', '📦'],
+  challenge: ['Challenge accepted', 'Eine Tages-Challenge geschafft', '🎯'],
+  stumble: ['Stolperkönigin', '10× gescheitert', '🤕'],
+  roadtrip: ['Auf Achse', 'Den Roadtrip-Modus gespielt', '🚗'],
+};
+
+// Tages-Challenges (je Tag eine, abhängig vom Datum)
+export const CHALLENGES = [
+  { id: 'pizza5', text: 'Sammle 5× Pizza in einer Runde', item: 'pizza', n: 5 },
+  { id: 'wine3', text: 'Sammle 3× Wein in einer Runde', item: 'wine', n: 3 },
+  { id: 'hearts2', text: 'Sammle 2 Herzen in einer Runde', item: 'heart', n: 2 },
+  { id: 'score150', text: 'Schaffe 150 Punkte im Endlos-Modus', score: 150, mode: 'endless' },
+  { id: 'chairs5', text: 'Spring über 5 Bürostühle', pass: 'chair', n: 5 },
+  { id: 'monkeys5', text: 'Sammle 5 Affen im Zoo', item: 'monkey', n: 5 },
+  { id: 'mops3', text: 'Weiche 3 Wischsaugern aus', pass: 'mop', n: 3 },
+  { id: 'nofig80', text: '80 Punkte ohne Feige oder Garnele', score: 80, noBad: true },
+  { id: 'burger3', text: 'Sammle 3 Burger in einer Runde', item: 'burger', n: 3 },
+  { id: 'tomato4', text: 'Spring über 4 Tomatenpflanzen', pass: 'tomato', n: 4 },
+];

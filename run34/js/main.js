@@ -1,5 +1,5 @@
 import { assets, fetchBundle, unlockWithPassword, unlockWithStoredKey } from './assets.js';
-import { OUTFIT_PARTS, PRESETS } from './config.js';
+import { OUTFIT_PARTS, PRESETS, ACHIEVEMENTS, CHALLENGES, FAIL_TITLES } from './config.js';
 import { Game } from './world.js';
 import { LoseScene, FinaleScene, animateMap } from './scenes.js';
 import { drawCharacter } from './character.js';
@@ -14,11 +14,25 @@ const DEV = new URLSearchParams(location.search).has('dev');
 // ----------------------------------------------------------------- Speicher
 const SAVE_KEY = 'br.save.v1';
 const save = {
-  best: { birthday: 0, endless: 0, horror: 0 }, fails: 0, won: false, outfit: { ...PRESETS.matrose }, muted: false, horrorSeen: false,
+  best: { birthday: 0, endless: 0, horror: 0, roadtrip: 0 }, fails: 0, won: false, outfit: { ...PRESETS.matrose }, muted: false, horrorSeen: false,
+  totalFails: 0, ach: {}, worlds: [], stats: { monkeys: 0, mops: 0, chases: 0 }, challengeDone: {}, greenTaps: 0, greenUnlocked: false, eggNext: false,
 };
 try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch {}
 const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {} };
-const unlocked = (what) => DEV || (what === 'birthday' ? save.won : true);
+save.best.roadtrip ??= 0; save.stats ??= { monkeys: 0, mops: 0, chases: 0 }; save.ach ??= {}; save.worlds ??= []; save.challengeDone ??= {};
+const unlocked = (what) => DEV || (what === 'birthday' ? save.won : what?.startsWith('world:') ? save.worlds.includes(what.slice(6)) : true);
+const ROADTRIP_START = new Date(2026, 11, 4);
+const roadtripOpen = () => DEV || Date.now() >= ROADTRIP_START.getTime();
+const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+const todaysChallenge = () => { const d = new Date(); const n = Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 864e5); return CHALLENGES[n % CHALLENGES.length]; };
+const failTitle = () => FAIL_TITLES.filter(([n]) => save.totalFails >= n).pop()[1];
+function unlockAch(id) {
+  if (!ACHIEVEMENTS[id] || save.ach[id]) return;
+  save.ach[id] = Date.now(); persist();
+  const [title, , emo] = ACHIEVEMENTS[id];
+  setTimeout(() => toast(`🏆 Erfolg: ${emo} ${title}`, 2600), 300);
+  sfx('power');
+}
 const mercyLevel = () => (save.won ? 0 : save.fails >= 10 ? 3 : save.fails >= 6 ? 2 : save.fails >= 3 ? 1 : 0);
 setMuted(save.muted);
 
@@ -69,6 +83,10 @@ function toMenu() {
   document.title = cfg.title;
   $('menu-title').textContent = cfg.title;
   $('menu-sub').textContent = cfg.menuSubtitle;
+  const rb = $('btn-roadtrip');
+  rb.classList.toggle('locked', !roadtripOpen());
+  rb.textContent = roadtripOpen() ? '🚗 Roadtrip' : '🔒 Roadtrip (ab 4.12.)';
+  rb.classList.toggle('hidden', !save.won && !DEV);
   const hb = $('btn-horror');
   hb.classList.toggle('locked', !unlocked('birthday'));
   hb.textContent = unlocked('birthday') ? '👻 Horror-Modus' : '🔒 Horror-Modus';
@@ -76,7 +94,19 @@ function toMenu() {
   if (save.best.birthday) bests.push(`🕯️ ${Math.min(save.best.birthday, assets.config.birthdayTarget || 34)}`);
   if (save.best.endless) bests.push(`♾️ ${save.best.endless}`);
   if (save.best.horror) bests.push(`👻 ${save.best.horror}`);
-  $('menu-hint').textContent = (bests.length ? `Rekorde: ${bests.join('  ·  ')}` : '') + (innerHeight > innerWidth ? '\nTipp: Quer halten = mehr Überblick' : '');
+  if (save.best.roadtrip) bests.push(`🚗 ${save.best.roadtrip}`);
+  const lines = [];
+  if (bests.length) lines.push(`Rekorde: ${bests.join('  ·  ')}`);
+  if (save.won) {
+    const days = Math.ceil((ROADTRIP_START.getTime() - Date.now()) / 864e5);
+    const end = new Date(2026, 11, 7).getTime();
+    lines.push(days > 0 ? `🚗 Noch ${days} ${days === 1 ? 'Tag' : 'Tage'} bis Eindhoven! 🇳🇱` : Date.now() < end ? '🚗 Roadtrip läuft – gute Fahrt! 🇳🇱🇧🇪' : '🚗 Roadtrip-Modus freigeschaltet');
+  }
+  const ch = todaysChallenge();
+  lines.push(`🎯 Heute: ${ch.text}${save.challengeDone[todayKey()] ? ' ✓' : ''}`);
+  if (save.totalFails) lines.push(`🤕 „Das hab ich mir so nicht vorgestellt!“ ×${save.totalFails} · ${failTitle()}`);
+  if (innerHeight > innerWidth) lines.push('Tipp: Quer halten = mehr Überblick');
+  $('menu-hint').textContent = lines.join('\n');
   $('btn-mute').textContent = isMuted() ? '🔇' : '🔊';
   show('scr-menu');
   playMusic('menu');
@@ -87,6 +117,10 @@ document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('clic
   const mode = b.dataset.mode;
   if (mode === 'horror' && !unlocked('birthday')) {
     toast('🔒 Erst den Geburtstags-Modus schaffen!'); sfx('bad'); return;
+  }
+  if (mode === 'roadtrip' && !roadtripOpen()) {
+    const days = Math.ceil((ROADTRIP_START.getTime() - Date.now()) / 864e5);
+    toast(`🔒 Geduld! Noch ${days} ${days === 1 ? 'Tag' : 'Tage'} bis zum Roadtrip 🚗`); sfx('bad'); return;
   }
   startGame(mode);
 }));
@@ -101,21 +135,41 @@ $('btn-mute').addEventListener('click', async () => {
 function startGame(mode) {
   show(null); screen = 'play'; scene = null; paused = false;
   const mercy = mode === 'birthday' ? mercyLevel() : 0;
+  const eggHead = save.eggNext; save.eggNext = false; persist();
   game = new Game(mode, {
-    outfit: save.outfit, mercy,
+    outfit: save.outfit, mercy, eggHead,
     events: {
       onDeath: onDeath,
       onFinale: onFinale,
       onToast: (t) => toast(t),
       onHearts: updateHearts,
+      onAchieve: unlockAch,
+      onWorld: (id, count) => {
+        if (!save.worlds.includes(id)) {
+          save.worlds.push(id); persist();
+          const unl = Object.entries(OUTFIT_PARTS).flatMap(([, d]) => Object.values(d.options)).filter((o) => o.unlock === `world:${id}`);
+          if (unl.length) setTimeout(() => toast(`👗 Neues Outfit freigeschaltet: ${unl.map((o) => o.label).join(', ')}`, 2800), 2600);
+        }
+        if (count >= 7) unlockAch('worlds');
+      },
+      onPass: (type) => { if (type === 'mop' && ++save.stats.mops >= 10) unlockAch('mop'); checkChallengeLive(); },
+      onCollect: (type) => { if (type === 'monkey' && ++save.stats.monkeys >= 10) unlockAch('monkeys'); checkChallengeLive(); },
+      onChase: () => { if (++save.stats.chases >= 3) unlockAch('payback'); },
     },
   });
+  if (mode === 'roadtrip') unlockAch('roadtrip');
+  if (save.outfit.top === 'green') unlockAch('green');
+  if (eggHead) setTimeout(() => toast('🥚 Eierkopf-Modus! 30 Sekunden Riesenkopf'), 200);
+  const hr = new Date().getHours();
+  if (hr >= 23 || hr < 4) { setTimeout(() => toast('Kimi, geh ins Bett! 😴', 2600), 900); unlockAch('nightowl'); }
+  if (hr === 6) setTimeout(() => toast('⏰ 6 Uhr! Die Wecker sind los…', 2600), 900);
   setHud(true);
   if (DEV) window.__game = game;
   $('progress').classList.toggle('hidden', mode !== 'birthday');
   $('best').textContent = mode === 'birthday' ? `von ${game.target} 🕯️` : `HI ${save.best[mode] || 0}`;
   updateHearts(game.hearts);
   playMusic(mode === 'horror' ? 'horror' : 'run');
+  challengeShown = false;
   if (mode === 'horror') toast(`👻 ${assets.config.horror?.intro || ''}`, 3200);
   else if (mercy) toast(['', '🐱 Gnadenmodus: Fips hilft & alles etwas langsamer', '❤️❤️ Gnadenmodus: 2 Extra-Leben', '🤫 Schummel-Modus: Start mit 25 Kerzen'][mercy], 3000);
   tapHint('Tippen = Springen  ·  ⬇ = Ducken', 2600);
@@ -123,9 +177,36 @@ function startGame(mode) {
 
 function updateHearts(n) { n = Math.max(0, Math.min(3, n)); $('hearts').textContent = '❤️'.repeat(n) + '🤍'.repeat(3 - n); }
 
+let challengeShown = false;
+function challengeMet(st, score, mode) {
+  const c = todaysChallenge();
+  if (c.mode && c.mode !== mode) return false;
+  if (c.item) return (st.items[c.item] || 0) >= c.n;
+  if (c.pass) return (st.passed[c.pass] || 0) >= c.n;
+  if (c.score) return score >= c.score && (!c.noBad || !st.bad) && (mode === 'endless' || mode === 'roadtrip' || mode === 'horror');
+  return false;
+}
+function checkChallengeLive() {
+  if (!game || challengeShown || save.challengeDone[todayKey()]) return;
+  if (challengeMet(game.stats, Math.floor(game.score), game.mode)) {
+    challengeShown = true; save.challengeDone[todayKey()] = true; persist();
+    toast(`🎯 Tages-Challenge geschafft: ${todaysChallenge().text}!`, 2800); unlockAch('challenge');
+    game.fx.burst(game.V.w / 2, game.V.groundY * 0.4, { n: 40, type: 'confetti', speed: 260, size: 4, gravity: 300 });
+  }
+}
+function runEnded(st, score, mode, time) {
+  if (time >= 45 && !st.bad) unlockAch('allergy');
+  if ((mode === 'endless' || mode === 'roadtrip') && score >= 500) unlockAch('score500');
+  checkChallengeLive();
+  persist();
+}
+
 function onDeath(info) {
   $('tap-hint').classList.add('hidden');
   const mode = info.mode;
+  save.totalFails = (save.totalFails || 0) + 1;
+  if (save.totalFails >= 10) unlockAch('stumble');
+  runEnded(info.stats, info.score, mode, info.time);
   if (info.score > (save.best[mode] || 0)) { info.newBest = (save.best[mode] || 0) > 0; save.best[mode] = info.score; }
   let mercyMsg = '';
   if (mode === 'birthday' && !save.won) {
@@ -168,6 +249,8 @@ function showReveal() {
   const gift = assets.config.gift || {};
   const firstWin = !save.won;
   save.won = true;
+  unlockAch('birthday');
+  runEnded(game.stats, Math.floor(game.score), 'birthday', game.t);
   save.best.birthday = Math.max(save.best.birthday || 0, Math.floor(game.score));
   persist();
   $('reveal-kicker').textContent = gift.kicker || 'Dein Geschenk';
@@ -255,9 +338,19 @@ function buildWardrobe() {
       else b.textContent = (locked ? '🔒 ' : '') + opt.label;
       b.addEventListener('click', () => {
         initAudio();
-        if (locked) { $('wardrobe-msg').textContent = '🔒 Wird im Geburtstags-Modus freigeschaltet!'; sfx('bad'); return; }
-        if (opt.refuse) {
-          $('wardrobe-msg').textContent = `„${assets.config.loseLines?.[0] || 'Nein.'}" Grün kommt hier nicht rein. (Außer im Horror-Modus… 👻)`;
+        if (locked) {
+          const wn = { office: 'Büro', garden: 'Garten', party: 'Party', zoo: 'Zoo', market: 'Wochenmarkt', kitchen: 'Küche' }[opt.unlock?.slice(6)];
+          $('wardrobe-msg').textContent = wn ? `🔒 Erreiche im Endlos-Modus die Welt „${wn}“!` : '🔒 Wird im Geburtstags-Modus freigeschaltet!';
+          sfx('bad'); return;
+        }
+        if (opt.refuse && !save.greenUnlocked) {
+          save.greenTaps = (save.greenTaps || 0) + 1; persist();
+          if (save.greenTaps >= 10) {
+            save.greenUnlocked = true; persist();
+            $('wardrobe-msg').textContent = 'Na gut… 🤢 Du hast es so gewollt. Grün ist jetzt erlaubt.';
+            sfx('power'); buildWardrobe(); return;
+          }
+          $('wardrobe-msg').textContent = save.greenTaps >= 6 ? `Du bist ganz schön hartnäckig… (${10 - save.greenTaps})` : `„${assets.config.loseLines?.[0] || 'Nein.'}" Grün kommt hier nicht rein. (Außer im Horror-Modus… 👻)`;
           sfx('no'); b.animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], { duration: 250, iterations: 2 });
           return;
         }
@@ -348,3 +441,55 @@ $('lock-form').addEventListener('submit', async (e) => {
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 boot();
+
+// ----------------------------------------------------------------- Easter Eggs
+// 5× schnell auf den Titel tippen -> Eierkopf-Modus in der nächsten Runde
+let titleTaps = [];
+$('menu-title').addEventListener('click', () => {
+  initAudio();
+  const now = performance.now(); titleTaps = titleTaps.filter((x) => now - x < 2500); titleTaps.push(now);
+  sfx('tap', titleTaps.length);
+  if (titleTaps.length >= 5) {
+    titleTaps = []; save.eggNext = true; persist(); unlockAch('egghead');
+    toast('🥚 Geheimer Eierkopf-Modus! Die nächste Runde startet mit Riesenkopf.', 3000);
+  }
+});
+
+// Schütteln ruft Fips
+let shakeOn = false, lastShake = 0;
+function onMotion(e) {
+  const a = e.accelerationIncludingGravity || e.acceleration; if (!a) return;
+  const m = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
+  if (m > 28 && performance.now() - lastShake > 1500) {
+    lastShake = performance.now();
+    if (game) { game.summonFips(); unlockAch('shake'); if (screen === 'menu') toast('🐱 Miau!'); }
+  }
+}
+$('btn-shake').addEventListener('click', async () => {
+  initAudio();
+  try {
+    if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission) {
+      const r = await DeviceMotionEvent.requestPermission(); if (r !== 'granted') { toast('Ohne Erlaubnis kein Schütteln 🤷‍♀️'); return; }
+    }
+    if (!shakeOn) { addEventListener('devicemotion', onMotion); shakeOn = true; }
+    $('btn-shake').textContent = '📳✓';
+    toast('📳 Schüttel dein Handy… 🐱', 2400);
+    game?.summonFips();
+  } catch { toast('Schütteln geht auf diesem Gerät leider nicht.'); }
+});
+
+// Erfolge
+function showAchievements() {
+  screen = 'ach';
+  const ids = Object.keys(ACHIEVEMENTS);
+  const prog = { monkeys: `${Math.min(10, save.stats.monkeys)}/10`, mop: `${Math.min(10, save.stats.mops)}/10`, payback: `${Math.min(3, save.stats.chases)}/3`, stumble: `${Math.min(10, save.totalFails || 0)}/10`, worlds: `${Math.min(7, save.worlds.length + 1)}/7` };
+  $('ach-count').textContent = `${ids.filter((i) => save.ach[i]).length}/${ids.length}`;
+  $('ach-list').innerHTML = ids.map((id) => {
+    const [t, d, e] = ACHIEVEMENTS[id], on = !!save.ach[id];
+    const secret = !on && ['egghead', 'green', 'shake', 'fipsbox', 'nightowl'].includes(id);
+    return `<div class="ach-item ${on ? 'on' : ''}"><div class="e">${secret ? '❓' : e}</div><div><b>${secret ? 'Geheim' : t}</b><span>${secret ? 'Ein Easter Egg wartet…' : d}${!on && prog[id] ? ` · ${prog[id]}` : ''}</span></div></div>`;
+  }).join('');
+  show('scr-ach');
+}
+$('btn-ach').addEventListener('click', () => { initAudio(); showAchievements(); });
+$('btn-ach-done').addEventListener('click', toMenu);
