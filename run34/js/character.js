@@ -981,3 +981,79 @@ function bodyHero(g) {
   g.moveTo(-9, -72); g.quadraticCurveTo(0, -75, 10, -72); g.quadraticCurveTo(13, -60, 9, -52); g.quadraticCurveTo(10, -44, 10, -40);
   g.lineTo(-10, -40); g.quadraticCurveTo(-11, -47, -9, -53); g.quadraticCurveTo(-12, -62, -9, -72); g.closePath();
 }
+
+// ---------------------------------------------------------------------------
+// Heidi: hüpfender Fan mit Fahne
+// ---------------------------------------------------------------------------
+export function drawFan(g, x, footY, { faceKey, t = 0, color = '#d55b8f', scale = 1, flag = 'GO KIMI! ❤️' }) {
+  const hop = Math.max(0, Math.sin(t * 7)) * 16;
+  g.save(); g.translate(x, footY); g.scale(scale, scale);
+  g.fillStyle = 'rgba(0,0,0,0.18)'; g.beginPath(); g.ellipse(0, 0, 14 - hop * 0.3, 3, 0, 0, 7); g.fill();
+  g.translate(0, -hop);
+  const tuck = hop > 6 ? 0.7 : 0.1;
+  drawGroup(g, [cap([-4, -40], [-8 - tuck * 4, -22], 9, 8, '#333a4a', 0.85), cap([-8 - tuck * 4, -22], [-6, -4], 8, 7, '#333a4a', 0.85)]);
+  drawGroup(g, [cap([4, -40], [8 + tuck * 4, -22], 9, 8, '#333a4a', 1), cap([8 + tuck * 4, -22], [6, -4], 8, 7, '#333a4a', 1)]);
+  g.fillStyle = '#222'; roundRect(g, -12, -6 - (tuck > 0.5 ? 2 : 0), 11, 6, 3); g.fill(); roundRect(g, 2, -6 - (tuck > 0.5 ? 2 : 0), 11, 6, 3); g.fill();
+  drawGroup(g, [{ path: (g) => { g.moveTo(-12, -72); g.quadraticCurveTo(0, -76, 12, -72); g.lineTo(14, -38); g.lineTo(-14, -38); g.closePath(); }, fill: (g) => cylFill(g, [0, -74], [0, -38], 26, color, 1) }]);
+  // freier Arm jubelt
+  const wv = Math.sin(t * 9) * 0.4;
+  const e1 = pt(-11, -68, Math.PI * 0.85 + wv, 14), h1 = pt(e1[0], e1[1], Math.PI * 0.95 + wv, 12);
+  drawGroup(g, [cap([-11, -68], e1, 8, 7, color, 0.9), cap(e1, h1, 7, 6, SKIN, 0.9), { path: (g) => g.arc(h1[0], h1[1], 4.3, 0, Math.PI * 2), fill: SKIN }]);
+  // Fahnenarm
+  const fa = Math.sin(t * 4) * 0.25;
+  const hx = 15 + Math.sin(fa) * 6, hy = -86;
+  drawGroup(g, [cap([11, -68], [16, -78], 8, 7, color, 1), cap([16, -78], [hx, hy], 7, 6, SKIN, 1), { path: (g) => g.arc(hx, hy, 4.3, 0, Math.PI * 2), fill: SKIN }]);
+  // Fahnenstange + wehende Fahne
+  const top = [hx + 4 + Math.sin(fa) * 10, hy - 48];
+  g.strokeStyle = '#8d6e63'; g.lineWidth = 2.2; g.beginPath(); g.moveTo(hx - 1, hy + 10); g.lineTo(top[0], top[1]); g.stroke();
+  const fw = 82, fh = 38;
+  g.beginPath(); g.moveTo(top[0], top[1]);
+  for (let i = 0; i <= 10; i++) { const u = i / 10; g.lineTo(top[0] + u * fw, top[1] + Math.sin(t * 9 - u * 5) * 4 * u); }
+  for (let i = 10; i >= 0; i--) { const u = i / 10; g.lineTo(top[0] + u * fw, top[1] + fh + Math.sin(t * 9 - u * 5) * 4 * u); }
+  g.closePath();
+  g.strokeStyle = OL; g.lineWidth = 2.4; g.stroke();
+  const gr = g.createLinearGradient(top[0], 0, top[0] + fw, 0); gr.addColorStop(0, '#ff4fa3'); gr.addColorStop(1, '#ffd23f');
+  g.fillStyle = gr; g.fill();
+  g.save(); g.translate(top[0] + fw / 2, top[1] + fh / 2 + Math.sin(t * 9 - 2.5) * 2); g.rotate(Math.cos(t * 9 - 2.5) * 0.06);
+  g.fillStyle = '#fff'; g.font = '900 14px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = 3; g.strokeStyle = 'rgba(120,20,70,0.6)'; g.strokeText(flag, 0, 0); g.fillText(flag, 0, 0);
+  g.restore();
+  drawFaceOn(g, faceKey, 'happy', 0, -74, 20);
+  g.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Oma Inge auf der Rollator-Rakete
+// ---------------------------------------------------------------------------
+export function drawRollatorOma(g, x, footY, { t = 0, scale = 1 }) {
+  g.save(); g.translate(x, footY); g.scale(scale, scale);
+  const bob = Math.sin(t * 30) * 0.8;
+  // Flamme
+  const fl = 14 + Math.sin(t * 50) * 4 + Math.random() * 4;
+  const fg = g.createLinearGradient(-30, 0, -30 - fl * 2, 0); fg.addColorStop(0, '#fff3a0'); fg.addColorStop(0.4, '#ff9f1c'); fg.addColorStop(1, 'rgba(255,60,30,0)');
+  g.fillStyle = fg; g.beginPath(); g.moveTo(-28, -22 + bob); g.quadraticCurveTo(-28 - fl * 1.6, -18 + bob, -28 - fl * 2.4, -16 + bob); g.quadraticCurveTo(-28 - fl * 1.6, -12 + bob, -28, -10 + bob); g.fill();
+  g.translate(0, bob);
+  // Rakete
+  drawGroup(g, [
+    { path: (g) => capPath(g, [-28, -16], [6, -16], 11, 11), fill: (g) => cylFill(g, [-28, -16], [6, -16], 11, '#cfd8dc', 1) },
+    { path: (g) => { g.moveTo(6, -21.5); g.quadraticCurveTo(16, -16, 6, -10.5); g.closePath(); }, fill: '#e53935' },
+    { path: (g) => { g.moveTo(-26, -21); g.lineTo(-33, -28); g.lineTo(-20, -21); g.closePath(); g.moveTo(-26, -11); g.lineTo(-33, -4); g.lineTo(-20, -11); g.closePath(); }, fill: '#e53935' },
+  ]);
+  // Rollator-Gestell
+  g.strokeStyle = '#7e57c2'; g.lineWidth = 2.6; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(-14, -6); g.lineTo(-10, -44); g.lineTo(14, -44); g.lineTo(18, -6); g.moveTo(-12, -24); g.lineTo(16, -24); g.stroke();
+  g.fillStyle = '#212121'; for (const wx of [-14, 18]) { g.beginPath(); g.arc(wx, -4, 4.5, 0, 7); g.fill(); g.fillStyle = '#9e9e9e'; g.beginPath(); g.arc(wx, -4, 1.6, 0, 7); g.fill(); g.fillStyle = '#212121'; }
+  g.fillStyle = '#5d4037'; roundRect(g, -6, -36, 18, 10, 2); g.fill();
+  g.fillStyle = '#ffd54f'; g.fillRect(-4, -38, 4, 3); g.fillStyle = '#e53935'; g.beginPath(); g.arc(6, -37, 2.2, 0, 7); g.fill();
+  // Oma (steht hinten auf dem Rollator, beugt sich nach vorne)
+  const dress = '#8a5aa8';
+  drawGroup(g, [cap([-22, -34], [-26, -6], 9, 8, '#6b5b4b', 0.85), cap([-18, -34], [-20, -6], 9, 8, '#6b5b4b', 1)]);
+  g.fillStyle = '#222'; roundRect(g, -31, -7, 11, 6, 3); g.fill(); roundRect(g, -24, -7, 11, 6, 3); g.fill();
+  drawGroup(g, [{ path: (g) => { g.moveTo(-30, -36); g.lineTo(-10, -36); g.lineTo(-4, -62); g.quadraticCurveTo(-14, -68, -22, -62); g.closePath(); }, fill: (g) => cylFill(g, [-20, -36], [-12, -64], 24, dress, 1) }]);
+  drawGroup(g, [cap([-8, -58], [2, -50], 8, 7, dress, 1), cap([2, -50], [-10, -44], 7, 6, SKIN, 1), { path: (g) => g.arc(-10, -44, 4, 0, Math.PI * 2), fill: SKIN }]);
+  // wehender Schal
+  g.strokeStyle = '#e53935'; g.lineWidth = 4;
+  g.beginPath(); g.moveTo(-10, -64); for (let i = 1; i <= 4; i++) g.lineTo(-10 - i * 7, -64 + Math.sin(t * 20 - i) * 3 - i); g.stroke();
+  drawFaceOn(g, 'oma', 'happy', -6, -64, 19);
+  g.restore();
+}

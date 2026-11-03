@@ -1,5 +1,5 @@
 // Spiellogik: Physik, Hindernisse, Items, Power-ups, Cameos, Hintergründe.
-import { drawCharacter, drawCat, drawPerson, drawHero, star, roundRect } from './character.js';
+import { drawCharacter, drawCat, drawPerson, drawHero, drawFan, drawRollatorOma, star, roundRect } from './character.js';
 import { assets, getFace } from './assets.js';
 import { Particles } from './fx.js';
 import { sfx } from './audio.js';
@@ -71,6 +71,7 @@ export class Game {
     this.green = this.outfit.top === 'green' && mode !== 'horror';
     this.hour = new Date().getHours();
     this.boxSpawned = false; this.fipsT = 0; this.savedBiome = null;
+    this.omaRide = null; this.nextOma = ['birthday', 'endless', 'roadtrip'].includes(mode) ? rand(26, 34) : Infinity;
     this.hero = null; this.nextHero = ['birthday', 'endless', 'roadtrip', 'horror'].includes(mode) ? rand(16, 24) : Infinity;
     this.prevBiome = null; this.biomeFade = 1; this.nextBiomeAt = 60;
   }
@@ -257,6 +258,7 @@ export class Game {
   updateSpecials(dt) {
     const p = this.p, V = this.V;
     this.updateHero(dt);
+    this.updateOma(dt);
     const active = this.state === 'run' || this.state === 'idle';
     // Hagen läuft Kimi hinterher ("Payback!") – holt sie aber nie ein
     if (this.chase) {
@@ -265,7 +267,7 @@ export class Game {
       c.x += (target - c.x) * Math.min(1, dt * (c.t < 4.2 ? 1.8 : 0.9));
       if (c.t > 4.2 && !c.gaveUp) { c.gaveUp = true; if (this.state === 'run') { this.stats.chases++; this.events.onChase?.(); } this.fx.text(c.x + 10, V.groundY - 95, 'Puh…', { color: '#fff', size: 14 }); }
       if (c.t > 7) this.chase = null;
-    } else if (active && this.cfg.chaser && this.mode !== 'horror' && !this.hero) {
+    } else if (active && this.cfg.chaser && this.mode !== 'horror' && !this.hero && !this.omaRide) {
       this.nextChase -= dt;
       if (this.nextChase <= 0) { this.nextChase = rand(22, 32); this.chase = { x: -60, t: 0, face: this.cfg.chaser.face, line: this.cfg.chaser.line }; }
     }
@@ -314,7 +316,7 @@ export class Game {
     const p = this.p, V = this.V, H = this.cfg.heroLines || {};
     const zombie = this.mode === 'horror';
     if (!this.hero) {
-      if (this.state !== 'run' || this.fipsT > 0 || this.chase || this.hammer > 0) return;
+      if (this.state !== 'run' || this.fipsT > 0 || this.chase || this.omaRide || this.hammer > 0) return;
       this.nextHero -= dt;
       if (this.nextHero <= 0) {
         this.hero = { ph: 'in', t: 0, x: -110, y: 120, punch: 0 };
@@ -352,6 +354,27 @@ export class Game {
       h.x += 560 * dt; h.y += 70 * dt;
       if (h.y > 420 || h.x > V.w + 120) { this.hero = null; this.nextHero = rand(40, 55); }
     }
+  }
+
+  // Oma Inge rast auf der Rollator-Rakete vorbei und lässt Graupensuppe (= Herz) fallen
+  updateOma(dt) {
+    const p = this.p, V = this.V;
+    if (!this.omaRide) {
+      if (this.state !== 'run' || this.hero || this.chase || this.fipsT > 0) return;
+      this.nextOma -= dt;
+      if (this.nextOma <= 0) { this.omaRide = { x: -90, t: 0, dropped: false, say: pick(this.cfg.omaRideLines || ['Aus dem Weg, Kind!']) }; sfx('launch'); }
+      return;
+    }
+    const o = this.omaRide; o.t += dt;
+    o.x += (o.x < p.x + 40 ? 330 : 420) * dt;
+    if (o.t % 0.05 < dt) this.fx.list.push({ x: o.x - 40, y: V.groundY - 22, vx: -60 - Math.random() * 40, vy: -10 + Math.random() * 20, life: 0.7, max: 0.7, color: 'rgba(200,200,200,0.8)', size: 3 + Math.random() * 2, gravity: -20, type: 'smoke', rot: 0, vr: 0, drag: 1 });
+    if (!o.dropped && o.x > p.x + 110) {
+      o.dropped = true;
+      const it = this.makeItem('soup', o.x, 40); it.flying = true; it.vx = -40; it.vy = 260; it.restY = 34;
+      this.items.push(it);
+      this.fx.text(o.x, V.groundY - 90, pick(this.cfg.omaDropLines || ['Hier, Kind – iss was!']), { color: '#fff', size: 15, life: 1.4 });
+    }
+    if (o.x > V.w + 120) { this.omaRide = null; this.nextOma = rand(38, 52); }
   }
 
   drawHeroFx(g) {
@@ -486,6 +509,13 @@ export class Game {
       this.fx.text(it.x, this.screenY(iy) - 20, pick(['AFFE! 🐒', 'Uh uh ah ah!', '+10 🐒']), { color: '#ffd23f', size: 22 });
       this.fx.burst(it.x, this.screenY(iy), { n: 14, colors: ['#7b4a26', '#e9c39b', '#ffd23f'], speed: 170 });
       sfx('cheer');
+      return;
+    }
+    if (it.type === 'soup') {
+      this.hearts = Math.min(3, this.hearts + 1);
+      this.fx.text(it.x, this.screenY(iy) - 20, 'Graupensuppe stärkt! ❤️', { color: '#ffd23f', size: 18 });
+      this.fx.burst(it.x, this.screenY(iy), { n: 14, colors: ['#fff', '#ffe0b2', '#ff6b8a'], speed: 160 });
+      p.expr = 'happy'; p.exprT = 0.8; sfx('heart'); this.events.onHearts?.(this.hearts); this.events.onAchieve?.('soup');
       return;
     }
     if (it.type === 'heart') {
@@ -633,6 +663,11 @@ export class Game {
       drawCat(g, p.x - 55, V.groundY, { pose: 'sit', scale: 1, t: this.t });
     }
     if (this.dash) drawCat(g, this.dash.x, V.groundY - this.dash.y, { phase: this.t * 16, scale: 0.9, t: this.t });
+    if (this.omaRide) {
+      const o = this.omaRide;
+      drawRollatorOma(g, o.x, V.groundY, { t: this.t, scale: CHAR_SCALE * 1.05 });
+      if (o.t < 1.8) speech(g, o.x - 30, V.groundY - 100, o.say);
+    }
     this.drawHeroFx(g);
     this.fx.draw(g);
     for (const pl of this.polaroids) this.drawPolaroid(g, pl);
@@ -663,6 +698,12 @@ export class Game {
 
   drawCameo(g, c) {
     const V = this.V;
+    if (c.flag) {
+      drawFan(g, c.x, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.color, scale: 0.72, flag: c.flag });
+      if (Math.floor(c.t * 7 / Math.PI) !== c.lastHop) { c.lastHop = Math.floor(c.t * 7 / Math.PI); if (c.lastHop % 2 === 0) this.fx.burst(c.x, V.groundY - 90, { n: 6, type: 'confetti', speed: 90, size: 3, gravity: 200 }); }
+      if (c.said && c.sayT < 2.6 && c.line) speech(g, c.x + 30, V.groundY - 150, c.line);
+      return;
+    }
     drawPerson(g, c.x, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.color, oma: c.oma, scale: 0.72, wave: true });
     if (c.said && c.sayT < 2.6 && c.line) speech(g, c.x + 12, V.groundY - 112, c.line);
   }
@@ -873,6 +914,16 @@ function drawJackhammer(g, x, y, t, blink) {
 export function drawItemIcon(g, type, t = 0) {
   if (ITEM_ICONS[type]) { ITEM_ICONS[type](g, t); return; }
   if (type === 'monkey') { drawMonkey(g, 0, 2, t, 1.25, Math.sin(t * 2) > 0); return; }
+  if (type === 'soup') {
+    g.fillStyle = 'rgba(255,255,255,0.6)';
+    for (let i = 0; i < 3; i++) { const yy = -10 - ((t * 20 + i * 6) % 14); g.beginPath(); g.arc(-5 + i * 5 + Math.sin(t * 4 + i), yy, 2.2, 0, 7); g.fill(); }
+    g.fillStyle = '#f4f1ea'; g.beginPath(); g.ellipse(0, 4, 14, 4, 0, 0, 7); g.fill();
+    g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(-11, -3); g.lineTo(11, -3); g.quadraticCurveTo(10, 7, 0, 7); g.quadraticCurveTo(-10, 7, -11, -3); g.fill();
+    g.fillStyle = '#d7b47a'; g.beginPath(); g.ellipse(0, -3, 11, 3, 0, 0, 7); g.fill();
+    g.fillStyle = '#f3e3c0'; for (const [px, py] of [[-5, -3], [0, -4], [4, -2.5], [-2, -2]]) { g.beginPath(); g.arc(px, py, 1, 0, 7); g.fill(); }
+    g.fillStyle = '#ff4f6d'; g.font = '900 7px sans-serif'; g.textAlign = 'center'; g.fillText('♥', 0, 4.5);
+    return;
+  }
   if (type === 'heart') {
     const s = 1 + Math.sin(t * 7) * 0.08;
     g.save(); g.scale(s, s);

@@ -203,6 +203,7 @@ export const ACHIEVEMENTS = {
   stumble: ['Stolperkönigin', '10× gescheitert', '🤕'],
   roadtrip: ['Auf Achse', 'Den Roadtrip-Modus gespielt', '🚗'],
   hero: ['Gerettet!', 'Der Superheld ist erschienen', '🦸'],
+  soup: ['Graupensuppe!', 'Omas Suppe von der Rollator-Rakete gegessen', '🍲'],
 };
 
 // Tages-Challenges (je Tag eine, abhängig vom Datum)
