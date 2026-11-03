@@ -1,0 +1,137 @@
+// Öffentliche Standardwerte. Alles Persönliche (Namen, Sprüche, Geschenk, Fotos)
+// kommt aus private/config.json und wird verschlüsselt in assets/bundle.enc ausgeliefert.
+export const DEFAULT_CONFIG = {
+  title: 'Birthday Run',
+  name: 'Geburtstagskind',
+  age: 34,
+  birthdayTarget: 100,
+  menuSubtitle: 'Lauf, Geburtstagskind, lauf!',
+  // Sprüche beim Verlieren (allgemein)
+  loseLines: [
+    'Das hab ich mir so nicht vorgestellt!',
+    'Ab 34 lässt die Reaktion halt nach…',
+    'Die Katze hätte das geschafft.',
+    'Knapp daneben ist auch vorbei.',
+  ],
+  // Sprüche je nach Hindernis
+  obstacleLines: {
+    candles: ['Von Geburtstagskerzen besiegt. Peinlich.', 'Zu viele Kerzen, zu wenig Sprungkraft.'],
+    shirt: ['Ausgerechnet ein grünes T-Shirt…', 'Grün. Warum immer grün?!'],
+    flyshirt: ['Angriff des fliegenden grünen T-Shirts!', 'Ducken wäre eine Option gewesen.'],
+    height: ['1,65 m sind halt nicht groß genug.', 'Mindestgröße: nicht erreicht.'],
+    alarm: ['Der Wecker gewinnt. Wie jeden Morgen.'],
+    tax: ['Die Steuererklärung holt dich immer ein.'],
+    ghost: ['Buh!'],
+    fig: ['Von einer Feige erwischt. Allergie-Schock!'],
+    shrimp: ['Garnelen-Attacke! Notarzt!'],
+  },
+  titleLines: ['Autsch!', 'Neeein!', 'Oh nein!', 'Uff!', 'Mist!'],
+  mercyLines: [
+    'Okay, okay… ab jetzt hilft dir die Katze! 🐱 (alles etwas langsamer)',
+    'Na gut: Du bekommst zusätzlich 2 Extra-Leben. ❤️❤️',
+    'Schummel-Modus aktiviert: Du startest bei 80 Punkten. Psst! 🤫',
+  ],
+  catName: 'Fips',
+  catLines: ['Miau!', 'Fips regelt!', 'Weg da!', 'Mrrrau!'],
+  cameos: [
+    // { face: 'mama', line: 'Lauf, Kimi!' } — kommt aus der privaten Config
+    { face: 'cameo1', line: 'Lauf!!', hair: '#6b4a2b' },
+    { face: 'cameo2', line: 'Du schaffst das!', hair: '#3a3a3a', beard: true },
+    { face: 'oma', line: 'Kind, iss was!', hair: '#cfcfcf', oma: true, throws: true },
+  ],
+  items: {
+    wine: { label: 'Wein', points: 5 },
+    pizza: { label: 'Pizza', points: 5 },
+    burger: { label: 'Burger', points: 5 },
+    nachos: { label: 'Nachos', points: 5 },
+    fig: { label: 'Feige', points: -10, bad: true, line: 'Igitt, eine Feige!' },
+    shrimp: { label: 'Garnele', points: -10, bad: true, line: 'Garnele?! Allergie!' },
+    egg: { label: 'Eierkopf', points: 15 },
+  },
+  allergyLines: ['ALLERGIE-ALARM!', 'Igitt, eine Feige!', 'Garnele?! Bloß nicht!'],
+  hammerLines: ['ABRISS!', 'Bauleiterin am Werk!', 'Weg mit den Fliesen!'],
+  memories: [
+    // { img: 'memory1', caption: 'Urlaub 2019' }
+  ],
+  finale: {
+    headline: 'HAPPY BIRTHDAY!',
+    giftPrompt: 'Moment… da ist noch was! Tipp 10× auf dein Geschenk!',
+  },
+  gift: {
+    kicker: 'Dein Geschenk',
+    title: 'Überraschung!',
+    date: '',
+    stops: ['Zuhause', 'Ziel'],
+    text: 'Hier steht später dein Geschenk.',
+  },
+  horror: {
+    intro: 'Willkommen im Horror-Modus. Dresscode: grünes T-Shirt.',
+  },
+};
+
+export const OUTFIT_PARTS = {
+  top: {
+    label: 'Oberteil',
+    options: {
+      matrose: { label: 'Matrose' },
+      ripp: { label: 'Ripp-Shirt' },
+      tank: { label: 'Enges Top' },
+      princess: { label: 'Prinzessin', unlock: 'birthday' },
+      green: { label: 'Grünes T-Shirt', refuse: true },
+    },
+  },
+  topColor: {
+    label: 'Farbe Oberteil',
+    options: {
+      a: { label: 'Navy', color: '#2c3157' },
+      b: { label: 'Senf', color: '#d79a2b' },
+      c: { label: 'Rost', color: '#b54f2c' },
+      d: { label: 'Schwarz', color: '#222228' },
+      e: { label: 'Weiß', color: '#f1eee6' },
+      f: { label: 'Rosa', color: '#f28fb8' },
+    },
+  },
+  bottom: {
+    label: 'Unten',
+    options: {
+      jeans: { label: 'Jeans' },
+      culotte: { label: 'Culotte' },
+      latz: { label: 'Latzhose' },
+      matrose: { label: 'Matrosenhose' },
+      tutu: { label: 'Tüll-Rock', unlock: 'birthday' },
+    },
+  },
+  socks: {
+    label: 'Socken',
+    options: {
+      ringel: { label: 'Ringelsocken' },
+      plain: { label: 'Weiß' },
+      none: { label: 'Keine' },
+    },
+  },
+  shoes: {
+    label: 'Schuhe',
+    options: {
+      sneaker: { label: 'Sneaker' },
+      docs: { label: 'Docs' },
+      sailor: { label: 'Halbschuhe' },
+    },
+  },
+  extra: {
+    label: 'Extra',
+    multi: true,
+    options: {
+      scarf: { label: 'Schal' },
+      crown: { label: 'Krone', unlock: 'birthday' },
+      shades: { label: 'Sonnenbrille' },
+      party: { label: 'Partybrille' },
+      sash: { label: 'Schärpe', unlock: 'birthday' },
+    },
+  },
+};
+
+export const PRESETS = {
+  matrose: { top: 'matrose', topColor: 'a', bottom: 'matrose', socks: 'none', shoes: 'sailor', extra: [] },
+  casual: { top: 'ripp', topColor: 'b', bottom: 'jeans', socks: 'ringel', shoes: 'docs', extra: ['scarf'] },
+  princess: { top: 'princess', topColor: 'f', bottom: 'tutu', socks: 'plain', shoes: 'sneaker', extra: ['crown', 'sash'] },
+};
