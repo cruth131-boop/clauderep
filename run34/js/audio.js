@@ -73,6 +73,7 @@ export function sfx(name, arg = 0) {
   switch (name) {
     case 'jump': tone({ type: 'square', f0: 320, f1: 640, dur: 0.12, vol: 0.18 }); break;
     case 'collect': tone({ type: 'triangle', f0: N(84), dur: 0.08, vol: 0.3 }); tone({ type: 'triangle', f0: N(91), dur: 0.14, vol: 0.3, at: 0.07 }); break;
+    case 'heart': [72, 79, 84, 88].forEach((n, i) => tone({ type: 'sine', f0: N(n), dur: 0.18, vol: 0.22, at: i * 0.06 })); break;
     case 'candle': { const n = 72 + (arg % 12); tone({ type: 'triangle', f0: N(n), dur: 0.08, vol: 0.28 }); tone({ type: 'triangle', f0: N(n + 7), dur: 0.12, vol: 0.25, at: 0.06 }); tone({ type: 'sine', f0: N(n + 19), dur: 0.2, vol: 0.12, at: 0.1 }); break; }
     case 'wine': tone({ type: 'sine', f0: 2400, dur: 0.35, vol: 0.2 }); tone({ type: 'sine', f0: 3150, dur: 0.3, vol: 0.12, at: 0.04 }); break;
     case 'bad':

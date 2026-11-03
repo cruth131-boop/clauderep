@@ -121,7 +121,7 @@ function startGame(mode) {
   tapHint('Tippen = Springen  ·  ⬇ = Ducken', 2600);
 }
 
-function updateHearts(n) { $('hearts').textContent = '❤️'.repeat(Math.max(0, n)); }
+function updateHearts(n) { n = Math.max(0, Math.min(3, n)); $('hearts').textContent = '❤️'.repeat(n) + '🤍'.repeat(3 - n); }
 
 function onDeath(info) {
   $('tap-hint').classList.add('hidden');

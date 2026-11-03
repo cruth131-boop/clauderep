@@ -176,6 +176,12 @@ export class Game {
       }
     }
     this.candleTimer = (this.candleTimer ?? 1) - dt;
+    // Herzen = Extra-Leben (max. 3)
+    this.nextHeart = (this.nextHeart ?? (this.mode === 'birthday' ? rand(9, 14) : rand(18, 26))) - dt;
+    if (this.nextHeart <= 0) {
+      this.nextHeart = this.mode === 'birthday' ? rand(14, 20) : this.mode === 'horror' ? rand(28, 38) : rand(22, 30);
+      if (this.hearts < 3) this.items.push(this.makeItem('heart', V.w + 40 + this.nextGap * 0.5, pick([24, 70, 105])));
+    }
     this.nextPower -= dt;
     if (this.nextPower <= 0) {
       this.nextPower = this.mercy >= 1 ? rand(12, 18) : rand(22, 34);
@@ -353,6 +359,14 @@ export class Game {
       this.hammer = 5.5; sfx('power');
       this.fx.text(it.x, this.screenY(iy) - 20, 'STEMMHAMMER!', { color: '#ffd23f', size: 22 });
       this.events.onToast?.('🔨 Abriss-Modus: Alles wird weggestemmt!');
+      return;
+    }
+    if (it.type === 'heart') {
+      this.hearts = Math.min(3, this.hearts + 1);
+      this.fx.text(it.x, this.screenY(iy) - 20, '+1 ❤️', { color: '#ff6b8a', size: 22 });
+      this.fx.burst(it.x, this.screenY(iy), { n: 16, colors: ['#ff4f6d', '#ffb3c1', '#fff'], speed: 190, size: 2.8 });
+      p.expr = 'happy'; p.exprT = 0.7;
+      sfx('heart'); this.events.onHearts?.(this.hearts);
       return;
     }
     if (it.type === 'candle') {
@@ -715,6 +729,18 @@ function drawJackhammer(g, x, y, t, blink) {
 }
 
 export function drawItemIcon(g, type, t = 0) {
+  if (type === 'heart') {
+    const s = 1 + Math.sin(t * 7) * 0.08;
+    g.save(); g.scale(s, s);
+    const hp = () => { g.beginPath(); g.moveTo(0, 10); g.bezierCurveTo(-14, 0, -11, -11, 0, -5); g.bezierCurveTo(11, -11, 14, 0, 0, 10); g.closePath(); };
+    const gl = g.createRadialGradient(0, 0, 2, 0, 0, 20); gl.addColorStop(0, 'rgba(255,90,130,0.45)'); gl.addColorStop(1, 'rgba(255,90,130,0)');
+    g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 20, 0, 7); g.fill();
+    const gr = g.createLinearGradient(0, -10, 0, 10); gr.addColorStop(0, '#ff6f8e'); gr.addColorStop(1, '#d81b45');
+    hp(); g.fillStyle = gr; g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.65)'; g.beginPath(); g.ellipse(-4.5, -3.5, 2.6, 1.6, -0.6, 0, 7); g.fill();
+    g.restore();
+    return;
+  }
   if (type === 'candle') {
     const gl = g.createRadialGradient(0, -12, 1, 0, -12, 18);
     gl.addColorStop(0, 'rgba(255,220,120,0.8)'); gl.addColorStop(1, 'rgba(255,220,120,0)');
