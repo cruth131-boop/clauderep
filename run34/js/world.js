@@ -178,7 +178,6 @@ export class Game {
     if (this.sinceSpawn >= this.nextGap && this.biome === FIPSLAND) {
       this.sinceSpawn = 0; this.nextGap = 220 + Math.random() * 120;
       for (let i = 0; i < 4; i++) this.items.push(this.makeItem('treat', V.w + 40 + i * 30, 20 + Math.sin(i) * 30 + Math.random() * 60));
-      if (!this.dash) this.summonFips();
     } else if (this.sinceSpawn >= this.nextGap && Object.keys(obsList).length) {
       this.sinceSpawn = 0;
       const sp = this.speed * this.speedFactor;
@@ -211,7 +210,7 @@ export class Game {
     this.nextPower -= dt;
     if (this.nextPower <= 0) {
       this.nextPower = this.mercy >= 1 ? rand(12, 18) : rand(22, 34);
-      const type = this.mode === 'horror' ? 'fips' : (Math.random() < 0.55 ? 'fips' : 'hammer');
+      const type = this.mode === 'horror' || this.hero ? 'fips' : (Math.random() < 0.55 ? 'fips' : 'hammer');
       this.items.push(this.makeItem(type, V.w + 40 + this.nextGap * 0.5, 60));
     }
     if (this.mode !== 'horror') this.spawnCameos(dt);
@@ -266,7 +265,7 @@ export class Game {
       c.x += (target - c.x) * Math.min(1, dt * (c.t < 4.2 ? 1.8 : 0.9));
       if (c.t > 4.2 && !c.gaveUp) { c.gaveUp = true; if (this.state === 'run') { this.stats.chases++; this.events.onChase?.(); } this.fx.text(c.x + 10, V.groundY - 95, 'Puh…', { color: '#fff', size: 14 }); }
       if (c.t > 7) this.chase = null;
-    } else if (active && this.cfg.chaser && this.mode !== 'horror') {
+    } else if (active && this.cfg.chaser && this.mode !== 'horror' && !this.hero) {
       this.nextChase -= dt;
       if (this.nextChase <= 0) { this.nextChase = rand(22, 32); this.chase = { x: -60, t: 0, face: this.cfg.chaser.face, line: this.cfg.chaser.line }; }
     }
@@ -277,7 +276,7 @@ export class Game {
       if (d.x > V.w * 0.62 && !d.jumped) { d.jumped = true; d.vy = 520; this.fx.text(d.x, V.groundY - 60, this.green ? 'Igitt, grün! 🤢' : pick(this.cfg.catLines || ['Miau!']), { color: '#ffb36b', size: 16 }); sfx('meow'); }
       if (d.jumped) { d.vy -= 1300 * dt; d.y = Math.max(0, d.y + d.vy * dt); }
       if (d.x > V.w + 80) this.dash = null;
-    } else if (active && this.mode !== 'horror') {
+    } else if (active && this.mode !== 'horror' && this.fips <= 0 && this.biome !== FIPSLAND) {
       this.nextDash -= dt;
       if (this.nextDash <= 0) { this.nextDash = this.state === 'idle' ? rand(7, 10) : rand(18, 28); this.dash = { x: -50, y: 0, t: 0 }; }
     }
@@ -308,17 +307,18 @@ export class Game {
     this.events.onToast?.(`📍 Zurück: ${biomeName(this.biome)}`);
   }
 
-  summonFips() { if (!this.dash) this.dash = { x: -50, y: 0, t: 0 }; }
+  summonFips() { if (!this.dash && this.fips <= 0 && this.biome !== FIPSLAND) this.dash = { x: -50, y: 0, t: 0 }; }
 
   // Super-Christoph: einfliegen -> landen -> 5 s alles zerstören -> abheben
   updateHero(dt) {
     const p = this.p, V = this.V, H = this.cfg.heroLines || {};
     const zombie = this.mode === 'horror';
     if (!this.hero) {
-      if (this.state !== 'run' || this.fipsT > 0) return;
+      if (this.state !== 'run' || this.fipsT > 0 || this.chase || this.hammer > 0) return;
       this.nextHero -= dt;
       if (this.nextHero <= 0) {
-        this.hero = { ph: 'in', t: 0, x: -90, y: 300, punch: 0 };
+        this.hero = { ph: 'in', t: 0, x: -110, y: 120, punch: 0 };
+        this.items = this.items.filter((i) => i.type !== 'hammer');
         sfx('launch'); this.events.onAchieve?.('hero');
       }
       return;
@@ -326,8 +326,8 @@ export class Game {
     const h = this.hero; h.t += dt; h.punch = Math.max(0, h.punch - dt);
     if (this.state !== 'run' && h.ph !== 'out') { h.ph = 'out'; h.t = 0; }
     if (h.ph === 'in') {
-      const k = Math.min(1, h.t / 1.0), e = k * k;
-      h.x = -90 + (p.x - 70 + 90) * k; h.y = 300 * (1 - e);
+      const k = Math.min(1, h.t / 1.1), e = k * k * (3 - 2 * k);
+      h.x = -110 + (p.x - 70 + 110) * k; h.y = 120 * (1 - e) + Math.sin(k * Math.PI) * 10;
       if (k >= 1) {
         h.ph = 'land'; h.t = 0; h.y = 0; this.shake = 12; sfx('smash'); sfx('boom');
         this.fx.burst(h.x, V.groundY, { n: 26, type: 'smoke', colors: ['#d7ccc8', '#ffffff'], speed: 160, size: 6, gravity: -30, spread: Math.PI, angle: -Math.PI / 2 });
@@ -338,7 +338,7 @@ export class Game {
       if (h.t > 0.8) { h.ph = 'smash'; h.t = 0; sfx('power'); }
     } else if (h.ph === 'smash') {
       const tx = p.x + 150;
-      h.x += (tx - h.x) * Math.min(1, dt * 4); h.y = 24 + Math.sin(h.t * 5) * 6;
+      h.x += (tx - h.x) * Math.min(1, dt * 4); h.y = 34 + Math.sin(h.t * 4) * 5;
       for (const o of this.obstacles) {
         if (o.knock || o.secret || o.x > h.x + 170 || o.x < p.x + 5) continue;
         o.knock = { vx: 520, vy: 820, vr: 11 };
@@ -349,7 +349,7 @@ export class Game {
       }
       if (h.t > 5) { h.ph = 'out'; h.t = 0; h.say = pick(H.out || ['Bis später!']); }
     } else if (h.ph === 'out') {
-      h.x += 380 * dt; h.y += 320 * dt;
+      h.x += 560 * dt; h.y += 70 * dt;
       if (h.y > 420 || h.x > V.w + 120) { this.hero = null; this.nextHero = rand(40, 55); }
     }
   }
@@ -357,7 +357,7 @@ export class Game {
   drawHeroFx(g) {
     const h = this.hero; if (!h) return;
     const V = this.V, zombie = this.mode === 'horror';
-    const pose = h.ph === 'land' ? 'land' : h.ph === 'smash' ? (h.punch > 0 ? 'punch' : 'hover') : 'fly';
+    const pose = h.ph === 'land' ? 'land' : 'fly';
     const yy = V.groundY - h.y;
     if (h.ph !== 'land') { g.fillStyle = 'rgba(0,0,0,0.15)'; g.beginPath(); g.ellipse(h.x, V.groundY + 2, Math.max(4, 22 - h.y * 0.08), 4, 0, 0, 7); g.fill(); }
     drawHero(g, h.x, yy, { pose, t: this.t, zombie, scale: CHAR_SCALE * 1.18 });

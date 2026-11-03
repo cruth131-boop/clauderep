@@ -952,7 +952,7 @@ export function drawHero(g, x, y, { pose = 'fly', t = 0, zombie = false, scale =
     heroHead(g, sh[0] + 4, sh[1] - 3, 19, zombie);
   } else {
     // aufrecht zeichnen und für den Flug drehen
-    const ang = pose === 'fly' ? 1.45 : pose === 'hover' ? 0.5 : 0.25;
+    const ang = pose === 'fly' ? Math.PI / 2 : pose === 'hover' ? 0.5 : 0.25;
     g.rotate(ang); g.translate(0, 40);
     const wave = Math.sin(t * 16) * 3;
     const hip = [0, -40], sh = [0, -70];
