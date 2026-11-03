@@ -54,9 +54,10 @@ function toast(text, ms = 2200) {
   el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.add('hidden'), ms);
 }
+let hintTimer;
 function tapHint(text, ms) {
   const el = $('tap-hint'); el.textContent = text; el.classList.remove('hidden');
-  if (ms) setTimeout(() => el.classList.add('hidden'), ms);
+  clearTimeout(hintTimer); if (ms) hintTimer = setTimeout(() => el.classList.add('hidden'), ms);
 }
 
 // ----------------------------------------------------------------- Menü
@@ -123,6 +124,7 @@ function startGame(mode) {
 function updateHearts(n) { $('hearts').textContent = '❤️'.repeat(Math.max(0, n)); }
 
 function onDeath(info) {
+  $('tap-hint').classList.add('hidden');
   const mode = info.mode;
   if (info.score > (save.best[mode] || 0)) { info.newBest = (save.best[mode] || 0) > 0; save.best[mode] = info.score; }
   let mercyMsg = '';

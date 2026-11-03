@@ -89,7 +89,8 @@ export class LoseScene {
       }
       caption(g, V, `${this.partner} ist jetzt traurig. 🌧️`, cy + h * 0.75);
     } else if (this.kind === 'cat') {
-      drawCat(g, cx, cy + S * 0.18, { pose: 'sit', scale: S / 110, flip: true, t });
+      if (assets.images.fips_sad) drawFaceAt(g, 'fips', 'sad', cx, cy - S * 0.02, S * 0.42, Math.sin(t * 1.5) * 0.06);
+      else drawCat(g, cx, cy + S * 0.18, { pose: 'sit', scale: S / 110, flip: true, t });
       caption(g, V, `${assets.config.catName || 'Fips'} ist enttäuscht. 😾`, cy + S * 0.32);
       if (t > 1.2) caption(g, V, '…und dreht dir den Rücken zu.', cy + S * 0.32 + 30, 16, '#d9c8ef');
     } else if (this.kind === 'zoom') {

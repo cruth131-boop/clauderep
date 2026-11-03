@@ -42,7 +42,8 @@ export class Game {
     this.t = 0; this.distance = 0; this.bgOffset = 0;
     this.score = this.mercy >= 3 ? 80 : 0;
     this.state = mode === 'attract' ? 'idle' : 'run';
-    this.p = { y: 0, vy: 0, duck: false, phase: 0, expr: 'normal', exprT: 0, invuln: 0, swell: 0, x: PLAYER_X, holding: false };
+    this.baseExpr = mode === 'horror' ? 'skeptic' : 'normal';
+    this.p = { y: 0, vy: 0, duck: false, phase: 0, expr: this.baseExpr, exprT: 0, invuln: 0, swell: 0, x: PLAYER_X, holding: false };
     this.hearts = this.mercy >= 2 ? 2 : 0;
     this.obstacles = []; this.items = []; this.cameos = []; this.polaroids = [];
     this.fx = new Particles();
@@ -104,7 +105,7 @@ export class Game {
       p.phase += Math.max(dx / 34, this.speed > 5 ? 0 : dt * 3);
       if (this.speed <= 0 && !this.finaleSent) { this.finaleSent = true; this.events.onFinale?.(); }
     }
-    p.exprT -= dt; if (p.exprT <= 0) p.expr = this.hammer > 0 ? 'hammer' : 'normal';
+    p.exprT -= dt; if (p.exprT <= 0) p.expr = this.hammer > 0 ? 'hammer' : this.baseExpr;
     p.invuln = Math.max(0, p.invuln - dt);
     p.swell = Math.max(0, p.swell - dt / 4);
     this.fips = Math.max(0, this.fips - dt);

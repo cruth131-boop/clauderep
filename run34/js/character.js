@@ -421,9 +421,9 @@ export function drawCat(g, x, footY, { phase = 0, scale = 1, pose = 'run', flip 
 
 function drawCatHead(g, x, y, photo, orange, dark, light, front) {
   if (photo) {
-    const s = 26;
-    g.save(); g.beginPath(); g.arc(x, y, s / 2, 0, 7); g.clip();
-    g.drawImage(photo, x - s / 2, y - s / 2, s, s); g.restore();
+    const h = 34, w = h * (photo.width / photo.height);
+    g.save(); g.translate(x, y); if (g.getTransform().a < 0) g.scale(-1, 1);
+    g.drawImage(photo, -w / 2, -h * 0.62, w, h); g.restore();
     return;
   }
   g.fillStyle = orange;
