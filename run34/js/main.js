@@ -17,6 +17,10 @@ const save = {
   best: { birthday: 0, endless: 0, horror: 0, roadtrip: 0 }, fails: 0, won: false, outfit: { ...PRESETS.matrose }, muted: false, horrorSeen: false,
   totalFails: 0, ach: {}, worlds: [], stats: { monkeys: 0, mops: 0, chases: 0 }, challengeDone: {}, greenTaps: 0, greenUnlocked: false, eggNext: false,
 };
+if (new URLSearchParams(location.search).has('reset')) {
+  try { localStorage.removeItem(SAVE_KEY); } catch {}
+  const u = new URL(location.href); u.searchParams.delete('reset'); history.replaceState(null, '', u);
+}
 try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch {}
 const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {} };
 save.best.roadtrip ??= 0; save.stats ??= { monkeys: 0, mops: 0, chases: 0 }; save.ach ??= {}; save.worlds ??= []; save.challengeDone ??= {};
@@ -86,7 +90,8 @@ function toMenu() {
   const rb = $('btn-roadtrip');
   rb.classList.toggle('locked', !roadtripOpen());
   rb.textContent = roadtripOpen() ? '🚗 Roadtrip' : '🔒 Roadtrip (ab 4.12.)';
-  rb.classList.toggle('hidden', !save.won && !DEV);
+  rb.classList.toggle('hidden', !save.won);
+  $('btn-gift').classList.toggle('hidden', !save.won);
   const hb = $('btn-horror');
   hb.classList.toggle('locked', !unlocked('birthday'));
   hb.textContent = unlocked('birthday') ? '👻 Horror-Modus' : '🔒 Horror-Modus';
@@ -245,13 +250,15 @@ function onFinale() {
 }
 
 let stopMap = null;
-function showReveal() {
+function showReveal(fromMenu = false) {
   const gift = assets.config.gift || {};
-  const firstWin = !save.won;
-  save.won = true;
-  unlockAch('birthday');
-  runEnded(game.stats, Math.floor(game.score), 'birthday', game.t);
-  save.best.birthday = Math.max(save.best.birthday || 0, Math.floor(game.score));
+  const firstWin = !fromMenu && !save.won;
+  if (!fromMenu) {
+    save.won = true;
+    unlockAch('birthday');
+    runEnded(game.stats, Math.floor(game.score), 'birthday', game.t);
+  }
+  if (!fromMenu) save.best.birthday = Math.max(save.best.birthday || 0, Math.floor(game.score));
   persist();
   $('reveal-kicker').textContent = gift.kicker || 'Dein Geschenk';
   $('reveal-title').textContent = gift.title || '';
@@ -264,7 +271,8 @@ function showReveal() {
     <div class="day" style="animation-delay:${1.2 + i * 0.6}s">${MOTIFS[d.icon] || ''}
       <div><h3><small>${esc(d.label || '')}</small>${esc(d.title || '')}</h3>
       <ul>${(d.items || []).map((it) => `<li>${esc(it)}</li>`).join('')}</ul></div></div>`).join('');
-  $('reveal-unlock').textContent = firstWin ? '🔓 Freigeschaltet: Birthday-Princess-Outfit & Horror-Modus 👻' : '';
+  $('reveal-unlock').textContent = firstWin ? '🔓 Freigeschaltet: Birthday-Princess-Outfit, Horror-Modus 👻 & Roadtrip-Countdown 🚗' : '';
+  screen = 'reveal';
   show('scr-reveal');
   stopMap?.(); stopMap = animateMap($('map'), gift.stops || []);
 }
@@ -493,3 +501,5 @@ function showAchievements() {
 }
 $('btn-ach').addEventListener('click', () => { initAudio(); showAchievements(); });
 $('btn-ach-done').addEventListener('click', toMenu);
+
+$('btn-gift').addEventListener('click', () => { initAudio(); sfx('memory'); showReveal(true); });

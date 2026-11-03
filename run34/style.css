@@ -200,3 +200,7 @@ input[type=password] {
 .ach-item span { font-size: 12px; color: var(--muted); }
 #menu-title { cursor: pointer; }
 @media (max-height: 500px) { .menu-buttons .btn.roadtrip { grid-column: span 1; } }
+
+.btn.gift { background: #4a2a10; border-color: var(--gold); color: var(--gold); }
+#menu-hint { display: inline-block; background: var(--panel); color: var(--ink); border-radius: 12px; padding: 6px 12px; margin-top: 8px; line-height: 1.45; }
+#menu-hint:empty { display: none; }
