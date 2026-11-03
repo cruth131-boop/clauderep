@@ -16,6 +16,7 @@ export const MODES = {
 const GRAV = 2400, JUMP_V = 760, CHAR_SCALE = 0.78, PLAYER_X = 95;
 const STAND_H = 100, DUCK_H = 64;
 const rand = (a, b) => a + Math.random() * (b - a);
+const shuffle = (arr) => { for (let i = arr.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
 const pick = (arr) => arr[(Math.random() * arr.length) | 0];
 const wrap = (v, m) => ((v % m) + m) % m;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -32,7 +33,7 @@ function weighted(obj) {
 }
 
 export class Game {
-  constructor(mode, { outfit, mercy = 0, events = {}, eggHead = false } = {}) {
+  constructor(mode, { outfit, mercy = 0, events = {}, eggHead = false, album = [] } = {}) {
     this.mode = mode;
     this.M = MODES[mode];
     this.cfg = assets.config;
@@ -64,7 +65,10 @@ export class Game {
     this.deadT = 0; this.finaleT = 0;
     this.V = { w: 700, h: 320, groundY: 250 };
     this.lightning = 0;
-    this.worldList = mode === 'roadtrip' ? BIOMES_RT : BIOMES;
+    this.album = new Set(album);
+    this.nextPolaroid = rand(16, 24);
+    this.snapped = new Set();
+    this.worldList = mode === 'roadtrip' ? BIOMES_RT : mode === 'endless' ? shuffle(BIOMES.slice()) : BIOMES;
     this.biomeIdx = 0; this.biome = mode === 'endless' || mode === 'roadtrip' ? this.worldList[0] : null;
     this.stats = { items: {}, passed: {}, bad: false, worlds: new Set(this.biome ? [this.biome.id] : []), chases: 0 };
     this.eggT = eggHead ? 30 : 0;
@@ -202,6 +206,14 @@ export class Game {
       }
     }
     this.candleTimer = (this.candleTimer ?? 1) - dt;
+    if ((this.mode === 'endless' || this.mode === 'roadtrip') && this.biome !== FIPSLAND) {
+      this.nextPolaroid -= dt;
+      if (this.nextPolaroid <= 0) {
+        this.nextPolaroid = rand(24, 34);
+        const mem = this.pickMemory();
+        if (mem) { const it = this.makeItem('polaroid', V.w + 40 + this.nextGap * 0.5, pick([78, 100, 116])); it.mem = mem; this.items.push(it); }
+      }
+    }
     // Herzen = Extra-Leben (max. 3)
     this.nextHeart = (this.nextHeart ?? (this.mode === 'birthday' ? rand(9, 14) : rand(18, 26))) - dt;
     if (this.nextHeart <= 0) {
@@ -263,6 +275,7 @@ export class Game {
     // Hagen läuft Kimi hinterher ("Payback!") – holt sie aber nie ein
     if (this.chase) {
       const c = this.chase; c.t += dt;
+      if (c.t > 1.6 && c.t < 1.7) this.snap('chase', 'Payback-Alarm! 💳');
       const target = c.t < 4.2 ? p.x - 78 + Math.sin(c.t * 2.2) * 14 : -120;
       c.x += (target - c.x) * Math.min(1, dt * (c.t < 4.2 ? 1.8 : 0.9));
       if (c.t > 4.2 && !c.gaveUp) { c.gaveUp = true; if (this.state === 'run') { this.stats.chases++; this.events.onChase?.(); } this.fx.text(c.x + 10, V.groundY - 95, 'Puh…', { color: '#fff', size: 14 }); }
@@ -275,7 +288,7 @@ export class Game {
     if (this.dash) {
       const d = this.dash; d.t += dt;
       d.x += (this.state === 'idle' ? 330 : 420) * dt;
-      if (d.x > V.w * 0.62 && !d.jumped) { d.jumped = true; d.vy = 520; this.fx.text(d.x, V.groundY - 60, this.green ? 'Igitt, grün! 🤢' : pick(this.cfg.catLines || ['Miau!']), { color: '#ffb36b', size: 16 }); sfx('meow'); }
+      if (d.x > V.w * 0.62 && !d.jumped) { d.jumped = true; d.vy = 520; setTimeout(() => this.snap('fips', 'Fips war hier! 🐱'), 150); this.fx.text(d.x, V.groundY - 60, this.green ? 'Igitt, grün! 🤢' : pick(this.cfg.catLines || ['Miau!']), { color: '#ffb36b', size: 16 }); sfx('meow'); }
       if (d.jumped) { d.vy -= 1300 * dt; d.y = Math.max(0, d.y + d.vy * dt); }
       if (d.x > V.w + 80) this.dash = null;
     } else if (active && this.mode !== 'horror' && this.fips <= 0 && this.biome !== FIPSLAND) {
@@ -286,7 +299,12 @@ export class Game {
 
   nextBiome() {
     this.prevBiome = this.biome; this.biomeFade = 0;
-    this.biomeIdx = (this.biomeIdx + 1) % this.worldList.length; this.biome = this.worldList[this.biomeIdx];
+    this.biomeIdx++;
+    if (this.biomeIdx >= this.worldList.length) {
+      this.biomeIdx = 0;
+      if (this.mode === 'endless') { const last = this.biome; do { this.worldList = shuffle(BIOMES.slice()); } while (this.worldList[0] === last); }
+    }
+    this.biome = this.worldList[this.biomeIdx];
     this.stats.worlds.add(this.biome.id); this.events.onWorld?.(this.biome.id, this.stats.worlds.size);
     this.nextBiomeAt += 60;
     // Cameos der alten Welt, die noch nicht im Bild sind, nicht mit rübernehmen
@@ -332,6 +350,7 @@ export class Game {
       h.x = -110 + (p.x - 70 + 110) * k; h.y = 120 * (1 - e) + Math.sin(k * Math.PI) * 10;
       if (k >= 1) {
         h.ph = 'land'; h.t = 0; h.y = 0; this.shake = 12; sfx('smash'); sfx('boom');
+        setTimeout(() => this.snap('hero', this.mode === 'horror' ? 'Zombie-Christoph landet! 🧟' : 'Super-Christoph landet! 🦸'), 120);
         this.fx.burst(h.x, V.groundY, { n: 26, type: 'smoke', colors: ['#d7ccc8', '#ffffff'], speed: 160, size: 6, gravity: -30, spread: Math.PI, angle: -Math.PI / 2 });
         h.say = zombie ? pick(H.zombieLand || ['BRAAAINS… äh, POW!']) : pick(H.land || ['Keine Angst!']);
       }
@@ -368,6 +387,7 @@ export class Game {
     const o = this.omaRide; o.t += dt;
     o.x += (o.x < p.x + 40 ? 330 : 420) * dt;
     if (o.t % 0.05 < dt) this.fx.list.push({ x: o.x - 40, y: V.groundY - 22, vx: -60 - Math.random() * 40, vy: -10 + Math.random() * 20, life: 0.7, max: 0.7, color: 'rgba(200,200,200,0.8)', size: 3 + Math.random() * 2, gravity: -20, type: 'smoke', rot: 0, vr: 0, drag: 1 });
+    if (o.x > p.x - 10 && o.x < p.x + 40) this.snap('oma', 'Oma hat Turbo! 🚀');
     if (!o.dropped && o.x > p.x + 110) {
       o.dropped = true;
       const it = this.makeItem('soup', o.x, 40); it.flying = true; it.vx = -40; it.vy = 260; it.restY = 34;
@@ -511,6 +531,15 @@ export class Game {
       sfx('cheer');
       return;
     }
+    if (it.type === 'polaroid') {
+      const isNew = !this.album.has(it.mem.img);
+      this.showMemory(it.mem, isNew ? '📸 Neu im Album!' : '📸 Gefangen!');
+      this.score += 10;
+      this.fx.text(it.x, this.screenY(iy) - 20, isNew ? 'NEUES FOTO! 📸' : '+10 📸', { color: '#ffd23f', size: 20 });
+      this.fx.burst(it.x, this.screenY(iy), { n: 18, colors: ['#fff', '#ffd23f', '#ff4fa3'], speed: 200 });
+      sfx('power');
+      return;
+    }
     if (it.type === 'soup') {
       this.hearts = Math.min(3, this.hearts + 1);
       this.fx.text(it.x, this.screenY(iy) - 20, 'Graupensuppe stärkt! ❤️', { color: '#ffd23f', size: 18 });
@@ -576,6 +605,7 @@ export class Game {
     p.expr = 'shock'; p.exprT = 0.45; p.vy = 520; p.duck = false;
     this.shake = 14; this.flash = 0.5;
     this.deathInfo = { cause, score: Math.floor(this.score), mode: this.mode, stats: this.stats, time: this.t };
+    if (Math.random() < 0.35) setTimeout(() => this.snap('death', `Autsch! – ${pick(this.cfg.obstacleLines?.[cause] || this.cfg.loseLines || ['Autsch!'])}`), 260);
     this.polaroids = [];
     sfx('hit'); sfx('no');
   }
@@ -596,18 +626,29 @@ export class Game {
     const mems = this.cfg.memories || [];
     if (this.milestones.length && this.score >= this.milestones[0]) {
       const m = this.milestones.shift();
-      this.showMemory(mems[this.memIdx++ % Math.max(1, mems.length)], m);
+      this.showMemory(this.pickMemory() || mems[0], m);
     }
-    if (this.mode === 'endless' && this.score >= this.nextEndlessMemory) {
-      this.nextEndlessMemory += 75;
-      if (mems.length) this.showMemory(mems[this.memIdx++ % mems.length], Math.floor(this.score));
-      else this.fx.text(this.V.w / 2, this.V.groundY - 150, `${Math.floor(this.score)}!`, { color: '#ffd23f', size: 40, life: 1.5 });
-    }
+
   }
 
   showMemory(mem, milestone) {
     this.polaroids.push({ mem: mem || null, t: 0, life: 3.6, rot: rand(-0.12, 0.12), milestone });
     sfx('memory');
+    if (mem) { this.album.add(mem.img); this.events.onPhoto?.(mem.img); }
+  }
+
+  /** Nächstes Foto zum Fangen: bevorzugt noch nicht gefundene. */
+  pickMemory() {
+    const mems = this.cfg.memories || [];
+    if (!mems.length) return null;
+    const fresh = mems.filter((m) => !this.album.has(m.img));
+    return pick(fresh.length ? fresh : mems);
+  }
+
+  snap(id, caption) {
+    if (this.snapped.has(id)) return;
+    this.snapped.add(id);
+    this.events.onSnap?.(caption);
   }
 
   // ------------------------------------------------------------------ Draw
@@ -844,7 +885,7 @@ export class Game {
     g.font = '700 10px ui-rounded, system-ui, sans-serif';
     g.fillText(pl.mem?.caption || 'Erinnerung freigeschaltet!', 0, H / 2 - 16, W - 10);
     g.fillStyle = '#ff4fa3'; g.font = '900 9px ui-rounded, system-ui, sans-serif';
-    g.fillText(`★ ${pl.milestone} ${this.M.collect ? 'Kerzen' : 'Punkte'} ★`, 0, H / 2 - 5);
+    g.fillText(typeof pl.milestone === 'string' ? pl.milestone : `★ ${pl.milestone} ${this.M.collect ? 'Kerzen' : 'Punkte'} ★`, 0, H / 2 - 5);
     g.restore();
   }
 }
@@ -914,6 +955,18 @@ function drawJackhammer(g, x, y, t, blink) {
 export function drawItemIcon(g, type, t = 0) {
   if (ITEM_ICONS[type]) { ITEM_ICONS[type](g, t); return; }
   if (type === 'monkey') { drawMonkey(g, 0, 2, t, 1.25, Math.sin(t * 2) > 0); return; }
+  if (type === 'polaroid') {
+    g.save(); g.rotate(Math.sin(t * 3) * 0.2);
+    const gl = g.createRadialGradient(0, 0, 3, 0, 0, 24); gl.addColorStop(0, 'rgba(255,240,180,0.7)'); gl.addColorStop(1, 'rgba(255,240,180,0)');
+    g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 24, 0, 7); g.fill();
+    g.fillStyle = '#fffdf7'; g.fillRect(-11, -13, 22, 26);
+    g.fillStyle = '#7cc6ff'; g.fillRect(-9, -11, 18, 16);
+    g.fillStyle = '#ffd23f'; g.beginPath(); g.arc(4, -6, 2.5, 0, 7); g.fill();
+    g.fillStyle = '#43a047'; g.beginPath(); g.moveTo(-9, 5); g.lineTo(-3, -3); g.lineTo(2, 2); g.lineTo(5, -1); g.lineTo(9, 5); g.fill();
+    g.fillStyle = '#ff4fa3'; g.font = '900 6px sans-serif'; g.textAlign = 'center'; g.fillText('?', 0, 11);
+    g.restore();
+    return;
+  }
   if (type === 'soup') {
     g.fillStyle = 'rgba(255,255,255,0.6)';
     for (let i = 0; i < 3; i++) { const yy = -10 - ((t * 20 + i * 6) % 14); g.beginPath(); g.arc(-5 + i * 5 + Math.sin(t * 4 + i), yy, 2.2, 0, 7); g.fill(); }

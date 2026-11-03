@@ -202,6 +202,8 @@ export const ACHIEVEMENTS = {
   stumble: ['Stolperkönigin', '10× gescheitert', '🤕'],
   roadtrip: ['Auf Achse', 'Den Roadtrip-Modus gespielt', '🚗'],
   hero: ['Gerettet!', 'Der Superheld ist erschienen', '🦸'],
+  album: ['Fotografin', 'Alle Fotos im Album gesammelt', '📸'],
+  snaps: ['Paparazza', '10 Schnappschüsse gemacht', '📷'],
   soup: ['Graupensuppe!', 'Omas Suppe von der Rollator-Rakete gegessen', '🍲'],
 };
 
