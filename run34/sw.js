@@ -1,8 +1,8 @@
 // Offline-Cache (stale-while-revalidate). VERSION erhöhen, um Updates zu erzwingen.
-const VERSION = 'br-v1';
+const VERSION = 'br-v2';
 const FILES = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
-  'js/main.js', 'js/assets.js', 'js/audio.js', 'js/character.js', 'js/config.js', 'js/fx.js', 'js/scenes.js', 'js/world.js',
+  'js/main.js', 'js/assets.js', 'js/audio.js', 'js/character.js', 'js/config.js', 'js/fx.js', 'js/scenes.js', 'js/world.js', 'js/motifs.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'assets/bundle.enc',
 ];
 self.addEventListener('install', (e) => {

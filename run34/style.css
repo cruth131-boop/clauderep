@@ -169,3 +169,21 @@ input[type=password] {
   .reveal .title { font-size: 44px; }
 }
 .hint { white-space: pre-line; }
+
+.motto { font-size: 18px; font-weight: 800; font-style: italic; color: var(--gold); margin: 4px 0 10px; line-height: 1.35; }
+.motifs { display: flex; justify-content: center; gap: 14px; margin: 4px 0 12px; }
+.motifs svg { width: 52px; height: 52px; animation: bob 1.6s ease-in-out infinite alternate; }
+.motifs svg:nth-child(2) { animation-delay: .3s; } .motifs svg:nth-child(3) { animation-delay: .6s; } .motifs svg:nth-child(4) { animation-delay: .9s; }
+@keyframes bob { from { transform: translateY(0) rotate(-4deg); } to { transform: translateY(-6px) rotate(4deg); } }
+.days { display: grid; gap: 10px; margin: 12px 0; text-align: left; }
+.day {
+  background: rgba(255,255,255,0.07); border: 2px solid rgba(255,255,255,0.15); border-radius: 18px; padding: 12px 14px;
+  opacity: 0; transform: translateY(16px); animation: dayin .5s ease-out forwards;
+  display: grid; grid-template-columns: 54px 1fr; gap: 12px; align-items: start;
+}
+.day svg { width: 54px; height: 54px; }
+.day h3 { margin: 0 0 4px; font-size: 18px; } .day h3 small { color: var(--pink); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; display: block; }
+.day ul { margin: 0; padding-left: 18px; line-height: 1.45; font-size: 15px; }
+.day li::marker { color: var(--gold); }
+@keyframes dayin { to { opacity: 1; transform: none; } }
+@media (min-width: 700px) { .days { grid-template-columns: repeat(3, 1fr); } .day { grid-template-columns: 1fr; } }

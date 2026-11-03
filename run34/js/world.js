@@ -7,7 +7,7 @@ import { sfx } from './audio.js';
 export const MODES = {
   birthday: { start: 330, accel: 4, max: 520, theme: 'birthday', obstacles: { candles: 4, shirt: 2, height: 2, alarm: 1, tax: 1, flyshirt: 2 }, items: 0.28, bad: 0.14 },
   endless: { start: 340, accel: 6, max: 900, theme: 'day', obstacles: { candles: 2, shirt: 2, height: 2, alarm: 2, tax: 2, flyshirt: 2 }, items: 0.28, bad: 0.2 },
-  horror: { start: 380, accel: 7, max: 920, theme: 'horror', obstacles: { shirt: 4, flyshirt: 4, height: 1, ghost: 3 }, items: 0.22, bad: 0.5 },
+  horror: { start: 380, accel: 7, max: 920, theme: 'horror', obstacles: { shirt: 2, flyshirt: 3, ghost: 2, stink: 3, rille: 2, fish: 2, merz: 2, height: 1 }, items: 0.22, bad: 0.5 },
   attract: { start: 230, accel: 0, max: 230, theme: 'birthday', obstacles: {}, items: 0, bad: 0 },
 };
 
@@ -156,7 +156,7 @@ export class Game {
       const minGap = sp * 0.95 + 80;
       this.nextGap = (minGap + Math.random() * minGap * 0.9) * (this.mercy ? 1.12 : 1);
       let type = weighted(this.M.obstacles);
-      if ((type === 'flyshirt' || type === 'ghost') && this.score < 15 && this.mode !== 'horror') type = 'candles';
+      if (['flyshirt', 'ghost', 'stink'].includes(type) && this.score < 15 && this.mode !== 'horror') type = 'candles';
       this.obstacles.push(this.makeObstacle(type, V.w + 40));
       // Item in der Lücke
       const gapX = V.w + 40 + this.nextGap * 0.5;
@@ -219,7 +219,13 @@ export class Game {
       o.w = 30; o.rects.push({ x: 2, w: 26, y0: 0, y1: 30 });
     } else if (type === 'tax') {
       o.h = rand(34, 48); o.w = 34; o.rects.push({ x: 0, w: 34, y0: 0, y1: o.h });
-    } else if (type === 'flyshirt' || type === 'ghost') {
+    } else if (type === 'rille') {
+      o.w = 66; o.rects.push({ x: 0, w: 66, y0: 0, y1: 26 });
+    } else if (type === 'fish') {
+      o.w = 42; o.rects.push({ x: 2, w: 38, y0: 0, y1: 20 });
+    } else if (type === 'merz') {
+      o.w = 46; o.rects.push({ x: 19, w: 8, y0: 0, y1: 42 }, { x: 0, w: 46, y0: 40, y1: 80 });
+    } else if (type === 'flyshirt' || type === 'ghost' || type === 'stink') {
       const v = pick(['low', 'mid', 'mid', 'mid', 'high']);
       o.fly = v; o.w = 38; o.extraV = 40;
       const y0 = v === 'low' ? 12 : v === 'mid' ? DUCK_H + 10 : STAND_H + 16;
@@ -458,6 +464,38 @@ export class Game {
       g.restore();
     } else if (o.type === 'flyshirt') {
       drawTee(g, x + 19, base - 22, 34, '#3fae3a', Math.sin(o.t * 14), o.t, true);
+    } else if (o.type === 'stink') {
+      const yy = base - 14;
+      g.fillStyle = 'rgba(140,200,60,0.85)';
+      for (const [dx, dy, r] of [[0, 0, 11], [12, -5, 13], [25, 0, 10], [12, 5, 10]]) { g.beginPath(); g.arc(x + 6 + dx + Math.sin(o.t * 4 + dx) * 2, yy + dy, r, 0, 7); g.fill(); }
+      g.strokeStyle = 'rgba(160,230,70,0.7)'; g.lineWidth = 2;
+      for (let i = 0; i < 3; i++) { g.beginPath(); const sx = x + 8 + i * 10; g.moveTo(sx, yy - 16); g.bezierCurveTo(sx + 5, yy - 22, sx - 5, yy - 28, sx, yy - 34 - Math.sin(o.t * 6 + i) * 3); g.stroke(); }
+      g.fillStyle = '#243a10'; g.font = '900 9px sans-serif'; g.textAlign = 'center'; g.fillText('PUH!', x + 19, yy + 3);
+    } else if (o.type === 'rille') {
+      const letters = 'RILLE';
+      for (let i = 0; i < 5; i++) {
+        const jx = Math.sin(o.t * 22 + i) * 1.2, jy = Math.cos(o.t * 19 + i * 2) * 1.2;
+        g.fillStyle = ['#9bff3a', '#ff3b6b', '#9bff3a', '#ff3b6b', '#9bff3a'][i];
+        roundRect(g, x + i * 13 + jx, base - 26 + jy, 12, 26, 3); g.fill();
+        g.fillStyle = '#111'; g.font = '900 16px sans-serif'; g.textAlign = 'center'; g.fillText(letters[i], x + i * 13 + 6 + jx, base - 7 + jy);
+      }
+    } else if (o.type === 'fish') {
+      g.fillStyle = '#7f8c9a';
+      g.beginPath(); g.ellipse(x + 18, base - 9, 16, 8, 0, 0, 7); g.fill();
+      g.beginPath(); g.moveTo(x + 32, base - 9); g.lineTo(x + 42, base - 17); g.lineTo(x + 42, base - 1); g.closePath(); g.fill();
+      g.strokeStyle = '#4d5866'; g.lineWidth = 1.2;
+      for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(x + 12 + i * 5, base - 15); g.lineTo(x + 12 + i * 5, base - 3); g.stroke(); }
+      g.strokeStyle = '#111'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + 5, base - 12); g.lineTo(x + 9, base - 8); g.moveTo(x + 9, base - 12); g.lineTo(x + 5, base - 8); g.stroke();
+      g.strokeStyle = 'rgba(160,230,70,0.75)'; g.lineWidth = 2;
+      for (let i = 0; i < 3; i++) { const sx = x + 10 + i * 9; g.beginPath(); g.moveTo(sx, base - 20); g.bezierCurveTo(sx + 5, base - 26, sx - 5, base - 32, sx, base - 38 - Math.sin(o.t * 6 + i) * 3); g.stroke(); }
+    } else if (o.type === 'merz') {
+      g.fillStyle = '#6b4a2b'; g.fillRect(x + 20, base - 42, 6, 42);
+      g.fillStyle = '#f4f1ea'; roundRect(g, x, base - 82, 46, 42, 3); g.fill();
+      g.strokeStyle = '#1b2b5a'; g.lineWidth = 2; g.stroke();
+      const mimg = assets.images.merz;
+      if (mimg) { g.save(); g.beginPath(); g.rect(x + 3, base - 79, 40, 24); g.clip(); const sc = Math.max(40 / mimg.width, 24 / mimg.height); g.drawImage(mimg, x + 23 - mimg.width * sc / 2, base - 67 - mimg.height * sc / 2, mimg.width * sc, mimg.height * sc); g.restore(); }
+      else { g.fillStyle = '#1b2b5a'; g.beginPath(); g.arc(x + 23, base - 69, 8, 0, 7); g.fill(); g.fillRect(x + 13, base - 61, 20, 6); }
+      g.fillStyle = '#1b2b5a'; g.font = '900 9px sans-serif'; g.textAlign = 'center'; g.fillText('MERZ', x + 23, base - 45);
     } else if (o.type === 'ghost') {
       const yy = base - 26;
       g.fillStyle = 'rgba(230,255,230,0.92)';
@@ -602,7 +640,7 @@ export function drawItemIcon(g, type, t = 0) {
     skull(g, 9, -9);
   } else if (type === 'egg') {
     g.fillStyle = '#fbf6ea'; g.beginPath(); g.ellipse(0, 1, 11, 14, 0, 0, 7); g.fill();
-    const { img } = getFace('him', 'happy');
+    const { img } = getFace('her', 'happy');
     g.save(); g.beginPath(); g.ellipse(0, 1, 11, 14, 0, 0, 7); g.clip();
     g.globalAlpha = 0.95; g.drawImage(img, -10, -12, 20, 24); g.restore();
     g.globalAlpha = 1;

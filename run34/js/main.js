@@ -3,6 +3,7 @@ import { OUTFIT_PARTS, PRESETS } from './config.js';
 import { Game } from './world.js';
 import { LoseScene, FinaleScene, animateMap } from './scenes.js';
 import { drawCharacter } from './character.js';
+import { MOTIFS } from './motifs.js';
 import { initAudio, sfx, playMusic, stopMusic, setMuted, isMuted, suspendAudio, resumeAudio } from './audio.js';
 
 const $ = (id) => document.getElementById(id);
@@ -171,6 +172,13 @@ function showReveal() {
   $('reveal-title').textContent = gift.title || '';
   $('reveal-date').textContent = gift.date || '';
   $('reveal-text').textContent = gift.text || '';
+  $('reveal-motto').textContent = gift.motto || '';
+  $('reveal-motifs').innerHTML = (gift.motifs || []).map((m) => MOTIFS[m] || '').join('');
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  $('reveal-days').innerHTML = (gift.days || []).map((d, i) => `
+    <div class="day" style="animation-delay:${1.2 + i * 0.6}s">${MOTIFS[d.icon] || ''}
+      <div><h3><small>${esc(d.label || '')}</small>${esc(d.title || '')}</h3>
+      <ul>${(d.items || []).map((it) => `<li>${esc(it)}</li>`).join('')}</ul></div></div>`).join('');
   $('reveal-unlock').textContent = firstWin ? '🔓 Freigeschaltet: Birthday-Princess-Outfit & Horror-Modus 👻' : '';
   show('scr-reveal');
   stopMap?.(); stopMap = animateMap($('map'), gift.stops || []);
