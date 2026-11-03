@@ -138,7 +138,7 @@ export class LoseScene {
       const h = S * 0.42;
       drawFaceAt(g, 'oma', 'normal', cx, cy, h, Math.sin(t * 9) * 0.18);
       const omaCfg = (assets.config.cameos || []).find((c) => c.oma);
-      caption(g, V, omaCfg?.loseLine || '„Kind, früher sind wir 10 km zur Schule gelaufen!"', cy + h * 0.75, 17);
+      caption(g, V, omaCfg?.loseLine || '„Bei so einer Leistung gibt es keine Graupensuppe!"', cy + h * 0.75, 17);
     }
     g.restore();
     g.fillStyle = 'rgba(255,255,255,0.6)'; g.font = '700 12px system-ui'; g.textAlign = 'right';
