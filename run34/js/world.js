@@ -6,6 +6,7 @@ import { sfx } from './audio.js';
 import { BIOMES, BIOMES_RT, FIPSLAND, OBS, ITEM_ICONS, drawMonkey, biomeName } from './biomes.js';
 import { LEVELS, COSTUMES, ITEM_EMO, drawScene, faceItem } from './levels.js';
 import { emoji } from './emoji.js';
+import { startStory, updateStory, drawStory, drawStoryBack, storyInput } from './story.js';
 
 export const MODES = {
   birthday: { start: 330, accel: 5, max: 540, theme: 'birthday', obstacles: { shirt: 3, height: 2, alarm: 2, tax: 2, flyshirt: 3 }, items: 0.1, bad: 0.16, collect: 'candle' },
@@ -16,8 +17,8 @@ export const MODES = {
   attract: { start: 230, accel: 0, max: 230, theme: 'birthday', obstacles: {}, items: 0, bad: 0 },
 };
 
-const GRAV0 = 2400, JUMP_V0 = 760, CHAR_SCALE = 0.78, PLAYER_X = 95;
-const STAND_H = 100, DUCK_H = 64;
+const GRAV0 = 2400, JUMP_V0 = 760, CHAR_SCALE = 0.95, PLAYER_X = 95;
+const STAND_H = 122, DUCK_H = 78;
 const FREQ = { viel: [12, 18], normal: [24, 34], wenig: [45, 65] };
 const freqT = (f) => (FREQ[f] ? rand(...FREQ[f]) : Infinity);
 const CHEAT = 'JJJJJJJJJJDDDJJJ';
@@ -89,7 +90,7 @@ export class Game {
     this.omaRide = null; this.nextOma = ['birthday', 'endless', 'roadtrip'].includes(mode) ? rand(26, 34) : Infinity;
     this.hero = null; this.nextHero = ['birthday', 'endless', 'roadtrip', 'horror'].includes(mode) ? rand(16, 24) : Infinity;
     this.prevBiome = null; this.biomeFade = 1; this.nextBiomeAt = 60;
-    this.rockets = []; this.god = false; this.cheat = []; this.facing = 1; this.fireCd = 0; this.prevDuck = false;
+    this.rockets = []; this.booms = []; this.god = false; this.cheat = []; this.facing = 1; this.fireCd = 0; this.prevDuck = false;
     this.hitCount = 0; this.revived = false; this.questDone = false; this.goalT = 0;
     if (endlessLevels?.length) {
       this.levelPool = endlessLevels.map((id) => this.levelBiome(id)).filter(Boolean);
@@ -146,13 +147,15 @@ export class Game {
     const n = q.n || (q.set ? q.set.length : 0);
     this.questEvery = n ? Math.max(1.6, (L.len * 0.78) / (n * 1.6)) : Infinity;
     this.questT = 3;
-    if (q.hidden) { this.questEvery = Infinity; this.ringAt = 0.5; }
+    if (q.hidden) { this.questEvery = Infinity; this.ringAt = (P.events || []).some((e) => e.kind === 'detector') ? Infinity : 0.5; }
     this.badItems = L.badItems || null;
     if (startAt > 0) {
       this.distance = this.lvTarget * startAt;
       this.speed = start + (max - start) * startAt;
       this.checkSceneSwitch(true);
     }
+    this.evDone = new Set();
+    (P.events || []).forEach((ev, i) => { if (ev.at < startAt) this.evDone.add(i); });
     this.checkpointAt = L.checkpoint ? 0.5 : null;
     if (startAt >= 0.5) this.cpShown = true;
     if (L.world) this.events.onWorld?.(L.world, 0);
@@ -199,7 +202,7 @@ export class Game {
     const V = this.V;
     for (const c of this.cameos) {
       if (!c.secret) continue;
-      if (Math.abs(x - c.x) < 36 && y > V.groundY - 135 && y < V.groundY + 10) {
+      if (Math.abs(x - c.x) < 36 && y > V.groundY - 165 && y < V.groundY + 10) {
         c.secret = false; c.line = '…okay. Psst! 🌿'; c.sayT = 0; c.said = true;
         this.fx.burst(c.x, V.groundY - 80, { n: 30, colors: ['#4caf50', '#a5d6a7', '#fff'], speed: 220 });
         sfx('power'); this.events.onSecret?.();
@@ -220,6 +223,7 @@ export class Game {
 
     let dx = 0;
     this.turbo = Math.max(0, (this.turbo || 0) - dt);
+    this.figT = Math.max(0, (this.figT || 0) - dt);
     if (this.state === 'run' && this.god) {
       const mv = (input.right ? 1 : 0) - (input.left ? 1 : 0);
       const walk = mv * 320 * dt;
@@ -236,8 +240,17 @@ export class Game {
       this.speed = Math.max(0, this.speed - 420 * dt);
       dx = this.god ? 0 : this.speed * dt;
       p.x = lerp(p.x, this.V.w * 0.3, Math.min(1, dt * 1.4));
+      if (this.goalFx) updateStory(this, this.goalFx, dt);
       if (this.goalT > 0.4 && Math.floor(this.goalT * 3) !== Math.floor((this.goalT - dt) * 3)) this.fx.burst(rand(40, this.V.w - 40), rand(20, this.V.groundY * 0.5), { n: 24, type: 'confetti', speed: 200, size: 4, gravity: 260 });
       if ((this.goalT > 6 || (this.goalT > 1.5 && input.jumpPressed)) && !this.goalSent) { this.goalSent = true; this.events.onLevelDone?.(this.levelResult()); }
+    } else if (this.state === 'story') {
+      updateStory(this, this.story, dt);
+      p.vy -= GRAV0 * dt; p.y = Math.max(0, p.y + p.vy * dt); if (p.y === 0) p.vy = this.story.kimiPose === 'jump' ? 300 : 0;
+      p.phase += dt * (this.story.kimiPose === 'run' ? 12 : 0);
+      if (this.story.done) {
+        this.state = 'run'; this.story = null; p.invuln = Math.max(p.invuln, 1.2);
+        this.obstacles = []; this.sinceSpawn = 0; this.nextGap = 400;
+      }
     } else if (this.state === 'revive') {
       this.reviveT += dt;
       const k = this.revive;
@@ -328,6 +341,8 @@ export class Game {
     for (const c of this.cameos) { c.x -= dx; c.t += dt; }
     this.cameos = this.cameos.filter((c) => c.x > -80);
     if (this.rockets.length) this.updateRockets(dt, dx);
+    for (const b of this.booms) { b.t += dt; b.x -= dx; }
+    this.booms = this.booms.filter((b) => b.t < 0.6);
     this.updateCameos(dt);
     this.updateSpecials(dt);
     if (this.bigNum) { this.bigNum.t += dt; if (this.bigNum.t > 1.1) this.bigNum = null; }
@@ -366,9 +381,23 @@ export class Game {
       const it = this.makeItem('blackring', V.w + 40, pick([20, 104])); it.quest = true; this.items.push(it);
       this.events.onToast?.('💍 Da glitzert was im Gras…');
     }
+    const evs = this.lvP.events || [];
+    for (let i = 0; i < evs.length; i++) {
+      if (this.evDone.has(i) || this.progress < evs[i].at || this.biome === FIPSLAND || this.god && evs[i].kind === 'escalator') continue;
+      this.evDone.add(i); this.beginStory(evs[i]); return;
+    }
     if (this.checkpointAt != null && !this.cpShown && this.progress >= this.checkpointAt) { this.cpShown = true; this.events.onToast?.('🚩 Checkpoint!'); sfx('memory'); }
     if (this.distance >= this.lvTarget) this.startGoal();
   }
+
+  beginStory(ev) {
+    this.hero = null; this.chase = null; this.omaRide = null; this.dash = null; this.rockets = [];
+    this.p.duck = false; this.p.vy = 0;
+    this.story = startStory(this, ev);
+    this.state = 'story';
+  }
+
+  storyInput(type, x, y) { if (this.story) storyInput(this, this.story, type, x, y); }
 
   checkQuest() {
     if (!this.lv || this.questDone) return;
@@ -394,6 +423,13 @@ export class Game {
     const src = this.lvP.guests === 'all' ? this.guestList(this.lvP) : (this.lvP.guests || []);
     for (const c of src) { const k = c.face || c.emoji; if (seen.has(k) || (c.face && c.face === this.lvP.heroFace)) continue; seen.add(k); stage.push(c); if (stage.length >= 6) break; }
     this.stage = stage.map((c, i) => ({ ...c, x: 0, i, color: pick(['#5b7bd5', '#d55b8f', '#3ea37a', '#d58a3e', '#8e5aa8']) }));
+    const L = this.lv;
+    const gfx = {};
+    if (L.party) { gfx.disco = 1; gfx.confetti = 1; }
+    if (L.finale || L.fireworks) gfx.fireworks = 1;
+    if (L.goalHearts) gfx.hearts = 1;
+    if (L.goalRain) gfx.rain = L.goalRain;
+    this.goalFx = { kind: 'goalfx', ev: {}, t: 0, parts: [], fw: [], fx: gfx };
     this.events.onGoal?.();
   }
 
@@ -408,7 +444,7 @@ export class Game {
     this.fireCd -= dt;
     if (input.fire && this.fireCd <= 0) {
       this.fireCd = 0.22;
-      this.rockets.push({ x: p.x + this.facing * 24, y: p.y + 70, vx: this.facing * 720, t: 0 });
+      this.rockets.push({ x: p.x + this.facing * 28, y: p.y + (p.duck ? 30 : 42), vx: this.facing * 720, t: 0 });
       sfx('launch');
     }
   }
@@ -421,14 +457,16 @@ export class Game {
       for (const o of this.obstacles) {
         if (o.knock || o.secret) continue;
         const top = o.yOff + Math.max(...o.rects.map((q) => q.y1)), bot = o.yOff;
-        if (r.x > o.x - 8 && r.x < o.x + o.w + 8 && r.y > bot - 14 && r.y < top + 20) {
+        const yOk = o.fly ? r.y > bot - 50 && r.y < top + 50 : true;
+        if (r.x > o.x - 10 && r.x < o.x + o.w + 10 && yOk) {
           r.dead = true;
           o.knock = { vx: Math.sign(r.vx) * 300, vy: 900, vr: 12 };
           const ox = o.x + o.w / 2, oy = this.screenY(o.yOff + 20);
           this.fx.burst(ox, oy, { n: 30, colors: ['#ffd23f', '#ff7b39', '#ff3b3b', '#fff'], speed: 320, size: 4 });
           this.fx.burst(ox, oy, { n: 12, type: 'smoke', colors: ['#bdbdbd', '#757575'], speed: 120, size: 7, gravity: -40 });
-          this.fx.text(ox, oy - 26, pick(['BOOM!', 'KAWUMM!', 'ZACK!', 'WEG DAMIT!']), { color: '#ffd23f', size: 22 });
-          this.shake = Math.max(this.shake, 7); this.score += 2; sfx('smash');
+          this.fx.text(ox, oy - 34, pick(['BOOM!', 'KAWUMM!', 'ZACK!', 'WEG DAMIT!']), { color: '#ffd23f', size: 24 });
+          this.booms.push({ x: ox, y: oy, t: 0 });
+          this.shake = Math.max(this.shake, 9); this.flash = Math.max(this.flash, 0.25); this.score += 2; sfx('boom'); sfx('smash');
           break;
         }
       }
@@ -555,8 +593,8 @@ export class Game {
     if (this.dash) {
       const d = this.dash; d.t += dt;
       d.x += (this.state === 'idle' ? 330 : 420) * dt;
-      if (d.x > V.w * 0.62 && !d.jumped) { d.jumped = true; d.vy = 520; this.fx.text(d.x, V.groundY - 60, this.green ? 'Igitt, grün! 🤢' : pick(this.cfg.catLines || ['Miau!']), { color: '#ffb36b', size: 16 }); sfx('meow'); }
-      if (d.jumped) { d.vy -= 1300 * dt; d.y = Math.max(0, d.y + d.vy * dt); }
+      if (d.x > V.w * 0.62 && !d.jumped) { d.jumped = true; d.vy = 640; this.fx.text(d.x, V.groundY - 70, this.green ? 'Igitt, grün! 🤢' : pick([...(this.cfg.catLines || ['Miau!']), 'Juhu! 🤸', 'Salto! 🐾']), { color: '#ffb36b', size: 16 }); sfx('meow'); }
+      if (d.jumped) { d.vy -= 1300 * dt; d.y = Math.max(0, d.y + d.vy * dt); if (d.y > 0) d.rot = Math.min(Math.PI * 2, (d.rot || 0) + dt * 9); }
       if (d.x > V.w + 80) this.dash = null;
     } else if (active && !this.horror && this.fips <= 0 && this.biome !== FIPSLAND) {
       this.nextDash -= dt;
@@ -670,7 +708,7 @@ export class Game {
     const yy = V.groundY - h.y;
     if (h.ph !== 'land') { g.fillStyle = 'rgba(0,0,0,0.15)'; g.beginPath(); g.ellipse(h.x, V.groundY + 2, Math.max(4, 22 - h.y * 0.08), 4, 0, 0, 7); g.fill(); }
     drawHero(g, h.x, yy, { pose, t: this.t, zombie, scale: CHAR_SCALE * 1.18, costume: this.costume, faceKey: this.lvP?.heroFace || null });
-    if (h.say && ((h.ph === 'land' && h.t < 0.8) || (h.ph === 'smash' && h.t < 1.2) || (h.ph === 'out' && h.t < 1.0))) speech(g, h.x - 10, yy - 108, h.say);
+    if (h.say && ((h.ph === 'land' && h.t < 0.8) || (h.ph === 'smash' && h.t < 1.2) || (h.ph === 'out' && h.t < 1.0))) speech(g, h.x - 10, yy - 130, h.say);
   }
 
   makeObstacle(type, x) {
@@ -717,7 +755,7 @@ export class Game {
 
   playerBox() {
     const p = this.p;
-    return { x0: p.x - 12, x1: p.x + 14, y0: p.y + 2, y1: p.y + (p.duck && p.y < 1 ? DUCK_H : STAND_H) };
+    return { x0: p.x - 15, x1: p.x + 17, y0: p.y + 2, y1: p.y + (p.duck && p.y < 1 ? DUCK_H : STAND_H) };
   }
 
   collide() {
@@ -873,6 +911,7 @@ export class Game {
     }
     if (it.bad) {
       if (this.god) return;
+      if (this.lv?.figStory && it.type === 'fig') { this.figT = 3; p.exprT = 3; this.events.onToast?.('🤢 Der Feigenunfall! Kimi wird ganz grün…'); }
       if (this.horror && this.fips <= 0 && this.hammer <= 0 && p.invuln <= 0) { this.die(it.type); return; }
       this.score = Math.max(0, this.score + def.points);
       p.swell = 1; p.expr = 'shock'; p.exprT = 1.2; this.shake = 6;
@@ -968,6 +1007,8 @@ export class Game {
     } else drawBackground(g, V, this.M.theme, this.bgOffset, this.t, night);
     for (const c of this.cameos) this.drawCameo(g, c);
     if (this.lv) this.drawGoalArch(g);
+    if (this.story) drawStoryBack(g, this, this.story);
+    if (this.state === 'goal' && this.goalFx) drawStoryBack(g, this, this.goalFx);
     outlined(g, this.horror ? 'rgba(225,255,210,0.95)' : 'rgba(40,14,48,0.95)', (lg) => {
       for (const o of this.obstacles) this.drawObstacle(lg, o);
       for (const it of this.items) this.drawItem(lg, it);
@@ -977,18 +1018,19 @@ export class Game {
     }
     if (this.chase) {
       const c = this.chase;
-      drawPerson(g, c.x, V.groundY, { faceKey: c.face, t: this.t, color: '#5b7bd5', scale: 0.78, run: true, expr: 'happy' });
-      if (c.t > 0.6 && c.t < 4.2) speech(g, c.x - 4, V.groundY - 118, c.line || 'Payback!');
+      drawPerson(g, c.x, V.groundY, { faceKey: c.face, t: this.t, color: '#5b7bd5', scale: 0.95, run: true, expr: 'happy' });
+      if (c.t > 0.6 && c.t < 4.2) speech(g, c.x - 4, V.groundY - 142, c.line || 'Payback!');
     }
 
     const p = this.p;
     if (this.fips > 0) {
       const blink = this.fips < 1.5 && Math.floor(this.t * 10) % 2;
-      if (!blink) drawCat(g, p.x + 46 + Math.sin(this.t * 3) * 8, V.groundY, { phase: p.phase * 1.4, scale: 0.85, t: this.t });
+      if (!blink) drawCat(g, p.x + 46 + Math.sin(this.t * 3) * 8, V.groundY, { phase: p.phase * 1.4, scale: 1.05, t: this.t });
     }
     const goalish = this.state === 'finale' || this.state === 'goal';
     let pose = this.state === 'dying' ? 'dead' : goalish ? (this.speed > 5 ? 'run' : 'cheer') : this.state === 'idle' ? 'run' : p.y > 0.5 ? 'jump' : p.duck ? 'duck' : 'run';
     if (this.state === 'revive') pose = this.reviveT < 0.9 ? 'duck' : 'cheer';
+    if (this.state === 'story') pose = this.story.kimiPose || 'cheer';
     if (this.god && this.state === 'run' && !this.walking && p.y < 0.5 && !p.duck) pose = 'cheer';
     if (this.state === 'goal') this.drawStage(g);
     const blink = p.invuln > 0 && Math.floor(this.t * 12) % 2;
@@ -999,28 +1041,42 @@ export class Game {
       const flip = this.god && this.facing < 0;
       if (flip) { g.save(); g.translate(p.x, 0); g.scale(-1, 1); g.translate(-p.x, 0); }
       drawCharacter(g, p.x, V.groundY - p.y, {
-        pose, phase: p.phase, outfit: this.outfit, expr: p.expr, scale: CHAR_SCALE, t: this.t, swell: p.swell, headScale: this.eggT > 0 ? 1.9 : 0,
+        pose, phase: p.phase, outfit: this.outfit, expr: this.lvP?.kid && p.expr !== 'sad' ? 'child' : p.expr, scale: CHAR_SCALE, t: this.t, swell: p.swell, headScale: this.eggT > 0 ? 1.9 : 0,
         rot: this.state === 'dying' ? -Math.min(1.2, this.deadT * 4) : 0,
       });
-      if (this.god) drawLauncher(g, p.x, V.groundY - p.y - (p.duck && p.y < 1 ? 46 : 70), this.t);
+      if (this.god) drawLauncher(g, p.x, V.groundY - p.y - (p.duck && p.y < 1 ? 56 : 86), this.t);
       if (flip) g.restore();
       if (this.hammer > 0 && this.state === 'run') drawJackhammer(g, p.x + 22, V.groundY - p.y - 28, this.t, this.hammer < 1.5);
     }
     if (this.state === 'finale' && this.speed <= 5) {
-      drawCat(g, p.x - 55, V.groundY, { pose: 'sit', scale: 1, t: this.t });
+      drawCat(g, p.x - 60, V.groundY, { pose: 'sit', scale: 1.2, t: this.t });
     }
-    if (this.dash) drawCat(g, this.dash.x, V.groundY - this.dash.y, { phase: this.t * 16, scale: 0.9, t: this.t });
+    if (this.dash) {
+      const d = this.dash, cy = V.groundY - d.y - 18;
+      g.save(); g.translate(d.x, cy); g.rotate(-(d.rot || 0)); g.translate(-d.x, -cy);
+      drawCat(g, d.x, V.groundY - d.y, { phase: this.t * 16, scale: 1.1, t: this.t });
+      g.restore();
+    }
     if (this.omaRide) {
       const o = this.omaRide;
       drawRollatorOma(g, o.x, V.groundY, { t: this.t, scale: CHAR_SCALE * 1.05 });
-      if (o.t < 1.8) speech(g, o.x - 30, V.groundY - 100, o.say);
+      if (o.t < 1.8) speech(g, o.x - 30, V.groundY - 122, o.say);
     }
     this.drawHeroFx(g);
+    if (this.story) drawStory(g, this, this.story);
+    if (this.state === 'goal' && this.goalFx) drawStory(g, this, this.goalFx);
+    for (const b of this.booms) {
+      const k = b.t / 0.6;
+      g.save(); g.globalAlpha = 1 - k;
+      g.strokeStyle = '#fff3a0'; g.lineWidth = 6 * (1 - k) + 1; g.beginPath(); g.arc(b.x, b.y, 10 + k * 70, 0, 7); g.stroke();
+      emoji(g, '💥', b.x, b.y, 40 + k * 50);
+      g.restore();
+    }
     for (const r of this.rockets) emoji(g, '🚀', r.x, this.screenY(r.y), 22, r.vx > 0 ? Math.PI / 4 : -Math.PI * 0.75);
     if (this.revive) {
       const k = this.revive;
-      drawPerson(g, k.x, V.groundY, { faceKey: this.cfg.revive?.face, t: this.t, color: '#3ea37a', scale: 0.78, run: this.state !== 'revive' || this.reviveT < 0.7, expr: 'happy' });
-      if (this.state === 'revive' && this.reviveT > 0.5) speech(g, k.x - 20, V.groundY - 118, this.cfg.revive?.line || 'Kopf hoch!');
+      drawPerson(g, k.x, V.groundY, { faceKey: this.cfg.revive?.face, t: this.t, color: '#3ea37a', scale: 0.95, run: this.state !== 'revive' || this.reviveT < 0.7, expr: 'happy' });
+      if (this.state === 'revive' && this.reviveT > 0.5) speech(g, k.x - 20, V.groundY - 142, this.cfg.revive?.line || 'Kopf hoch!');
     }
     this.fx.draw(g);
     for (const pl of this.polaroids) this.drawPolaroid(g, pl);
@@ -1042,8 +1098,17 @@ export class Game {
       g.fillRect(0, 0, V.w, V.h);
     }
     if (this.green) { g.fillStyle = 'rgba(70,200,70,0.13)'; g.fillRect(0, 0, V.w, V.h); }
+    if (this.figT > 0) { g.fillStyle = `rgba(110,200,60,${Math.min(0.3, this.figT * 0.12)})`; g.fillRect(0, 0, V.w, V.h); }
     if (this.lv?.lowGrav) { g.fillStyle = `rgba(90,200,90,${0.1 + Math.sin(this.t) * 0.04})`; g.fillRect(0, 0, V.w, V.h); }
     if (this.state === 'goal') this.drawOutro(g);
+    if (this.horror && (this.state === 'run' || this.state === 'revive')) {
+      // orange-grünes Flackern
+      const k = Math.floor(this.t * 14);
+      const on = (k * 7919) % 11 < 6;
+      const strong = (k * 104729) % 37 === 0;
+      g.fillStyle = (k % 2 ? 'rgba(255,122,0,' : 'rgba(57,255,20,') + (strong ? 0.38 : on ? 0.13 + ((k * 31) % 7) / 60 : 0.03) + ')';
+      g.fillRect(0, 0, V.w, V.h);
+    }
     if (this.horror) {
       const gr = g.createRadialGradient(p.x, V.groundY - 50, 80, p.x, V.groundY - 50, Math.max(V.w, V.h));
       gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,0.75)');
@@ -1064,10 +1129,13 @@ export class Game {
   drawStage(g) {
     const V = this.V, p = this.p, k = Math.min(1, this.goalT / 1.6);
     (this.stage || []).forEach((c, i) => {
-      const tx = p.x + 70 + i * 44, x = lerp(V.w + 60 + i * 50, tx, k * k * (3 - 2 * k));
-      drawPerson(g, x, V.groundY - 6 - Math.max(0, Math.sin(this.goalT * 6 + i)) * (k >= 1 ? 8 : 0), { faceKey: c.face, t: this.goalT + i, color: c.color, oma: c.oma, scale: 0.72, wave: true, pet: c.pet, emojiHead: c.emoji });
+      const tx = p.x + 80 + i * 52, x = lerp(V.w + 60 + i * 56, tx, k * k * (3 - 2 * k));
+      const dance = this.lv.party && k >= 1;
+      if (dance) { g.save(); const yy = V.groundY - 40; g.translate(x, yy); g.rotate(Math.sin(this.goalT * 4 + i) * 0.2); g.translate(-x, -yy); }
+      drawPerson(g, x, V.groundY - 6 - Math.max(0, Math.sin(this.goalT * (dance ? 8 : 6) + i)) * (k >= 1 ? (dance ? 14 : 8) : 0), { faceKey: c.face, t: this.goalT + i, color: c.color, oma: c.oma, scale: 0.88, wave: true, pet: c.pet, emojiHead: c.emoji });
+      if (dance) g.restore();
     });
-    if (this.goalT > 1.2) drawCat(g, p.x - 50, V.groundY, { pose: 'sit', scale: 0.9, t: this.t });
+    if (this.goalT > 1.2) drawCat(g, p.x - 50, V.groundY, { pose: 'sit', scale: 1.1, t: this.t });
   }
 
   drawOutro(g) {
@@ -1090,15 +1158,15 @@ export class Game {
   drawCameo(g, c) {
     const V = this.V;
     if (c.flag) {
-      drawFan(g, c.x, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.color, scale: 0.72, flag: c.flag });
+      drawFan(g, c.x, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.color, scale: 0.88, flag: c.flag });
       if (Math.floor(c.t * 7 / Math.PI) !== c.lastHop) { c.lastHop = Math.floor(c.t * 7 / Math.PI); if (c.lastHop % 2 === 0) this.fx.burst(c.x, V.groundY - 90, { n: 6, type: 'confetti', speed: 90, size: 3, gravity: 200 }); }
-      if (c.said && c.sayT < 2.6 && c.line) speech(g, c.x + 30, V.groundY - 150, c.line);
+      if (c.said && c.sayT < 2.6 && c.line) speech(g, c.x + 30, V.groundY - 180, c.line);
       return;
     }
     const jx = c.secret ? Math.sin(c.t * 40) * 2 : 0;
-    drawPerson(g, c.x + jx, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.secret ? '#c62828' : c.color, oma: c.oma, scale: 0.72, wave: true, pet: c.pet, emojiHead: c.emoji });
+    drawPerson(g, c.x + jx, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.secret ? '#c62828' : c.color, oma: c.oma, scale: 0.88, wave: true, pet: c.pet, emojiHead: c.emoji });
     if (c.secret) { g.fillStyle = 'rgba(255,60,60,0.25)'; g.beginPath(); g.arc(c.x, V.groundY - 60, 34 + Math.sin(c.t * 12) * 4, 0, 7); g.fill(); }
-    if (c.said && (c.sayT < 2.6 || c.secret) && c.line) speech(g, c.x + 12, V.groundY - (c.pet ? 50 : 112), c.line);
+    if (c.said && (c.sayT < 2.6 || c.secret) && c.line) speech(g, c.x + 12, V.groundY - (c.pet ? 62 : 135), c.line);
   }
 
   drawObstacle(g, o) {

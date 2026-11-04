@@ -334,7 +334,7 @@ $('btn-replay-finale').addEventListener('click', () => {
 
 // Pause
 $('btn-pause').addEventListener('click', (e) => { e.stopPropagation(); pause(); });
-function pause() { if (screen === 'play' && (game?.state === 'run' || game?.state === 'goal')) { paused = true; show('scr-pause'); suspendAudio(); } }
+function pause() { if (screen === 'play' && ['run', 'goal', 'story'].includes(game?.state)) { paused = true; show('scr-pause'); suspendAudio(); } }
 $('btn-resume').addEventListener('click', () => { paused = false; show(null); resumeAudio(); last = performance.now(); });
 $('btn-quit').addEventListener('click', () => { resumeAudio(); if (game?.mode === 'level') showLevels(); else toMenu(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
@@ -345,6 +345,7 @@ canvas.addEventListener('pointerdown', (e) => {
   e.preventDefault();
   initAudio();
   if (scene) { scene.tap?.(...worldPos(e), V); return; }
+  if (screen === 'play' && !paused && game?.state === 'story') { game.storyInput('down', ...worldPos(e)); return; }
   if (screen === 'play' && !paused && game?.tryTap?.(...worldPos(e))) return;
   if (screen === 'play' && !paused) {
     input.jumpHeld = true; input.jumpPressed = true;
@@ -352,6 +353,7 @@ canvas.addEventListener('pointerdown', (e) => {
   }
 });
 const release = () => { input.jumpHeld = false; };
+canvas.addEventListener('pointermove', (e) => { if (screen === 'play' && !paused && game?.state === 'story') game.storyInput('move', ...worldPos(e)); });
 canvas.addEventListener('pointerup', release);
 canvas.addEventListener('pointercancel', release);
 const duckBtn = $('btn-duck');
@@ -367,6 +369,7 @@ addEventListener('keydown', (e) => {
   if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) {
     e.preventDefault(); initAudio();
     if (scene) scene.tap?.(V.w / 2, V.h / 2, V);
+    else if (game?.state === 'story') game.storyInput('down', V.w / 2, V.h / 2);
     else { input.jumpHeld = true; input.jumpPressed = true; }
   }
   if (['ArrowDown', 'KeyS'].includes(e.code)) input.duck = true;

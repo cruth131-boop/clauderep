@@ -104,6 +104,7 @@ export function sfx(name, arg = 0) {
       noise({ dur: 0.9, vol: 0.45, freq: 1800, f1: 120 });
       for (let i = 0; i < 6; i++) noise({ dur: 0.05, vol: 0.12, freq: 5000, type: 'highpass', at: 0.2 + Math.random() * 0.6 });
       break;
+    case 'beep': tone({ type: 'square', f0: 700 + arg * 1100, dur: 0.05, vol: 0.12 }); break;
     case 'tap': tone({ type: 'square', f0: N(60 + arg * 2), dur: 0.1, vol: 0.2 }); noise({ dur: 0.06, vol: 0.15, freq: 2500 }); break;
     case 'explode': noise({ dur: 1.2, vol: 0.6, freq: 4000, f1: 100 }); [72, 76, 79, 84, 88, 91].forEach((n, i) => tone({ type: 'triangle', f0: N(n), dur: 0.3, vol: 0.2, at: 0.1 + i * 0.07 })); break;
     case 'drumroll': for (let i = 0; i < 20; i++) noise({ dur: 0.05, vol: 0.08 + i * 0.01, freq: 2000, at: i * 0.05 }); break;
