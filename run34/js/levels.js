@@ -187,7 +187,7 @@ const ITEM_DRAW = {
 };
 for (const [k, ch] of Object.entries(ITEM_EMO)) {
   if (ITEM_ICONS[k]) continue;
-  ITEM_ICONS[k] = ch === 'draw' ? ITEM_DRAW[k] : (g, t) => emoji(g, ch, 0, 0, 24, Math.sin(t * 3) * 0.08);
+  ITEM_ICONS[k] = ch === 'draw' ? ITEM_DRAW[k] : (g) => emoji(g, ch, 0, 0, 24);
 }
 /** Gesicht als einsammelbares Item (z.B. jemanden einfangen) */
 export function faceItem(face) {
@@ -698,11 +698,47 @@ export const SCENES = {
   // 30. Geburtstag „Pizza & Glitzer“
   pizzaGlitter(g, V, off, t) {
     const gy = V.groundY;
-    sky(g, V, '#2a0b3d', '#6a1b6a');
-    for (let i = 0; i < 40; i++) { g.fillStyle = `hsla(${(i * 37 + t * 60) % 360},90%,70%,${0.5 + Math.sin(t * 5 + i) * 0.4})`; const x = wrap(i * 47 - off * 0.15, V.w), y = (i * 53) % (gy - 20); g.beginPath(); g.arc(x, y, 1.8, 0, TAU); g.fill(); }
-    rep(V, off, 0.3, 240, (x) => { g.strokeStyle = '#ccc'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + 60, 0); g.lineTo(x + 60, 40); g.stroke(); const r = 22; const gr = g.createRadialGradient(x + 55, 56, 4, x + 60, 62, r); gr.addColorStop(0, '#fff'); gr.addColorStop(1, '#9aa'); g.fillStyle = gr; g.beginPath(); g.arc(x + 60, 62, r, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.8)'; for (let i = 0; i < 8; i++) { const a = i / 8 * TAU + t * 2; g.fillRect(x + 60 + Math.cos(a) * 12, 62 + Math.sin(a) * 12, 4, 4); } emoji(g, '🍕', x + 160, gy - 120, 30, Math.sin(t + x)); });
-    once(V, off, 0.3, 900, 200, (x) => { emoji(g, '3️⃣', x, gy - 150, 60); emoji(g, '0️⃣', x + 56, gy - 150, 60); });
-    crowd(g, V, off, 0.45, t, '#140320', 18, 7);
+    sky(g, V, '#1c0630', '#4a1258');
+    // Glitzervorhänge
+    rep(V, off, 0.2, 18, (x, k) => {
+      const c = ['#d4af37', '#e0e0e0', '#ff7ac8', '#c9a0ff'][((k % 4) + 4) % 4];
+      g.strokeStyle = c; g.globalAlpha = 0.55; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(x, 0); for (let y = 0; y <= gy; y += 12) g.lineTo(x + Math.sin(t * 2 + y * 0.05 + k) * 2.5, y); g.stroke();
+      g.globalAlpha = 1;
+      for (let y = 8; y < gy; y += 22) { const tw = (Math.sin(t * 7 + k * 1.3 + y) + 1) / 2; if (tw > 0.75) { g.fillStyle = '#fff'; g.beginPath(); g.arc(x + Math.sin(t * 2 + y * 0.05 + k) * 2.5, y, 1.2 + tw, 0, TAU); g.fill(); } }
+    });
+    // große Diskokugel mit Spots und Reflexen
+    const bx = V.w * 0.55, by = Math.max(60, gy * 0.26), R = Math.min(56, gy * 0.2);
+    g.save(); g.globalCompositeOperation = 'lighter';
+    for (const [sx, c] of [[0, 'rgba(255,90,200,0.22)'], [V.w, 'rgba(90,200,255,0.22)']]) { g.fillStyle = c; g.beginPath(); g.moveTo(sx, gy); g.lineTo(bx - R * 0.5, by); g.lineTo(bx + R * 0.5, by); g.fill(); }
+    for (let i = 0; i < 70; i++) {
+      const a = i * 2.39996 + t * 0.6, rr = 60 + (i * 37) % (Math.max(V.w, gy) * 0.9);
+      const x = bx + Math.cos(a) * rr * 1.3, y = by + Math.sin(a) * rr * 0.7;
+      if (y < 0 || y > V.h) continue;
+      g.fillStyle = `hsla(${(i * 47 + t * 40) % 360},100%,80%,0.55)`; g.beginPath(); g.arc(x, y, 2 + (i % 3), 0, TAU); g.fill();
+    }
+    g.restore();
+    g.strokeStyle = '#bbb'; g.lineWidth = 2; g.beginPath(); g.moveTo(bx, 0); g.lineTo(bx, by - R); g.stroke();
+    g.save(); g.beginPath(); g.arc(bx, by, R, 0, TAU); g.clip();
+    g.fillStyle = '#6d7b88'; g.fillRect(bx - R, by - R, R * 2, R * 2);
+    const rows = 10, cols = 16, rot = t * 0.8;
+    for (let r = 0; r < rows; r++) {
+      const lat = -Math.PI / 2 + (r + 0.5) * Math.PI / rows, yy = by + Math.sin(lat) * R, rw = Math.cos(lat) * R, hh = R * Math.PI / rows;
+      for (let c = 0; c < cols; c++) {
+        const lon = (c / cols) * TAU + rot, cx = Math.sin(lon) * rw; if (Math.cos(lon) < 0) continue;
+        const shine = Math.max(0, Math.cos(lon - 0.6)) * Math.max(0, 1 - Math.abs(lat + 0.3)), tw = (Math.sin(t * 9 + r * 3 + c * 5) + 1) / 2;
+        const l = 45 + shine * 45 + tw * 10;
+        g.fillStyle = `hsl(${(r * 25 + c * 15 + t * 60) % 360},${20 + tw * 40}%,${l}%)`;
+        g.fillRect(bx + cx - rw * Math.cos(lon) * Math.PI / cols, yy - hh / 2, Math.max(1, rw * Math.cos(lon) * TAU / cols - 1), hh - 1);
+      }
+    }
+    const gl = g.createRadialGradient(bx - R * 0.35, by - R * 0.4, 2, bx, by, R); gl.addColorStop(0, 'rgba(255,255,255,0.7)'); gl.addColorStop(0.5, 'rgba(255,255,255,0)'); gl.addColorStop(1, 'rgba(0,0,0,0.35)');
+    g.fillStyle = gl; g.fillRect(bx - R, by - R, R * 2, R * 2);
+    g.restore();
+    for (let i = 0; i < 4; i++) { const a = t * 3 + i * 1.6; const fx = bx + Math.cos(a) * R * 0.8, fy = by + Math.sin(a * 1.3) * R * 0.7; g.fillStyle = 'rgba(255,255,255,0.9)'; g.beginPath(); for (let k = 0; k < 8; k++) { const aa = k * Math.PI / 4, rr2 = k % 2 ? 1.5 : 6; g.lineTo(fx + Math.cos(aa) * rr2, fy + Math.sin(aa) * rr2); } g.fill(); }
+    once(V, off, 0.3, 900, 120, (x) => { emoji(g, '3️⃣', x, gy - 150, 56); emoji(g, '0️⃣', x + 52, gy - 150, 56); });
+    rep(V, off, 0.4, 340, (x) => { g.fillStyle = '#c8a26a'; for (let i = 0; i < 4; i++) { roundRect(g, x + 250 + (i % 2) * 3, gy - 34 - i * 10, 46, 10, 2); g.fill(); } emoji(g, '🍕', x + 273, gy - 82, 22); });
+    crowd(g, V, off, 0.45, t, '#2a0a3a', 18, 7);
     floor(g, V, '#1a0726', '#3a0e4a', off, () => { rep(V, off, 1, 30, (x, k) => { g.fillStyle = ['#ff4fa3', '#ffd23f', '#3ee6b4', '#c77dff'][(k + Math.floor(t * 4)) & 3]; g.globalAlpha = 0.5; g.fillRect(x + 1, gy + 2, 28, 10); g.globalAlpha = 1; }); });
   },
 
@@ -1014,7 +1050,7 @@ export const LEVELS = {
   L22: { icon: '🗽', scene: 'nyc', music: 'jinglebells', len: 105, obstacles: { taxi: 2, snowpile: 3, skater: 2, hydrant: 2, smalltree: 1 }, items: ['psl', 'brezel', 'candycane'], quest: { item: 'psl', n: 8 }, hero: 'winter', noFamily: 1, fireworks: 1, goalHearts: 1 },
   L23: { icon: '🥕', scene: 'hanauMarkt', world: 'market', music: 'nachtmusik', len: 105, obstacles: { fruitcrate: 3, flowers: 2, basket: 2, cheese: 2, pigeon: 3 }, items: ['apple', 'sausage'], quest: { item: 'sausage', n: 6 }, hero: 'crier' },
   L24: { icon: '🍲', scene: 'bbq', music: 'hungarian', len: 105, obstacles: { kettle: 2, grill: 3, logs: 2, smoke: 2 }, items: ['gulasch', 'sausage', 'steak'], quest: { item: 'gulasch', n: 10 }, hero: 'grill' },
-  L25: { icon: '🍕', scene: 'pizzaGlitter', music: 'bday30', len: 120, obstacles: { pizzatower: 3, speaker: 2, bottle: 3, confetti: 2 }, items: ['pizza', 'glitter'], quest: { item: 'glitter', n: 30 }, hero: 'glitter', party: 1, glitterRush: 1 },
+  L25: { icon: '🍕', scene: 'pizzaGlitter', music: 'bday30', len: 120, obstacles: { pizzatower: 3, speaker: 2, bottle: 3, confetti: 2 }, items: ['pizza', 'glitter'], quest: { item: 'glitter', n: 30 }, hero: 'glitter', party: 1, glitterRush: 1, glitterGuests: 1, outfit: { top: 'glitter', topColor: 'f', bottom: 'tutu', extra: ['party'] } },
   L26: { icon: '💼', scene: 'office', world: 'office', music: 'bumblebee', len: 120, obstacles: { chair: 3, boss: 2, folders: 3, paper: 3 }, items: ['coffee', 'mimisoup'], quest: { survive: 1 }, hero: 'business' },
   L27: { icon: '💍', scene: 'barn', music: 'punk', len: 150, obstacles: { hayball: 3, bench: 2, dancers: 2, bouquet: 3 }, items: ['ring', 'confetti2', 'weddingcake'], quest: { items: ['ring', 'confetti2'], n: 10 }, hero: 'groom', checkpoint: 1, party: 1, fireworks: 1, goalHearts: 1 },
   L28: { icon: '🧅', scene: 'inn', music: 'polka', len: 105, obstacles: { pan: 3, waiter: 2, bubble: 3, pubtable: 1 }, items: ['schnitzel', 'fries2', 'onion'], quest: { item: 'onion', n: 12 }, hero: 'waiter' },

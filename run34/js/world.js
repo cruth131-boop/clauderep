@@ -617,7 +617,9 @@ export class Game {
       const group = this.lvP?.guests === 'all' ? 3 : 1;
       for (let i = 0; i < group; i++) {
         const c = list[this.cameoIdx++ % list.length];
-        this.cameos.push({ ...c, x: this.V.w + 60 + i * 46, t: -i * 0.2, said: false, threw: false, color: pick(['#5b7bd5', '#d55b8f', '#3ea37a', '#d58a3e']) });
+        const extra = this.lvP?.drunk === c.face ? { drunk: true, line: this.lvP.drunkLine || 'Hicks! 🍹', prop: '🍹' } : {};
+        const glam = this.lv?.glitterGuests ? { acc: [...(c.acc || []), 'sequins'], color: pick(['#d4af37', '#c0c0c0', '#ff4fa3', '#b388ff']) } : {};
+        this.cameos.push({ ...c, x: this.V.w + 60 + i * 46, t: -i * 0.2, said: false, threw: false, color: pick(['#5b7bd5', '#d55b8f', '#3ea37a', '#d58a3e']), ...glam, ...extra });
       }
     }
   }
@@ -1097,11 +1099,6 @@ export class Game {
     if (this.lv) this.drawGoalArch(g);
     if (this.story) drawStoryBack(g, this, this.story);
     if (this.state === 'goal' && this.goalPhase === 'cheer' && this.goalFx) drawStoryBack(g, this, this.goalFx);
-    for (const it of this.items) {
-      if (it.bad || it.type === 'fips' || it.type === 'hammer' || it.taken) continue;
-      const iy = this.screenY(it.y + Math.sin(it.t * 4) * 4), gl = g.createRadialGradient(it.x, iy, 3, it.x, iy, 24);
-      gl.addColorStop(0, 'rgba(255,250,200,0.75)'); gl.addColorStop(1, 'rgba(255,250,200,0)'); g.fillStyle = gl; g.beginPath(); g.arc(it.x, iy, 24, 0, 7); g.fill();
-    }
     outlined(g, this.horror ? 'rgba(225,255,210,0.95)' : 'rgba(40,14,48,0.95)', (lg) => {
       for (const o of this.obstacles) this.drawObstacle(lg, o);
       for (const it of this.items) this.drawItem(lg, it);
@@ -1235,7 +1232,7 @@ export class Game {
       const tx = p.x + 80 + i * 52, x = lerp(V.w + 60 + i * 56, tx, k * k * (3 - 2 * k));
       const dance = this.lv.party && k >= 1;
       if (dance) { g.save(); const yy = V.groundY - 40; g.translate(x, yy); g.rotate(Math.sin(this.goalT * 4 + i) * 0.2); g.translate(-x, -yy); }
-      drawPerson(g, x, V.groundY - 6 - Math.max(0, Math.sin(this.goalT * (dance ? 8 : 6) + i)) * (k >= 1 ? (dance ? 14 : 8) : 0), { faceKey: c.face, t: this.goalT + i, color: c.color, oma: c.oma, scale: 0.88, wave: true, pet: c.pet, emojiHead: c.emoji, acc: c.acc });
+      drawPerson(g, x, V.groundY - 6 - Math.max(0, Math.sin(this.goalT * (dance ? 8 : 6) + i)) * (k >= 1 ? (dance ? 14 : 8) : 0), { faceKey: c.face, t: this.goalT + i, color: this.lv.glitterGuests ? ['#d4af37', '#c0c0c0', '#ff4fa3', '#b388ff'][i % 4] : c.color, oma: c.oma, scale: 0.88, wave: true, pet: c.pet, emojiHead: c.emoji, acc: this.lv.glitterGuests ? [...(c.acc || []), 'sequins'] : c.acc });
       if (dance) g.restore();
     });
     if (this.goalT > 1.2) drawCat(g, p.x - 50, V.groundY, { pose: 'sit', scale: 1.1, t: this.t });
@@ -1262,9 +1259,12 @@ export class Game {
       if (c.said && c.sayT < 2.6 && c.line) speech(g, c.x + 30, V.groundY - 180, c.line);
       return;
     }
-    const jx = c.secret ? Math.sin(c.t * 40) * 2 : 0;
+    const jx = c.secret ? Math.sin(c.t * 40) * 2 : c.drunk ? Math.sin(c.t * 2.2) * 10 : 0;
+    if (c.drunk) { g.save(); const yy = V.groundY - 40; g.translate(c.x + jx, yy); g.rotate(Math.sin(c.t * 2.2) * 0.22); g.translate(-(c.x + jx), -yy); }
     drawPerson(g, c.x + jx, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.secret ? '#c62828' : c.color, oma: c.oma, scale: 0.88, wave: !c.ice, pet: c.pet, emojiHead: c.emoji, acc: c.acc, twerk: c.twerk });
     if (c.ice) drawIceToss(g, c.x + jx, V.groundY - 6, c.t);
+    if (c.prop) emoji(g, c.prop, c.x + jx + 18, V.groundY - 66, 20);
+    if (c.drunk) g.restore();
     if (c.secret) { g.fillStyle = 'rgba(255,60,60,0.25)'; g.beginPath(); g.arc(c.x, V.groundY - 60, 34 + Math.sin(c.t * 12) * 4, 0, 7); g.fill(); }
     if (c.said && (c.sayT < 2.6 || c.secret) && c.line) speech(g, c.x + 12, V.groundY - (c.pet ? 62 : 135), c.line);
   }
@@ -1368,15 +1368,14 @@ export class Game {
   drawItem(g, it) {
     const x = it.x, y = this.screenY(it.y + Math.sin(it.t * 4) * 4);
     g.save(); g.translate(x, y);
-    if (it.bad) {
-      const pulse = 0.5 + Math.sin(it.t * 10) * 0.5;
-      g.strokeStyle = `rgba(255,60,60,${0.4 + pulse * 0.5})`; g.lineWidth = 3;
-      g.beginPath(); g.arc(0, 0, 17 + pulse * 2, 0, 7); g.stroke();
-    } else if (it.type === 'fips' || it.type === 'hammer') {
-      const gl = g.createRadialGradient(0, 0, 2, 0, 0, 22);
-      gl.addColorStop(0, 'rgba(255,255,255,0.9)'); gl.addColorStop(1, 'rgba(255,210,63,0)');
-      g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 22, 0, 7); g.fill();
-    }
+    // klare Lesbarkeit: alles Sammelbare mit Goldring, alles Böse mit rotem Ring
+    const pulse = 0.5 + Math.sin(it.t * (it.bad ? 10 : 5)) * 0.5;
+    g.fillStyle = it.bad ? 'rgba(255,40,40,0.22)' : 'rgba(255,236,170,0.35)';
+    g.beginPath(); g.arc(0, 0, 19, 0, 7); g.fill();
+    g.strokeStyle = it.bad ? '#ff1f1f' : '#ffc61a'; g.lineWidth = 3.5;
+    g.beginPath(); g.arc(0, 0, 19 + pulse * 1.5, 0, 7); g.stroke();
+    g.strokeStyle = it.bad ? 'rgba(255,200,200,0.8)' : 'rgba(255,255,255,0.8)'; g.lineWidth = 1;
+    g.beginPath(); g.arc(0, 0, 16.5 + pulse * 1.5, -2.4, -0.9); g.stroke();
     drawItemIcon(g, it.type, it.t);
     g.restore();
   }

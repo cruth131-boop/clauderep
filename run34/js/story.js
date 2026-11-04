@@ -26,6 +26,7 @@ export function startStory(game, ev) {
     const src = (ev.faces ? ev.faces.map((f) => ({ face: f })) : game.levelGuests.filter((c) => c.face)).slice(0, 7);
     const uniq = []; const seen = new Set(); for (const c of src) if (!seen.has(c.face)) { seen.add(c.face); uniq.push(c); }
     s.actors = uniq.map((c, i, a) => ({ ...c, x: 0.3 + (i + 0.5) * (0.42 / a.length), from: 'right', t0: i * 0.1, color: COLORS[i % COLORS.length] }));
+    if (game.lv?.glitterGuests) s.actors.forEach((x, i) => { x.acc = [...(x.acc || []), 'sequins']; x.color = ['#d4af37', '#c0c0c0', '#ff4fa3', '#b388ff'][i % 4]; if (game.lvP?.drunk === x.face) x.ev = 1; });
     s.bpm = ev.bpm || 112; s.beat = 60 / s.bpm; s.n = ev.beats || 12; s.t0 = INTRO + 0.4;
     s.judged = new Array(s.n).fill(null); s.combo = 0; s.best = 0; s.perfect = 0; s.good = 0; s.lastBeat = -1;
     s.solo = Math.floor(rand(4, s.n - 3)); // Überraschung: ein Gast bekommt ein Solo
@@ -470,6 +471,7 @@ function drawActor(g, game, s, a, i, extra = {}) {
   if (anim === 'line') { x += (extra.step ?? 0) * 16; y -= (extra.hop ?? 0) * 10; rot = (extra.step ?? 0) * 0.1; }
   if (anim === 'hop') y -= Math.abs(Math.sin(lt * 6 + i)) * 10;
   if (anim === 'shake') x += Math.sin(lt * 40) * 2.5;
+  if (anim === 'drunk') { x += Math.sin(lt * 2.2) * 10; rot = Math.sin(lt * 2.2) * 0.22; }
   if (anim === 'solo') { y -= Math.abs(Math.sin(lt * 10)) * 26; rot = Math.sin(lt * 5) * 0.4; }
   if (a.knocked) { rot = (s.t - a.knockAt) * 9; y -= (s.t - a.knockAt) * 300; }
   if (a.yUp) y -= a.yUp;
