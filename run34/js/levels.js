@@ -4,6 +4,7 @@ import { roundRect } from './character.js';
 import { OBS, ITEM_ICONS, drawAnyBiomeBg, drawMonkey } from './biomes.js';
 import { drawFaceOn } from './character.js';
 import { emoji } from './emoji.js';
+import { assets } from './assets.js';
 export { emoji };
 
 const wrap = (v, m) => ((v % m) + m) % m;
@@ -171,7 +172,7 @@ export const ITEM_EMO = {
   wood: '🪵', clay: '🧱', woolres: '🐑', grain: '🌾', ore: '🪨', card: '🃏', psl: 'draw', brezel: '🥨', candycane: '🍭', sausage: '🌭', gulasch: '🥣',
   steak: '🥩', glitter: '✨', mimisoup: '🌶️', ring: '💍', confetti2: '🎊', weddingcake: '🎂', schnitzel: '🍖', onion: '🧅', gerippter: 'draw', winktuch: '🏳️',
   hotdog: '🌭', beignet: '🍩', cowboyhat: '🤠', boots: '👢', asbach: 'draw', jaegi: 'draw', cherry: '🍒', weck: '🥖', cheese2: '🧀', blossom: '🌸', los: '🎟️', blackring: 'draw',
-  turkey: '🍗', shortbread: '🍪', whisky: '🥃', snack: '🍿', domsign: 'draw', burger2: '🍔', donut: '🍩', apple: '🍎', fries2: '🍟', wine2: '🍷', cocktail2: '🍸',
+  turkey: '🍗', shortbread: '🍪', whisky: '🥃', snack: '🍿', domsign: 'draw', burger2: '🍔', donut: '🍩', apple: '🍎', fries2: '🍟', wine2: '🍷', cocktail2: '🍸', superdrink: 'draw',
 };
 const ITEM_DRAW = {
   schokokuss(g) { g.fillStyle = '#e9d8b8'; g.beginPath(); g.ellipse(0, 7, 11, 3, 0, 0, TAU); g.fill(); g.fillStyle = '#4a2a17'; g.beginPath(); g.ellipse(0, 6, 10, 15, 0, Math.PI, 0); g.fill(); g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.ellipse(-4, -3, 2, 5, 0.3, 0, TAU); g.fill(); },
@@ -181,6 +182,16 @@ const ITEM_DRAW = {
   blackring(g, t) { const gl = g.createRadialGradient(0, 0, 2, 0, 0, 22); gl.addColorStop(0, 'rgba(255,240,150,0.8)'); gl.addColorStop(1, 'rgba(255,240,150,0)'); g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 22, 0, TAU); g.fill(); g.strokeStyle = '#111'; g.lineWidth = 4; g.beginPath(); g.ellipse(0, 0, 9, 9 * Math.abs(Math.cos(t * 2)) + 2, 0, 0, TAU); g.stroke(); g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1; g.stroke(); },
   saeftchen(g, t) { const c = ['#ff4fa3', '#3ee6b4', '#ffd23f', '#b388ff'][Math.floor(t) % 4]; g.fillStyle = 'rgba(255,255,255,0.65)'; g.beginPath(); g.moveTo(-6, -9); g.lineTo(6, -9); g.lineTo(5, 9); g.lineTo(-5, 9); g.closePath(); g.fill(); g.fillStyle = c; g.beginPath(); g.moveTo(-5.5, -3); g.lineTo(5.5, -3); g.lineTo(4.6, 8); g.lineTo(-4.6, 8); g.fill(); g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(-4, -2, 2, 8); },
   asbach(g) { drawAsbachGlass(g, 0, 12, 1); },
+  superdrink(g, t) { // Superdrink: Longdrink-Glas mit leuchtendem Türkis-Blau, Strohhalm und Etikett
+    const gl = g.createRadialGradient(0, 0, 3, 0, 0, 24); gl.addColorStop(0, 'rgba(62,230,180,0.55)'); gl.addColorStop(1, 'rgba(62,230,180,0)');
+    g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 24, 0, TAU); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.moveTo(-8, -14); g.lineTo(8, -14); g.lineTo(7, 14); g.lineTo(-7, 14); g.closePath(); g.fill();
+    const lq = g.createLinearGradient(0, -9, 0, 13); lq.addColorStop(0, '#3ee6b4'); lq.addColorStop(1, '#2a5de1');
+    g.fillStyle = lq; g.beginPath(); g.moveTo(-7.4, -9); g.lineTo(7.4, -9); g.lineTo(6.4, 13); g.lineTo(-6.4, 13); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.75)'; for (let i = 0; i < 3; i++) { const by = 10 - ((t * 14 + i * 7) % 18); g.beginPath(); g.arc(-3 + i * 3, by, 1, 0, TAU); g.fill(); }
+    g.strokeStyle = '#ff4fa3'; g.lineWidth = 2; g.beginPath(); g.moveTo(3, 10); g.lineTo(6, -20); g.lineTo(11, -22); g.stroke();
+    g.fillStyle = '#111'; g.fillRect(-7, -2, 14, 8); g.fillStyle = '#ffd23f'; g.font = '900 6.5px sans-serif'; g.textAlign = 'center'; g.fillText(assets.config.superDrink?.label || 'SUPER', 0, 4.4, 13);
+  },
   jaegi(g) { g.fillStyle = 'rgba(255,255,255,0.7)'; g.beginPath(); g.moveTo(-6, -9); g.lineTo(6, -9); g.lineTo(5, 7); g.lineTo(-5, 7); g.closePath(); g.fill(); g.fillStyle = '#3b2210'; g.fillRect(-5, -4, 10, 10); drawJaegerBottle(g, 10, 8, 0.45); },
   eierlikoer(g) { g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.moveTo(-7, -11); g.lineTo(7, -11); g.lineTo(4, 3); g.lineTo(-4, 3); g.closePath(); g.fill(); g.fillStyle = '#f6d64a'; g.beginPath(); g.moveTo(-6, -6); g.lineTo(6, -6); g.lineTo(4, 2); g.lineTo(-4, 2); g.fill(); g.fillStyle = '#fff6b0'; g.beginPath(); g.ellipse(0, -6, 6, 1.6, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(-1, 3, 2, 6); g.fillRect(-5, 9, 10, 2); emoji(g, '🥚', 9, -9, 9); },
   domsign(g) { g.fillStyle = '#8d6e63'; g.fillRect(-1.5, -4, 3, 16); g.fillStyle = '#1565c0'; g.beginPath(); g.moveTo(-12, -13); g.lineTo(8, -13); g.lineTo(13, -8); g.lineTo(8, -3); g.lineTo(-12, -3); g.closePath(); g.fill(); g.fillStyle = '#fff'; g.font = '900 6px sans-serif'; g.textAlign = 'center'; g.fillText('DOM →', -1, -6); },
@@ -1045,7 +1056,7 @@ export const LEVELS = {
   L17: { icon: '🏖️', scene: ['sicily', 'apulia'], music: 'mobile', len: 105, obstacles: { sandcastle: 2, crab: 2, gull: 3, wave: 2, vespa: 2 }, items: ['gelato', 'pizza', 'mussel', 'cocktail'], badItems: ['fig'], bad: 0.3, quest: { avoid: 'fig' }, hero: 'baywatch', figStory: 1 },
   L18: { icon: '🎭', scene: 'koeln', music: 'cancan', len: 105, obstacles: { confetti: 2, dancer: 2, clown: 2, flyball: 3 }, items: ['kamelle', 'struessjer', 'koelsch'], quest: { item: 'kamelle', n: 15 }, hero: 'prince', party: 1 },
   L19: { icon: '🎲', scene: 'gameNight', music: 'tetris', len: 120, obstacles: { dice: 3, robber: 2, hourfly: 3 }, items: ['card'], quest: { set: ['wood', 'clay', 'woolres', 'grain', 'ore'] }, hero: 'joker' },
-  L20: { icon: '⏳', scene: 'timeclash', world: 'party', music: 'retro', len: 150, obstacles: { speaker: 3, crate: 3, hourglass: 2, discoball: 3 }, items: ['cocktail2', 'water'], quest: { survive: 1 }, hero: 'dj', checkpoint: 1, party: 1 },
+  L20: { icon: '⏳', scene: 'timeclash', world: 'party', music: 'retro', len: 150, superDrink: 'superdrink', obstacles: { speaker: 3, crate: 3, hourglass: 2, discoball: 3 }, items: ['cocktail2', 'water'], quest: { survive: 1 }, hero: 'dj', checkpoint: 1, party: 1 },
   L21: { icon: '🐒', scene: 'serengeti', world: 'zoo', music: 'safari', len: 105, obstacles: { banana: 3, fence: 2, jeep: 2, parrot: 3, zebra: 1 }, items: ['monkey'], quest: { item: 'monkey', n: 8 }, hero: 'tarzan' },
   L22: { icon: '🗽', scene: 'nyc', music: 'jinglebells', len: 105, obstacles: { taxi: 2, snowpile: 3, skater: 2, hydrant: 2, smalltree: 1 }, items: ['psl', 'brezel', 'candycane'], quest: { item: 'psl', n: 8 }, hero: 'winter', noFamily: 1, fireworks: 1, goalHearts: 1 },
   L23: { icon: '🥕', scene: 'hanauMarkt', world: 'market', music: 'nachtmusik', len: 105, obstacles: { fruitcrate: 3, flowers: 2, basket: 2, cheese: 2, pigeon: 3 }, items: ['apple', 'sausage'], quest: { item: 'sausage', n: 6 }, hero: 'crier' },

@@ -126,7 +126,7 @@ export class Game {
     this.M.start = start; this.M.max = max; this.M.accel = (max - start) / L.len;
     if (L.bad != null) this.M.bad = L.bad;
     this.speed = start;
-    this.lvTarget = L.len * (start + max) / 2;
+    this.lvTarget = L.len * (start + max) / 2 * (L.quest?.survive || L.quest?.avoid ? 0.85 : 1);
     this.scenes = [].concat(L.scene);
     this.sceneIdx = 0;
     this.biome = { id: this.scenes[0], obstacles: L.obstacles, items: L.items };
@@ -159,7 +159,7 @@ export class Game {
     this.endStarted = false; this.endQueue = null; this.miniResults = [];
     this.rampT = P.rampage ? L.len * rand(0.12, 0.2) : Infinity; this.ramp = null;
     this.tripNext = L.trip ? rand(12, 18) : Infinity; this.tripT = 0;
-    this.glitter = 0; this.rushT = 0;
+    this.glitter = 0; this.rushT = 0; this.strongT = 0;
     this.checkpointAt = L.checkpoint ? 0.5 : null;
     if (startAt >= 0.5) this.cpShown = true;
     if (L.world) this.events.onWorld?.(L.world, 0);
@@ -405,6 +405,11 @@ export class Game {
     else if ((this.tripNext -= dt) <= 0) { this.tripNext = rand(14, 22); this.tripT = 4.2; this.obstacles = []; sfx('launch'); }
     // Glitzer-Rausch
     this.rushT = Math.max(0, this.rushT - dt);
+    this.strongT = Math.max(0, this.strongT - dt);
+    if (this.lv.superDrink && (this.superT = (this.superT ?? 9) - dt) <= 0 && this.state === 'run') {
+      this.superT = rand(14, 20);
+      this.items.push(this.makeItem(this.lv.superDrink, V.w + 40, pick([30, 70])));
+    }
     if (this.rushT > 0) this.p.invuln = Math.max(this.p.invuln, 0.2);
     if (this.checkpointAt != null && !this.cpShown && this.progress >= this.checkpointAt) { this.cpShown = true; this.events.onToast?.('🚩 Checkpoint!'); sfx('memory'); }
     if (this.distance >= this.lvTarget) this.startGoal();
@@ -425,6 +430,8 @@ export class Game {
     const qs = this.questStatus();
     if (qs && qs.done && !qs.fail && !this.quest.survive && !this.quest.avoid) {
       this.questDone = true; sfx('fanfare');
+      const rest = this.speed * 12;
+      if (this.lvTarget - this.distance > rest) this.lvTarget = this.distance + rest;
       this.events.onToast?.('🎯 Quest geschafft! ⭐');
       this.fx.burst(this.p.x, this.screenY(80), { n: 36, type: 'confetti', speed: 260, size: 4, gravity: 300 });
     }
@@ -873,6 +880,13 @@ export class Game {
       sfx('meow');
       return;
     }
+    if (this.strongT > 0) {
+      o.knock = { vx: 520, vy: 820, vr: 11 };
+      this.fx.burst(ox, oy, { n: 18, colors: ['#3ee6b4', '#ffd23f', '#fff'], speed: 260, size: 3.5 });
+      this.fx.text(ox, oy - 30, pick(['POWER! 💪', 'WEG DA!', 'ZACK!', 'BÄM!']), { color: '#3ee6b4', size: 20 });
+      this.shake = Math.max(this.shake, 6); this.score += 3; sfx('smash');
+      return;
+    }
     if (this.god) {
       o.knock = { vx: 420, vy: 700, vr: 9 };
       this.fx.text(ox, oy - 30, pick(['GODMODE!', 'Nö!', 'Unbesiegbar!']), { color: '#3ee6b4', size: 16 });
@@ -911,6 +925,14 @@ export class Game {
       if (this.glitter >= 1) { this.glitter = 0; this.rushT = 5; this.flash = 0.6; sfx('power'); this.events.onToast?.('✨ GLITZER-RAUSCH! Unbesiegbar & doppelte Punkte!'); }
     }
     if (this.rushT > 0 && !it.bad) this.score += 5;
+    if (it.type === 'superdrink') {
+      const sdName = this.cfg.superDrink?.name || 'SUPERDRINK'; // Superdrink: stark, unbesiegbar, doppelte Punkte
+      this.strongT = 6; this.rushT = Math.max(this.rushT, 6); this.flash = 0.6; this.score += 15; p.expr = 'happy'; p.exprT = 6;
+      this.fx.text(it.x, this.screenY(iy) - 24, `${sdName}! 💪`, { color: '#3ee6b4', size: 24 });
+      this.fx.burst(it.x, this.screenY(iy), { n: 40, colors: ['#3ee6b4', '#2a7de1', '#fff', '#ffd23f'], speed: 300, size: 4 });
+      sfx('power'); this.events.onToast?.(`💪 ${sdName}! Stark, unbesiegbar & doppelte Punkte!`);
+      return;
+    }
     if (it.type === 'mimisoup') {
       this.turbo = 3; p.invuln = Math.max(p.invuln, 3); this.score += 5;
       this.fx.text(it.x, this.screenY(iy) - 20, 'SCHARF! 🌶️ TURBO!', { color: '#ff5b2b', size: 20 }); sfx('power'); return;
@@ -1133,8 +1155,13 @@ export class Game {
       g.beginPath(); g.ellipse(p.x + 2, V.groundY + 2, Math.max(6, 20 - p.y * 0.08), 4, 0, 0, 7); g.fill();
       const flip = this.god && this.facing < 0;
       if (flip) { g.save(); g.translate(p.x, 0); g.scale(-1, 1); g.translate(-p.x, 0); }
+      if (this.strongT > 0) { // Superdrink-Kraft-Aura
+        const au = g.createRadialGradient(p.x, V.groundY - p.y - 60, 10, p.x, V.groundY - p.y - 60, 95);
+        au.addColorStop(0, `rgba(62,230,180,${0.25 + Math.sin(this.t * 14) * 0.08})`); au.addColorStop(1, 'rgba(62,230,180,0)');
+        g.fillStyle = au; g.beginPath(); g.arc(p.x, V.groundY - p.y - 60, 95, 0, 7); g.fill();
+      }
       drawCharacter(g, p.x, V.groundY - p.y, {
-        pose, phase: p.phase, outfit: this.story?.outfitNow || this.outfit, expr: this.lvP?.kid && p.expr !== 'sad' ? 'child' : p.expr, scale: CHAR_SCALE, t: this.t, swell: p.swell, headScale: this.eggT > 0 ? 1.9 : 0,
+        pose, phase: p.phase, outfit: this.story?.outfitNow || this.outfit, expr: this.lvP?.kid && p.expr !== 'sad' ? 'child' : p.expr, scale: CHAR_SCALE * (this.strongT > 0 ? 1 + 0.22 * Math.min(1, this.strongT * 3) : 1), t: this.t, swell: p.swell, headScale: this.eggT > 0 ? 1.9 : 0,
         rot: this.state === 'dying' ? -Math.min(1.2, this.deadT * 4) : 0,
       });
       if (this.god) drawLauncher(g, p.x, V.groundY - p.y - (p.duck && p.y < 1 ? 56 : 86), this.t);

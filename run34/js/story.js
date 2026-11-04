@@ -5,7 +5,7 @@
 import { drawPerson, drawCat, drawHero, drawRollatorOma, roundRect } from './character.js';
 import { emoji } from './emoji.js';
 import { COSTUMES, drawIceToss } from './levels.js';
-import { sfx, duckMusic } from './audio.js';
+import { sfx, duckMusic, playMusic, hasMp3, currentMusic } from './audio.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (a) => a[(Math.random() * a.length) | 0];
@@ -30,7 +30,12 @@ export function startStory(game, ev) {
     s.bpm = ev.bpm || 112; s.beat = 60 / s.bpm; s.n = ev.beats || 12; s.t0 = INTRO + 0.4;
     s.judged = new Array(s.n).fill(null); s.combo = 0; s.best = 0; s.perfect = 0; s.good = 0; s.lastBeat = -1;
     s.solo = Math.floor(rand(4, s.n - 3)); // Überraschung: ein Gast bekommt ein Solo
-    duckMusic(true); sfx('fanfare');
+    if (ev.song) { // eigener Party-Song (MP3 im Bundle) oder Ersatz-Track; Beats bleiben hörbar
+      s.prevMusic = currentMusic();
+      playMusic(hasMp3(ev.song) ? ev.song : (ev.songFallback || 'punk'));
+      duckMusic(false);
+    } else duckMusic(true);
+    sfx('fanfare');
   } else if (s.kind === 'scene') {
     s.actors = (ev.actors || []).map((a, i) => ({ color: COLORS[i % COLORS.length], ...a }));
     s.fx = { ...(ev.fx || {}) }; s.phase = 'main';
@@ -141,7 +146,7 @@ function updParty(game, s, dt) {
     }
   }
   s.kimiPose = s.phase === 'play' ? (Math.floor((s.t - s.t0) / s.beat) % 2 ? 'cheer' : 'jump') : 'cheer';
-  if (s.phase === 'end' && s.t - s.endT > 2.8) { s.done = true; duckMusic(false); }
+  if (s.phase === 'end' && s.t - s.endT > 2.8) { s.done = true; duckMusic(false); if (s.prevMusic) playMusic(s.prevMusic); }
 }
 function partyTap(game, s) {
   if (s.phase !== 'play') return;

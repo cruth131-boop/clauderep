@@ -1,3 +1,4 @@
+import { IntroScene } from './intro.js';
 import { assets, fetchBundle, unlockWithPassword, unlockWithStoredKey } from './assets.js';
 import { OUTFIT_PARTS, PRESETS, ACHIEVEMENTS, CHALLENGES, FAIL_TITLES } from './config.js';
 import { Game } from './world.js';
@@ -506,7 +507,14 @@ async function boot() {
     $('lock-input').focus();
     return;
   }
-  toMenu();
+  playIntro();
+}
+// Intro nach dem Entsperren (Reißverschluss, Retro-Kimi, Titel); nach dem Sieg mit Party
+function playIntro() {
+  if (new URLSearchParams(location.search).has('nointro')) { toMenu(); return; }
+  game = null; setHud(false); show(null); screen = 'intro'; paused = false;
+  $('god-ctl').classList.add('hidden'); $('tap-hint').classList.add('hidden');
+  scene = new IntroScene({ party: save.won || new URLSearchParams(location.search).has('party'), outfit: save.outfit, onDone: () => toMenu() });
 }
 $('lock-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -515,7 +523,7 @@ $('lock-form').addEventListener('submit', async (e) => {
   btn.disabled = true;
   try {
     const ok = await unlockWithPassword($('lock-input').value);
-    if (ok) { $('lock-input').blur(); toMenu(); sfx('power'); }
+    if (ok) { $('lock-input').blur(); playIntro(); }
     else { $('lock-error').classList.remove('hidden'); sfx('no'); $('lock-input').select(); }
   } catch (err) {
     $('lock-error').textContent = `Fehler: ${err.message}`; $('lock-error').classList.remove('hidden');
