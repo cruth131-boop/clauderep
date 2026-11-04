@@ -874,8 +874,26 @@ function drawCatHead(g, x, y, photo, orange, dark, light, front) {
 // ---------------------------------------------------------------------------
 // Cameo-Figuren (Eltern, Oma) am Wegesrand
 // ---------------------------------------------------------------------------
-export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wave = true, oma = false, scale = 1, expr = 'happy', run = false, pet = false, emojiHead = null, acc = null }) {
+export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wave = true, oma = false, scale = 1, expr = 'happy', run = false, pet = false, emojiHead = null, acc = null, twerk = false }) {
   g.save(); g.translate(x, footY); g.scale(scale, scale);
+  if (twerk) { // Twerk: tiefe Hocke, Hände auf den Knien, Oberkörper still, Hüfte poppt schnell vor und zurück
+    const pop = Math.sin(t * 17), bounce = Math.abs(pop) * 3;
+    const H = [-4 - pop * 3, -34 - bounce], S = [12, -62];
+    const legC = '#333a4a';
+    for (const [kx, fx, a] of [[10, 5, 0.85], [15, 11, 1]]) {
+      seg(g, H[0], H[1], kx, -20, 9, legC); seg(g, kx, -20, fx, -3, 8, legC);
+      g.fillStyle = '#222'; roundRect(g, fx - 5, -6, 13, 6, 3); g.fill();
+    }
+    g.fillStyle = legC; g.beginPath(); g.ellipse(H[0] - 6 - pop * 2, H[1] - 1, 11 + Math.abs(pop) * 1.5, 9 - Math.abs(pop), -0.2, 0, 7); g.fill();
+    seg(g, H[0], H[1] - 4, S[0], S[1], 22, color);
+    seg(g, S[0], S[1] + 2, 12, -42, 8, color); seg(g, 12, -42, 13, -24, 7, SKIN);
+    g.fillStyle = SKIN; g.beginPath(); g.arc(13, -23, 5, 0, 7); g.fill();
+    if (faceKey) drawFaceOn(g, faceKey, expr, S[0] + 3, S[1] + 2, 21); else if (emojiHead) emoji(g, emojiHead, S[0] + 3, S[1] - 16, 40);
+    g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 1.5;
+    for (let i = 0; i < 3; i++) { const k = (t * 3 + i / 3) % 1; g.globalAlpha = 1 - k; g.beginPath(); g.arc(H[0] - 8, H[1], 14 + k * 14, Math.PI * 0.6, Math.PI * 1.4); g.stroke(); }
+    g.globalAlpha = 1;
+    g.restore(); return;
+  }
   if (pet) { // kleiner Hund: Körper + Fotokopf
     const hop = Math.abs(Math.sin(t * 8)) * 3;
     g.translate(0, -hop);

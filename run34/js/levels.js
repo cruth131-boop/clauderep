@@ -107,6 +107,42 @@ for (const [key, [ch, size, op = {}]] of Object.entries(EO)) {
   };
 }
 
+/** Jägermeister: dunkelgrüne, gedrungene Flasche, cremefarbenes Etikett mit Hirschkopf und Kreuz, orange Banderole */
+export function drawJaegerBottle(g, x, y, s = 1) {
+  g.save(); g.translate(x, y); g.scale(s, s);
+  g.fillStyle = '#1f3d1f'; roundRect(g, -8, -30, 16, 30, 3); g.fill(); g.fillRect(-3, -38, 6, 9); g.fillStyle = '#b8860b'; g.fillRect(-3.5, -40, 7, 3);
+  g.fillStyle = '#efe3c2'; g.beginPath(); g.arc(0, -17, 6, 0, TAU); g.fill();
+  g.strokeStyle = '#5d4037'; g.lineWidth = 1; g.beginPath(); g.moveTo(-3, -20); g.lineTo(-5, -24); g.moveTo(3, -20); g.lineTo(5, -24); g.stroke();
+  g.strokeStyle = '#ffd23f'; g.beginPath(); g.moveTo(0, -25); g.lineTo(0, -21); g.moveTo(-1.5, -23.5); g.lineTo(1.5, -23.5); g.stroke();
+  g.fillStyle = '#e65100'; g.fillRect(-8, -8, 16, 3);
+  g.restore();
+}
+/** Asbach Uralt: bauchige Flasche mit goldbraunem Inhalt und rotem Etikett */
+export function drawAsbachBottle(g, x, y, s = 1) {
+  g.save(); g.translate(x, y); g.scale(s, s);
+  g.fillStyle = '#9c5a1a'; g.beginPath(); g.moveTo(-7, 0); g.lineTo(-7, -22); g.quadraticCurveTo(-7, -28, -2.5, -30); g.lineTo(-2.5, -38); g.lineTo(2.5, -38); g.lineTo(2.5, -30); g.quadraticCurveTo(7, -28, 7, -22); g.lineTo(7, 0); g.closePath(); g.fill();
+  g.fillStyle = '#f5ecd5'; g.fillRect(-6, -19, 12, 11); g.fillStyle = '#b71c1c'; g.font = 'italic 900 4.5px Georgia, serif'; g.textAlign = 'center'; g.fillText('Asbach', 0, -12.5);
+  g.fillStyle = '#c9a227'; g.fillRect(-2.5, -40, 5, 3);
+  g.restore();
+}
+/** Asbach-Cola im 0,2-l-Tumbler mit Eiswürfeln, Zitrone und rotem Schriftzug */
+export function drawAsbachGlass(g, x, y, s = 1) {
+  g.save(); g.translate(x, y); g.scale(s, s);
+  g.fillStyle = 'rgba(255,255,255,0.45)'; g.beginPath(); g.moveTo(-8, -26); g.lineTo(8, -26); g.lineTo(7, 0); g.lineTo(-7, 0); g.closePath(); g.fill();
+  g.fillStyle = '#3b1f0f'; g.beginPath(); g.moveTo(-7.4, -20); g.lineTo(7.4, -20); g.lineTo(6.6, -1); g.lineTo(-6.6, -1); g.closePath(); g.fill();
+  g.fillStyle = 'rgba(220,240,255,0.85)'; roundRect(g, -5, -22, 5, 5, 1); g.fill(); roundRect(g, 1, -20, 5, 5, 1); g.fill();
+  g.fillStyle = '#f2d24b'; g.beginPath(); g.arc(6, -24, 4, Math.PI, 0); g.fill();
+  g.fillStyle = '#e53935'; g.font = 'italic 900 5px Georgia, serif'; g.textAlign = 'center'; g.fillText('Asbach', 0, -7);
+  g.restore();
+}
+
+/** Glas in der Hand, Eiswürfel fliegen im Bogen raus (Ursprung = Fußpunkt der Figur, Maßstab 0.88) */
+export function drawIceToss(g, x, footY, t) {
+  const hx = x + 22, hy = footY - 66, tilt = Math.max(0, Math.sin(t * 4)) * 0.9;
+  g.save(); g.translate(hx, hy); g.rotate(tilt); drawAsbachGlass(g, 0, 10, 0.9); g.restore();
+  for (let k = 0; k < 3; k++) { const ph = (t * 1.3 + k / 3) % 1; emoji(g, '🧊', hx + 6 + ph * 70, hy - 10 - Math.sin(ph * Math.PI) * 46 + ph * 50, 12, ph * 6); }
+}
+
 /** 7-fingriges Hanfblatt */
 export function drawWeedLeaf(g, x, y, r, rot = 0, col = '#3fa34d') {
   g.save(); g.translate(x, y); g.rotate(rot);
@@ -134,7 +170,7 @@ export const ITEM_EMO = {
   akte: '📜', eierlikoer: 'draw', saeftchen: 'draw', glow: 'draw', water: '💧', cookie2: '🍪', brezn: '🥨', lebherz: '💝', gelato: '🍨', mussel: '🦪', kamelle: '🍬', struessjer: '💐',
   wood: '🪵', clay: '🧱', woolres: '🐑', grain: '🌾', ore: '🪨', card: '🃏', psl: 'draw', brezel: '🥨', candycane: '🍭', sausage: '🌭', gulasch: '🥣',
   steak: '🥩', glitter: '✨', mimisoup: '🌶️', ring: '💍', confetti2: '🎊', weddingcake: '🎂', schnitzel: '🍖', onion: '🧅', gerippter: 'draw', winktuch: '🏳️',
-  hotdog: '🌭', beignet: '🍩', cowboyhat: '🤠', boots: '👢', asbach: '🥃', cherry: '🍒', weck: '🥖', cheese2: '🧀', blossom: '🌸', los: '🎟️', blackring: 'draw',
+  hotdog: '🌭', beignet: '🍩', cowboyhat: '🤠', boots: '👢', asbach: 'draw', jaegi: 'draw', cherry: '🍒', weck: '🥖', cheese2: '🧀', blossom: '🌸', los: '🎟️', blackring: 'draw',
   turkey: '🍗', shortbread: '🍪', whisky: '🥃', snack: '🍿', domsign: 'draw', burger2: '🍔', donut: '🍩', apple: '🍎', fries2: '🍟', wine2: '🍷', cocktail2: '🍸',
 };
 const ITEM_DRAW = {
@@ -144,6 +180,8 @@ const ITEM_DRAW = {
   gerippter(g) { g.fillStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.moveTo(-8, -12); g.lineTo(8, -12); g.lineTo(6, 12); g.lineTo(-6, 12); g.closePath(); g.fill(); g.fillStyle = '#e6b54a'; g.beginPath(); g.moveTo(-7.5, -6); g.lineTo(7.5, -6); g.lineTo(6, 11); g.lineTo(-6, 11); g.fill(); g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 0.8; for (let i = -6; i <= 6; i += 2) { g.beginPath(); g.moveTo(i - 1, -11); g.lineTo(i, 11); g.stroke(); } },
   blackring(g, t) { const gl = g.createRadialGradient(0, 0, 2, 0, 0, 22); gl.addColorStop(0, 'rgba(255,240,150,0.8)'); gl.addColorStop(1, 'rgba(255,240,150,0)'); g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 22, 0, TAU); g.fill(); g.strokeStyle = '#111'; g.lineWidth = 4; g.beginPath(); g.ellipse(0, 0, 9, 9 * Math.abs(Math.cos(t * 2)) + 2, 0, 0, TAU); g.stroke(); g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1; g.stroke(); },
   saeftchen(g, t) { const c = ['#ff4fa3', '#3ee6b4', '#ffd23f', '#b388ff'][Math.floor(t) % 4]; g.fillStyle = 'rgba(255,255,255,0.65)'; g.beginPath(); g.moveTo(-6, -9); g.lineTo(6, -9); g.lineTo(5, 9); g.lineTo(-5, 9); g.closePath(); g.fill(); g.fillStyle = c; g.beginPath(); g.moveTo(-5.5, -3); g.lineTo(5.5, -3); g.lineTo(4.6, 8); g.lineTo(-4.6, 8); g.fill(); g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(-4, -2, 2, 8); },
+  asbach(g) { drawAsbachGlass(g, 0, 12, 1); },
+  jaegi(g) { g.fillStyle = 'rgba(255,255,255,0.7)'; g.beginPath(); g.moveTo(-6, -9); g.lineTo(6, -9); g.lineTo(5, 7); g.lineTo(-5, 7); g.closePath(); g.fill(); g.fillStyle = '#3b2210'; g.fillRect(-5, -4, 10, 10); drawJaegerBottle(g, 10, 8, 0.45); },
   eierlikoer(g) { g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.moveTo(-7, -11); g.lineTo(7, -11); g.lineTo(4, 3); g.lineTo(-4, 3); g.closePath(); g.fill(); g.fillStyle = '#f6d64a'; g.beginPath(); g.moveTo(-6, -6); g.lineTo(6, -6); g.lineTo(4, 2); g.lineTo(-4, 2); g.fill(); g.fillStyle = '#fff6b0'; g.beginPath(); g.ellipse(0, -6, 6, 1.6, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(-1, 3, 2, 6); g.fillRect(-5, 9, 10, 2); emoji(g, '🥚', 9, -9, 9); },
   domsign(g) { g.fillStyle = '#8d6e63'; g.fillRect(-1.5, -4, 3, 16); g.fillStyle = '#1565c0'; g.beginPath(); g.moveTo(-12, -13); g.lineTo(8, -13); g.lineTo(13, -8); g.lineTo(8, -3); g.lineTo(-12, -3); g.closePath(); g.fill(); g.fillStyle = '#fff'; g.font = '900 6px sans-serif'; g.textAlign = 'center'; g.fillText('DOM →', -1, -6); },
 };
@@ -735,14 +773,46 @@ export const SCENES = {
     planks(g, V, off, '#9c7b52', '#7a5c38');
   },
 
-  // Piraten-Kneipe: Würfeltisch, Asbach-Regal und blinkender Spielautomat
+  // Piraten-Kneipe: lange Theke mit Messing-Fußleiste, Rückbuffet voller Jägermeister- und Asbach-Flaschen,
+  // Asbach-Cola-Tumbler (0,2 l mit Logo) und Jägermeister-Shots auf dem Tresen, Würfeltisch, Spielautomat
   pirateBar(g, V, off, t, lv) {
     const gy = V.groundY;
     sky(g, V, '#2b1a10', '#4a2e1c');
     rep(V, off, 0.3, 70, (x) => { g.fillStyle = 'rgba(0,0,0,0.2)'; g.fillRect(x, 0, 3, gy); });
-    rep(V, off, 0.45, 460, (x) => { g.fillStyle = '#111'; g.fillRect(x + 20, 30, 70, 46); emoji(g, '☠️', x + 55, 53, 26); g.fillStyle = '#6d4c41'; g.beginPath(); g.arc(x + 180, 90, 34, 0, TAU); g.fill(); g.fillStyle = '#3e2723'; g.beginPath(); g.arc(x + 180, 90, 24, 0, TAU); g.fill(); g.strokeStyle = '#a1887f'; g.lineWidth = 4; for (let i = 0; i < 8; i++) { const a = i / 8 * TAU + Math.sin(t) * 0.2; g.beginPath(); g.moveTo(x + 180, 90); g.lineTo(x + 180 + Math.cos(a) * 42, 90 + Math.sin(a) * 42); g.stroke(); } g.fillStyle = '#4e342e'; g.fillRect(x + 260, gy - 150, 120, 70); for (let i = 0; i < 6; i++) { g.fillStyle = '#c68a2e'; roundRect(g, x + 270 + i * 18, gy - 176, 10, 26, 3); g.fill(); g.fillStyle = '#fff'; g.fillRect(x + 271 + i * 18, gy - 166, 8, 6); } g.fillStyle = '#7b1fa2'; roundRect(g, x + 400, gy - 120, 50, 100, 6); g.fill(); for (let i = 0; i < 3; i++) { g.fillStyle = '#fff'; g.fillRect(x + 405 + i * 14, gy - 100, 12, 18); emoji(g, ['🍒', '🔔', '7️⃣', '🍋'][(Math.floor(t * 8) + i) % 4], x + 411 + i * 14, gy - 91, 10); } g.fillStyle = (Math.floor(t * 4) % 2) ? '#ffd23f' : '#ff4fa3'; g.fillRect(x + 400, gy - 128, 50, 6); });
-    once(V, off, 0.45, 900, 200, (x) => neon(g, S(lv, 'pub', 'KNEIPE'), x, 24, '#ff7043', 18, t, 1));
-    g.fillStyle = '#5d4037'; g.fillRect(0, gy - 40, V.w, 10);
+    // Deko oben: Piratenflagge, Steuerrad, Bullauge
+    rep(V, off, 0.3, 520, (x) => {
+      g.fillStyle = '#111'; g.fillRect(x + 20, 18, 64, 40); emoji(g, '☠️', x + 52, 38, 24);
+      g.fillStyle = '#6d4c41'; g.beginPath(); g.arc(x + 200, 50, 28, 0, TAU); g.fill(); g.fillStyle = '#3e2723'; g.beginPath(); g.arc(x + 200, 50, 19, 0, TAU); g.fill();
+      g.strokeStyle = '#a1887f'; g.lineWidth = 3; for (let i = 0; i < 8; i++) { const a = i / 8 * TAU + Math.sin(t) * 0.2; g.beginPath(); g.moveTo(x + 200, 50); g.lineTo(x + 200 + Math.cos(a) * 36, 50 + Math.sin(a) * 36); g.stroke(); }
+      g.fillStyle = '#c9a227'; g.beginPath(); g.arc(x + 360, 46, 20, 0, TAU); g.fill(); g.fillStyle = '#5b8fb0'; g.beginPath(); g.arc(x + 360, 46, 14, 0, TAU); g.fill();
+    });
+    once(V, off, 0.3, 900, 200, (x) => neon(g, S(lv, 'pub', 'KNEIPE'), x, gy - 214, '#ff7043', 18, t, 1));
+    // Rückbuffet mit Spiegel und Flaschenregalen (durchgehend)
+    const by = gy - 196;
+    g.fillStyle = '#3e2414'; g.fillRect(0, by, V.w, 120);
+    rep(V, off, 0.45, 240, (x, k) => {
+      g.fillStyle = 'rgba(180,200,210,0.18)'; g.fillRect(x + 8, by + 6, 224, 108);
+      for (let r = 0; r < 2; r++) {
+        const sy = by + 54 + r * 52;
+        g.fillStyle = '#6d4c41'; g.fillRect(x, sy, 240, 5);
+        for (let i = 0; i < 8; i++) { const bx = x + 14 + i * 28; if ((i + r + k) % 3 === 0) drawAsbachBottle(g, bx, sy, 0.9); else if ((i + r + k) % 3 === 1) drawJaegerBottle(g, bx, sy, 0.9); else { g.fillStyle = ['#c62828', '#fafafa', '#2e7d32', '#ffb300'][(i + k) % 4]; roundRect(g, bx - 4, sy - 30, 8, 30, 2); g.fill(); g.fillRect(bx - 1.5, sy - 38, 3, 9); } }
+      }
+    });
+    // Spielautomat
+    once(V, off, 0.45, 1000, 650, (x) => { g.fillStyle = '#7b1fa2'; roundRect(g, x, gy - 150, 56, 110, 6); g.fill(); for (let i = 0; i < 3; i++) { g.fillStyle = '#fff'; g.fillRect(x + 5 + i * 16, gy - 128, 13, 20); emoji(g, ['🍒', '🔔', '7️⃣', '🍋'][(Math.floor(t * 8) + i) % 4], x + 11 + i * 16, gy - 118, 11); } g.fillStyle = (Math.floor(t * 4) % 2) ? '#ffd23f' : '#ff4fa3'; g.fillRect(x, gy - 156, 56, 6); });
+    // lange Theke (Vordergrund-Ebene)
+    const ty = gy - 62;
+    g.fillStyle = '#5a3420'; g.fillRect(0, ty, V.w, 10); g.fillStyle = '#7b4a2b'; g.fillRect(0, ty - 4, V.w, 5);
+    g.fillStyle = '#3e2414'; g.fillRect(0, ty + 10, V.w, 52);
+    g.fillStyle = 'rgba(255,255,255,0.05)'; rep(V, off, 0.6, 56, (x) => g.fillRect(x, ty + 12, 2, 48));
+    g.fillStyle = '#c9a227'; g.fillRect(0, gy - 14, V.w, 4);
+    rep(V, off, 0.6, 180, (x, k) => {
+      drawAsbachGlass(g, x + 30, ty - 4, 1);
+      g.fillStyle = 'rgba(255,255,255,0.75)'; g.fillRect(x + 62, ty - 14, 8, 10); g.fillStyle = '#3b2210'; g.fillRect(x + 63, ty - 10, 6, 5);
+      g.fillStyle = 'rgba(255,255,255,0.75)'; g.fillRect(x + 74, ty - 14, 8, 10); g.fillStyle = '#3b2210'; g.fillRect(x + 75, ty - 10, 6, 5);
+      if (k % 2) drawJaegerBottle(g, x + 110, ty - 4, 0.8); else { emoji(g, '🎲', x + 108, ty - 10, 12); emoji(g, '🎲', x + 122, ty - 9, 11); g.fillStyle = '#4e342e'; roundRect(g, x + 132, ty - 22, 14, 18, 3); g.fill(); }
+      drawAsbachGlass(g, x + 156, ty - 4, 1);
+    });
     planks(g, V, off, '#4e342e', '#3e2723');
   },
 
@@ -950,7 +1020,7 @@ export const LEVELS = {
   L28: { icon: '🧅', scene: 'inn', music: 'polka', len: 105, obstacles: { pan: 3, waiter: 2, bubble: 3, pubtable: 1 }, items: ['schnitzel', 'fries2', 'onion'], quest: { item: 'onion', n: 12 }, hero: 'waiter' },
   L29: { icon: '🎺', scene: 'kerb', music: 'kerbmarsch', len: 120, obstacles: { bembel: 3, trumpet: 2, drum: 2, bench: 2 }, items: ['gerippter', 'winktuch', 'saeftchen'], quest: { item: 'gerippter', n: 10 }, hero: 'kerb', party: 1 },
   L30: { icon: '🤠', scene: ['nycDay', 'nola', 'nashville'], music: 'saints', len: 105, obstacles: { taxi: 2, hydrant: 2, sax: 3, guitar: 2 }, items: ['hotdog', 'beignet', 'cowboyhat', 'boots'], quest: { item: 'boots', n: 6 }, hero: 'stars' },
-  L31: { icon: '🏴‍☠️', scene: 'pirateBar', music: 'sailor', len: 105, obstacles: { barstool: 3, slot: 2, bottle: 2, dartboard: 2 }, items: ['asbach', 'dice', 'cherry'], quest: { item: 'cherry', n: 3 }, hero: 'pirate', party: 1 },
+  L31: { icon: '🏴‍☠️', scene: 'pirateBar', music: 'sailor', len: 105, obstacles: { barstool: 3, slot: 2, bottle: 2, dartboard: 2 }, items: ['asbach', 'jaegi', 'cherry'], quest: { item: 'cherry', n: 3 }, hero: 'pirate', party: 1 },
   L32: { icon: '🍷', scene: ['mainzMarkt', 'rheinufer'], music: 'minuet', len: 120, obstacles: { pigeon: 3, flowerpot: 2, umbrella: 2, bike: 2 }, items: ['wine2', 'cheese2', 'weck'], quest: { items: ['wine2', 'cheese2', 'weck'], n: 10 }, hero: 'winzer' },
   L33: { icon: '🌸', scene: 'bluetenfest', music: 'spring', len: 120, obstacles: { hayball: 3, bench: 2, flowerpot: 2, carousel: 1, bembel: 2 }, items: ['blossom', 'los', 'gerippter'], quest: { item: 'blackring', n: 1, hidden: 1 }, hero: 'flowers', party: 1 },
   L34: { icon: '🦃', scene: 'xmasRustler', music: 'wewish', len: 105, obstacles: { teddy: 2, toytrain: 2, gift: 2, rocking: 2, weizen: 1 }, items: ['turkey', 'cookie2', 'wine'], quest: { face: 1, n: 5 }, hero: 'elf' },

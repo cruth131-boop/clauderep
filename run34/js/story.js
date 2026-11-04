@@ -4,7 +4,7 @@
 // Die Ereignisse selbst (wer, was, Texte) stehen in der privaten Config: config.levels[i].events.
 import { drawPerson, drawCat, drawHero, drawRollatorOma, roundRect } from './character.js';
 import { emoji } from './emoji.js';
-import { COSTUMES } from './levels.js';
+import { COSTUMES, drawIceToss } from './levels.js';
 import { sfx, duckMusic } from './audio.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -470,7 +470,6 @@ function drawActor(g, game, s, a, i, extra = {}) {
   if (anim === 'line') { x += (extra.step ?? 0) * 16; y -= (extra.hop ?? 0) * 10; rot = (extra.step ?? 0) * 0.1; }
   if (anim === 'hop') y -= Math.abs(Math.sin(lt * 6 + i)) * 10;
   if (anim === 'shake') x += Math.sin(lt * 40) * 2.5;
-  if (anim === 'twerk') rot = Math.sin(lt * 22) * 0.22;
   if (anim === 'solo') { y -= Math.abs(Math.sin(lt * 10)) * 26; rot = Math.sin(lt * 5) * 0.4; }
   if (a.knocked) { rot = (s.t - a.knockAt) * 9; y -= (s.t - a.knockAt) * 300; }
   if (a.yUp) y -= a.yUp;
@@ -489,7 +488,8 @@ function drawActor(g, game, s, a, i, extra = {}) {
     const hy = a.from === 'top' ? lerp(-200, 0, ease(k)) : 0;
     drawHero(g, x, y - hy, { pose: k < 1 ? 'fly' : 'land', t: s.t, scale: 0.95 * 1.18, costume: COSTUMES[a.costume] || null, faceKey: a.face });
   } else {
-    drawPerson(g, x, y, { faceKey: a.face, emojiHead: a.emoji, t: s.t + i, color: a.color, scale: sc, wave: anim !== 'twerk', pet: a.pet, oma: a.oma, run: anim === 'run', acc: a.acc });
+    drawPerson(g, x, y, { faceKey: a.face, emojiHead: a.emoji, t: s.t + i, color: a.color, scale: sc, wave: anim !== 'twerk' && !a.ice, pet: a.pet, oma: a.oma, run: anim === 'run', acc: a.acc, twerk: anim === 'twerk' || a.twerk });
+    if (a.ice) drawIceToss(g, x, y, s.t + i);
   }
   if (a.prop && (!a.propT || s.t >= a.propT) && (!a.propEnd || s.t < a.propEnd)) emoji(g, a.prop, x + 16, y - (a.pet ? 18 : 60), 20);
   g.restore();
@@ -762,12 +762,11 @@ function drawSlot(g, game, s) {
     bubble(g, lx, gy - 142, s.lukasWin ? (ev.winnerLine || 'JACKPOT!') : 'Lass mich mal! 😎');
     if (s.lukasWin) {
       banner(g, V, 'JACKPOT!!! 🍒🍒🍒', s.t, true, 40);
-      if (ev.twerk) {
-        const x = V.w * 0.92, y = gy - 6;
-        g.save(); g.translate(x, y - 40); g.rotate(Math.sin(s.t * 22) * 0.22); g.translate(-x, -(y - 40));
-        drawPerson(g, x, y, { faceKey: ev.twerk, t: s.t, color: '#d55b8f', scale: SC, wave: false });
-        g.restore(); bubble(g, x - 20, gy - 140, ev.twerkLine || '*twerk*');
-      }
+      [].concat(ev.twerk || []).forEach((f, i, arr) => {
+        const x = V.w * (0.94 - (arr.length - 1 - i) * 0.12), y = gy - 6;
+        drawPerson(g, x, y, { faceKey: f, t: s.t + i * 0.3, color: ['#d55b8f', '#5b7bd5'][i % 2], scale: SC, twerk: true });
+        if (i === 0) bubble(g, x - 10, gy - 120, ev.twerkLine || '*twerk* 🍑');
+      });
       if (s.t - s.winT > 1.4 && s.result) { g.font = '900 16px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#ffd23f'; g.lineWidth = 4; g.strokeStyle = 'rgba(0,0,0,0.6)'; const txt = `Deine Kirschen: ${s.cherries} 🍒  ·  +${s.result.bonus} Bonus`; g.strokeText(txt, V.w / 2, 80); g.fillText(txt, V.w / 2, 80); }
     }
   }

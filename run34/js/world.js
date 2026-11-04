@@ -4,7 +4,7 @@ import { assets, getFace } from './assets.js';
 import { Particles } from './fx.js';
 import { sfx } from './audio.js';
 import { BIOMES, BIOMES_RT, FIPSLAND, OBS, ITEM_ICONS, drawMonkey, biomeName } from './biomes.js';
-import { LEVELS, COSTUMES, ITEM_EMO, drawScene, faceItem } from './levels.js';
+import { LEVELS, COSTUMES, ITEM_EMO, drawScene, faceItem, drawIceToss } from './levels.js';
 import { emoji } from './emoji.js';
 import { startStory, updateStory, drawStory, drawStoryBack, storyInput } from './story.js';
 
@@ -1263,7 +1263,8 @@ export class Game {
       return;
     }
     const jx = c.secret ? Math.sin(c.t * 40) * 2 : 0;
-    drawPerson(g, c.x + jx, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.secret ? '#c62828' : c.color, oma: c.oma, scale: 0.88, wave: true, pet: c.pet, emojiHead: c.emoji, acc: c.acc });
+    drawPerson(g, c.x + jx, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.secret ? '#c62828' : c.color, oma: c.oma, scale: 0.88, wave: !c.ice, pet: c.pet, emojiHead: c.emoji, acc: c.acc, twerk: c.twerk });
+    if (c.ice) drawIceToss(g, c.x + jx, V.groundY - 6, c.t);
     if (c.secret) { g.fillStyle = 'rgba(255,60,60,0.25)'; g.beginPath(); g.arc(c.x, V.groundY - 60, 34 + Math.sin(c.t * 12) * 4, 0, 7); g.fill(); }
     if (c.said && (c.sayT < 2.6 || c.secret) && c.line) speech(g, c.x + 12, V.groundY - (c.pet ? 62 : 135), c.line);
   }
