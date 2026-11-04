@@ -1,7 +1,15 @@
 # Birthday Run 🎂
 
 Ein kleines Endless-Runner-Spiel als Web-App (PWA) fürs iPhone, ein Geburtstagsgeschenk.
-Es gibt drei Modi: Geburtstag (Ziel: 100 Punkte, dann Finale mit Geschenk), Endlos und Horror (wird nach dem Geburtstags-Modus freigeschaltet).
+Modi: Geburtstag (Kerzen sammeln, dann Finale mit Geschenk) → danach **Level-Modus** (38 Level + 1 geheimes,
+nach Lebensphasen sortiert, einmal erreichte Level sind frei wählbar). Level 13 schaltet den Horror-Modus frei,
+Level 38 den Endlos-Modus (alle Level-Welten in zufälliger Reihenfolge). Roadtrip ab 4.12.
+
+- Fortschritt (Sterne, Rekorde, Outfits) wird automatisch im Browser gespeichert (`localStorage`, Schlüssel `br.save.v1`).
+  `?reset=1` löscht ihn, `?dev=1` schaltet zum Testen alles frei.
+- Cheat in jedem Level: 10× springen, 3× ducken, 3× springen (innerhalb von 12 s) → Godmode mit ◀ ▶ und Raketenwerfer.
+- Level-Texte, Gäste und Sprüche stehen verschlüsselt in der privaten Config (`levels`), Mechanik/Hintergründe in `js/levels.js`,
+  Musik in `js/songs.js` (gemeinfreie Melodien + eigene Stücke). Eigene MP3s als `music_<name>.mp3` im Bundle ersetzen einen Track.
 
 ## Privatsphäre
 

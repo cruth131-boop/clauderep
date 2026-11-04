@@ -3,18 +3,25 @@ import { drawCharacter, drawCat, drawPerson, drawHero, drawFan, drawRollatorOma,
 import { assets, getFace } from './assets.js';
 import { Particles } from './fx.js';
 import { sfx } from './audio.js';
-import { BIOMES, BIOMES_RT, FIPSLAND, OBS, ITEM_ICONS, drawAnyBiomeBg as drawBiomeBg, drawMonkey, biomeName } from './biomes.js';
+import { BIOMES, BIOMES_RT, FIPSLAND, OBS, ITEM_ICONS, drawMonkey, biomeName } from './biomes.js';
+import { LEVELS, COSTUMES, ITEM_EMO, drawScene, faceItem } from './levels.js';
+import { emoji } from './emoji.js';
 
 export const MODES = {
   birthday: { start: 330, accel: 5, max: 540, theme: 'birthday', obstacles: { shirt: 3, height: 2, alarm: 2, tax: 2, flyshirt: 3 }, items: 0.1, bad: 0.16, collect: 'candle' },
   endless: { start: 340, accel: 6, max: 900, theme: 'day', obstacles: { candles: 2, shirt: 2, height: 2, alarm: 2, tax: 2, flyshirt: 2 }, items: 0.28, bad: 0.2 },
   horror: { start: 380, accel: 7, max: 920, theme: 'horror', obstacles: { shirt: 2, flyshirt: 3, ghost: 2, stink: 3, rille: 2, fish: 2, merz: 2, height: 1 }, items: 0.22, bad: 0.5 },
   roadtrip: { start: 360, accel: 6, max: 900, theme: 'day', obstacles: { cone: 1 }, items: 0.35, bad: 0.15 },
+  level: { start: 300, accel: 2.5, max: 480, theme: 'day', obstacles: {}, items: 0.32, bad: 0.06 },
   attract: { start: 230, accel: 0, max: 230, theme: 'birthday', obstacles: {}, items: 0, bad: 0 },
 };
 
-const GRAV = 2400, JUMP_V = 760, CHAR_SCALE = 0.78, PLAYER_X = 95;
+const GRAV0 = 2400, JUMP_V0 = 760, CHAR_SCALE = 0.78, PLAYER_X = 95;
 const STAND_H = 100, DUCK_H = 64;
+const FREQ = { viel: [12, 18], normal: [24, 34], wenig: [45, 65] };
+const freqT = (f) => (FREQ[f] ? rand(...FREQ[f]) : Infinity);
+const CHEAT = 'JJJJJJJJJJDDDJJJ';
+const ITEM_EMO_OF = (k) => (ITEM_EMO[k] && ITEM_EMO[k] !== 'draw' ? ITEM_EMO[k] : { candle: '🕯️', monkey: '🐒', treat: '🐟', blackring: '💍', psl: '🎃', glow: '🪄', schokokuss: '🍫', gerippter: '🍏', domsign: '⛪', wine: '🍷', pizza: '🍕' }[k] || (k.startsWith('face_') ? '🏃' : '⭐'));
 const rand = (a, b) => a + Math.random() * (b - a);
 const shuffle = (arr) => { for (let i = arr.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
 const pick = (arr) => arr[(Math.random() * arr.length) | 0];
@@ -33,11 +40,16 @@ function weighted(obj) {
 }
 
 export class Game {
-  constructor(mode, { outfit, mercy = 0, events = {}, eggHead = false, album = [] } = {}) {
+  constructor(mode, { outfit, mercy = 0, events = {}, eggHead = false, album = [], level = null, startAt = 0, endlessLevels = null } = {}) {
     this.mode = mode;
-    this.M = MODES[mode];
+    this.M = { ...MODES[mode] };
     this.cfg = assets.config;
-    this.outfit = mode === 'horror' ? { ...outfit, top: 'green', topColor: 'a' } : outfit;
+    this.lv = level ? LEVELS[level] : null;
+    this.lvP = level ? (this.cfg.levels || []).find((l) => l.id === level) || { id: level, guests: [], freq: {} } : null;
+    this.lvId = level;
+    this.horror = mode === 'horror' || !!this.lv?.horror;
+    this.GRAV = this.lv?.lowGrav ? GRAV0 * 0.42 : GRAV0; this.JUMP_V = this.lv?.lowGrav ? JUMP_V0 * 0.86 : JUMP_V0;
+    this.outfit = this.horror ? { ...outfit, top: 'green', topColor: 'a' } : outfit;
     this.events = events;
     this.mercy = mode === 'birthday' ? mercy : 0;
     this.speedFactor = this.mercy >= 1 ? 0.85 : 1;
@@ -45,7 +57,7 @@ export class Game {
     this.t = 0; this.distance = 0; this.bgOffset = 0;
     this.score = this.mercy >= 3 ? 25 : 0; // im Geburtstags-Modus = Anzahl Kerzen
     this.state = mode === 'attract' ? 'idle' : 'run';
-    this.baseExpr = mode === 'horror' ? 'skeptic' : 'normal';
+    this.baseExpr = this.horror ? 'skeptic' : 'normal';
     this.p = { y: 0, vy: 0, duck: false, phase: 0, expr: this.baseExpr, exprT: 0, invuln: 0, swell: 0, x: PLAYER_X, holding: false };
     this.hearts = this.mercy >= 2 ? 2 : 0;
     this.obstacles = []; this.items = []; this.cameos = []; this.polaroids = [];
@@ -77,6 +89,124 @@ export class Game {
     this.omaRide = null; this.nextOma = ['birthday', 'endless', 'roadtrip'].includes(mode) ? rand(26, 34) : Infinity;
     this.hero = null; this.nextHero = ['birthday', 'endless', 'roadtrip', 'horror'].includes(mode) ? rand(16, 24) : Infinity;
     this.prevBiome = null; this.biomeFade = 1; this.nextBiomeAt = 60;
+    this.rockets = []; this.god = false; this.cheat = []; this.facing = 1; this.fireCd = 0; this.prevDuck = false;
+    this.hitCount = 0; this.revived = false; this.questDone = false; this.goalT = 0;
+    if (endlessLevels?.length) {
+      this.levelPool = endlessLevels.map((id) => this.levelBiome(id)).filter(Boolean);
+      if (this.levelPool.length) { this.worldList = shuffle(this.levelPool.slice()); this.biome = this.worldList[0]; this.stats.worlds = new Set(); }
+    }
+    if (this.lv) this.initLevel(startAt);
+  }
+
+  levelBiome(id) {
+    const L = LEVELS[id], P = (this.cfg.levels || []).find((l) => l.id === id);
+    if (!L || !P) return null;
+    const scenes = [].concat(L.scene);
+    return { id: scenes[0], levelId: id, title: P.title, obstacles: L.obstacles, items: L.items, music: L.music, guests: this.guestList(P) };
+  }
+
+  guestList(P, part) {
+    const all = this.cfg.allGuests || [];
+    const lines = this.cfg.partyLines || ['Juhu!'];
+    if (P.guests === 'all') return shuffle(all.map((f) => ({ face: f, line: pick(lines) })));
+    let g = (P.guests || []).filter((c) => c.face || c.emoji);
+    if (P.part2 && part != null) g = part ? g.slice(P.part2) : g.slice(0, P.part2);
+    return g;
+  }
+
+  initLevel(startAt) {
+    const L = this.lv, P = this.lvP, cfg = this.cfg;
+    const order = (cfg.levels || []).map((l) => l.id);
+    const idx = Math.max(0, order.indexOf(this.lvId));
+    const sp = L.speed || 1;
+    const start = (290 + Math.min(idx, 37) * 2.4) * sp, max = start + 150;
+    this.M.start = start; this.M.max = max; this.M.accel = (max - start) / L.len;
+    if (L.bad != null) this.M.bad = L.bad;
+    this.speed = start;
+    this.lvTarget = L.len * (start + max) / 2;
+    this.scenes = [].concat(L.scene);
+    this.sceneIdx = 0;
+    this.biome = { id: this.scenes[0], obstacles: L.obstacles, items: L.items };
+    this.hearts = 1;
+    const fr = P.freq || {};
+    this.fam = { fan: freqT(fr.fan), friend: freqT(fr.friend) };
+    this.nextOma = L.noFamily ? Infinity : freqT(fr.oma);
+    this.nextChase = L.noFamily ? Infinity : freqT(fr.chaser);
+    this.nextDash = freqT(fr.cat || 'normal');
+    this.nextHero = L.hero ? L.len * rand(0.22, 0.35) : Infinity;
+    this.costume = COSTUMES[L.hero] || null;
+    this.levelGuests = this.guestList(P, P.part2 ? 0 : null);
+    this.nextCameo = 2.5;
+    this.cameoGap = Math.max(4.5, Math.min(13, (L.len * 0.8) / Math.max(1, this.levelGuests.length)));
+    if (P.guests === 'all') this.cameoGap = 5.5;
+    const q = L.quest || { survive: 1 };
+    this.quest = q;
+    if (q.face && P.catchFace) this.questItem = faceItem(P.catchFace);
+    this.questItems = q.item ? [q.item] : q.items ? q.items : q.set ? q.set : this.questItem ? [this.questItem] : [];
+    const n = q.n || (q.set ? q.set.length : 0);
+    this.questEvery = n ? Math.max(1.6, (L.len * 0.78) / (n * 1.6)) : Infinity;
+    this.questT = 3;
+    if (q.hidden) { this.questEvery = Infinity; this.ringAt = 0.5; }
+    this.badItems = L.badItems || null;
+    if (startAt > 0) {
+      this.distance = this.lvTarget * startAt;
+      this.speed = start + (max - start) * startAt;
+      this.checkSceneSwitch(true);
+    }
+    this.checkpointAt = L.checkpoint ? 0.5 : null;
+    if (startAt >= 0.5) this.cpShown = true;
+    if (L.world) this.events.onWorld?.(L.world, 0);
+  }
+
+  get progress() { return this.lv ? Math.min(1, this.distance / this.lvTarget) : 0; }
+
+  questStatus() {
+    const q = this.quest; if (!q) return null;
+    const it = this.stats.items;
+    if (q.survive) return { text: '⏱️ Durchhalten!', done: this.state === 'goal' };
+    if (q.avoid) { const bad = it[q.avoid] || 0; return { text: bad ? '❌ Feige erwischt!' : '🚫 Keine Feige!', done: !bad, fail: !!bad }; }
+    if (q.set) { const have = q.set.filter((k) => it[k] > 0).length; return { icon: q.set.map((k) => (it[k] ? '✅' : ITEM_EMO_OF(k))).join(''), cur: have, n: q.set.length, done: have >= q.set.length }; }
+    const keys = this.questItems; const cur = keys.reduce((s, k) => s + (it[k] || 0), 0);
+    return { icon: keys.map(ITEM_EMO_OF).join(''), cur: Math.min(cur, q.n), n: q.n, done: cur >= q.n };
+  }
+
+  checkSceneSwitch(silent) {
+    if (!this.scenes || this.scenes.length < 2) return;
+    const want = Math.min(this.scenes.length - 1, Math.floor(this.progress * this.scenes.length));
+    if (want === this.sceneIdx) return;
+    this.sceneIdx = want;
+    if (this.lvP.part2) { this.levelGuests = this.guestList(this.lvP, 1); this.cameoIdx = 0; this.nextCameo = 2; }
+    if (this.lv.world2 && want === 1) this.events.onWorld?.(this.lv.world2, 0);
+    if (this.biome === FIPSLAND) { this.savedBiome = { ...this.savedBiome, id: this.scenes[want] }; return; }
+    this.prevBiome = this.biome; this.biome = { ...this.biome, id: this.scenes[want] }; this.biomeFade = silent ? 1 : 0;
+    if (!silent) sfx('memory');
+  }
+
+  // Cheat: 10× Springen, 3× Ducken, 3× Springen -> Godmode
+  cheatInput(k) {
+    this.cheat.push({ k, t: this.t });
+    if (this.cheat.length > CHEAT.length) this.cheat.shift();
+    if (this.cheat.length === CHEAT.length && this.cheat.map((c) => c.k).join('') === CHEAT && this.t - this.cheat[0].t < 12) {
+      this.cheat = [];
+      this.god = !this.god;
+      this.flash = 1; this.shake = 8; sfx(this.god ? 'power' : 'no');
+      this.fx.burst(this.p.x, this.screenY(60), { n: 40, type: 'confetti', speed: 300, size: 4, gravity: 300 });
+      this.events.onGod?.(this.god);
+    }
+  }
+
+  tryTap(x, y) {
+    const V = this.V;
+    for (const c of this.cameos) {
+      if (!c.secret) continue;
+      if (Math.abs(x - c.x) < 36 && y > V.groundY - 135 && y < V.groundY + 10) {
+        c.secret = false; c.line = '…okay. Psst! 🌿'; c.sayT = 0; c.said = true;
+        this.fx.burst(c.x, V.groundY - 80, { n: 30, colors: ['#4caf50', '#a5d6a7', '#fff'], speed: 220 });
+        sfx('power'); this.events.onSecret?.();
+        return true;
+      }
+    }
+    return false;
   }
 
   get target() { return this.mode === 'birthday' || this.mode === 'attract' ? (this.cfg.birthdayTarget || 34) : Infinity; }
@@ -89,9 +219,35 @@ export class Game {
     this.flash = Math.max(0, this.flash - dt * 3);
 
     let dx = 0;
-    if (this.state === 'run' || this.state === 'idle') {
+    this.turbo = Math.max(0, (this.turbo || 0) - dt);
+    if (this.state === 'run' && this.god) {
+      const mv = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+      const walk = mv * 320 * dt;
+      if (mv) this.facing = mv;
+      if (walk > 0) { if (p.x < this.V.w * 0.45) p.x += walk; else dx = walk; }
+      else if (walk < 0) { if (p.x > 40) p.x += walk; else if (this.distance > 0) dx = Math.max(walk, -this.distance); }
+      this.walking = Math.abs(walk);
+    } else if (this.state === 'run' || this.state === 'idle') {
       if (this.state === 'run') this.speed = Math.min(this.M.max, this.speed + this.M.accel * dt);
-      dx = this.speed * this.speedFactor * dt;
+      dx = this.speed * this.speedFactor * dt * (this.turbo > 0 ? 1.5 : 1);
+      if (this.state === 'run' && p.x !== PLAYER_X) p.x += (PLAYER_X - p.x) * Math.min(1, dt * 2);
+    } else if (this.state === 'goal') {
+      this.goalT += dt;
+      this.speed = Math.max(0, this.speed - 420 * dt);
+      dx = this.god ? 0 : this.speed * dt;
+      p.x = lerp(p.x, this.V.w * 0.3, Math.min(1, dt * 1.4));
+      if (this.goalT > 0.4 && Math.floor(this.goalT * 3) !== Math.floor((this.goalT - dt) * 3)) this.fx.burst(rand(40, this.V.w - 40), rand(20, this.V.groundY * 0.5), { n: 24, type: 'confetti', speed: 200, size: 4, gravity: 260 });
+      if ((this.goalT > 6 || (this.goalT > 1.5 && input.jumpPressed)) && !this.goalSent) { this.goalSent = true; this.events.onLevelDone?.(this.levelResult()); }
+    } else if (this.state === 'revive') {
+      this.reviveT += dt;
+      const k = this.revive;
+      k.x = lerp(k.x, p.x - 42, Math.min(1, dt * 3)); k.t += dt;
+      if (this.reviveT > 0.9 && !k.healed) { k.healed = true; p.expr = 'happy'; p.exprT = 2; sfx('heart'); this.fx.burst(p.x, this.screenY(60), { n: 22, colors: ['#ff4f6d', '#ffb3c1', '#fff'], speed: 200 }); }
+      if (this.reviveT > 2.6) {
+        this.state = 'run'; this.hearts = 1; p.invuln = 2.2; p.y = 0; p.vy = 0; this.events.onHearts?.(1);
+        this.obstacles = this.obstacles.filter((o) => o.x > p.x + 260);
+        k.leave = true;
+      }
     } else if (this.state === 'finale') {
       this.finaleT += dt;
       this.speed = Math.max(0, this.speed - 380 * dt);
@@ -102,26 +258,29 @@ export class Game {
 
     // Spieler
     if (this.state === 'run') {
-      if (input.jumpPressed && p.y <= 0.01 && !input.duck) { p.vy = JUMP_V; sfx('jump'); }
+      if (input.jumpPressed) { if (this.lv) this.cheatInput('J'); if (p.y <= 0.01 && !input.duck) { p.vy = this.JUMP_V; sfx('jump'); } }
+      if (input.duck && !this.prevDuck && this.lv) this.cheatInput('D');
+      this.prevDuck = input.duck;
       if (!input.jumpHeld && p.vy > 280) p.vy = 280; // kurzer Tipp = kleiner Sprung
       p.duck = input.duck;
       const gMul = p.duck && p.y > 0 ? 3.2 : 1;
-      p.vy -= GRAV * gMul * dt;
+      p.vy -= this.GRAV * gMul * dt;
       p.y += p.vy * dt;
       if (p.y <= 0) { p.y = 0; p.vy = 0; }
-      p.phase += dx / 34;
-      if (!this.M.collect) this.score += dx / 400;
+      p.phase += (this.god ? this.walking || 0 : dx) / 34;
+      if (!this.M.collect && !this.lv) this.score += dx / 400;
+      if (this.god) this.updateFire(dt, input);
     } else if (this.state === 'idle') {
       p.phase += dx / 34;
     } else if (this.state === 'dying') {
       this.deadT += dt;
-      p.vy -= GRAV * 0.8 * dt; p.y = Math.max(0, p.y + p.vy * dt);
+      p.vy -= GRAV0 * 0.8 * dt; p.y = Math.max(0, p.y + p.vy * dt);
       if (this.deadT > 1.1 && !this.deathSent) { this.deathSent = true; this.events.onDeath?.(this.deathInfo); }
-    } else if (this.state === 'finale') {
-      p.vy -= GRAV * dt; p.y = Math.max(0, p.y + p.vy * dt);
-      if (p.y === 0) p.vy = this.speed <= 5 && this.finaleT > 2 ? 380 : 0; // Freudensprünge
+    } else if (this.state === 'finale' || this.state === 'goal') {
+      p.vy -= GRAV0 * dt; p.y = Math.max(0, p.y + p.vy * dt);
+      if (p.y === 0) p.vy = this.speed <= 5 && (this.finaleT > 2 || this.goalT > 1) ? 380 : 0; // Freudensprünge
       p.phase += Math.max(dx / 34, this.speed > 5 ? 0 : dt * 3);
-      if (this.speed <= 0 && !this.finaleSent) { this.finaleSent = true; this.events.onFinale?.(); }
+      if (this.state === 'finale' && this.speed <= 0 && !this.finaleSent) { this.finaleSent = true; this.events.onFinale?.(); }
     }
     this.biomeFade = Math.min(1, this.biomeFade + dt / 1.6);
     p.exprT -= dt; if (p.exprT <= 0) p.expr = this.state === 'dying' ? 'sad' : this.hammer > 0 ? 'hammer' : this.baseExpr;
@@ -135,10 +294,11 @@ export class Game {
       this.collide();
       this.checkMilestones();
       
-      if (this.biome && this.biome !== FIPSLAND && this.score >= this.nextBiomeAt) this.nextBiome();
+      if (this.biome && this.biome !== FIPSLAND && !this.lv && this.score >= this.nextBiomeAt) this.nextBiome();
+      if (this.lv) this.updateLevel(dt);
       if (this.fipsT > 0) { this.fipsT -= dt; if (this.fipsT <= 0) this.leaveFipsland(); }
       this.eggT = Math.max(0, this.eggT - dt);
-      if (this.mode === 'horror') {
+      if (this.horror) {
         this.lightning -= dt;
         if (this.lightning <= 0) { this.lightning = rand(4, 9); this.flash = 0.9; sfx('thunder'); }
       }
@@ -167,12 +327,114 @@ export class Game {
     this.items = this.items.filter((it) => it.x > -60 && !it.taken);
     for (const c of this.cameos) { c.x -= dx; c.t += dt; }
     this.cameos = this.cameos.filter((c) => c.x > -80);
+    if (this.rockets.length) this.updateRockets(dt, dx);
     this.updateCameos(dt);
     this.updateSpecials(dt);
     if (this.bigNum) { this.bigNum.t += dt; if (this.bigNum.t > 1.1) this.bigNum = null; }
     for (const pl of this.polaroids) pl.t += dt;
     this.polaroids = this.polaroids.filter((pl) => pl.t < pl.life);
+    if (this.revive?.leave) { this.revive.x -= 300 * dt; this.revive.t += dt; if (this.revive.x < -80) this.revive = null; }
     this.fx.update(dt, dx);
+  }
+
+  updateLevel(dt) {
+    const V = this.V, L = this.lv;
+    this.checkSceneSwitch(false);
+    const fam = this.cfg.family || {};
+    for (const who of ['fan', 'friend']) {
+      this.fam[who] -= dt;
+      if (this.fam[who] <= 0) {
+        this.fam[who] = freqT(this.lvP.freq?.[who]);
+        const f = fam[who];
+        if (L.noFamily || !f) continue;
+        this.cameos.push({ face: f.face, flag: f.flags ? pick(f.flags) : undefined, line: pick(f.lines || ['Lauf!']), x: V.w + 60, t: 0, color: who === 'fan' ? '#d55b8f' : '#3ea37a' });
+      }
+    }
+    if (!this.questDone && this.questItems.length && this.biome !== FIPSLAND) {
+      this.questT -= dt;
+      if (this.questT <= 0) {
+        this.questT = this.questEvery * rand(0.8, 1.2);
+        let k;
+        if (this.quest.set) { const miss = this.quest.set.filter((x) => !this.stats.items[x]); k = pick(miss.length ? miss : this.quest.set); }
+        else k = pick(this.questItems);
+        const it = this.makeItem(k, V.w + 40 + rand(0, 80), pick([24, 60, 96]));
+        it.quest = true; this.items.push(it);
+      }
+    }
+    if (this.quest.hidden && !this.questDone && this.progress >= this.ringAt) {
+      this.ringAt = this.progress + 0.12;
+      const it = this.makeItem('blackring', V.w + 40, pick([20, 104])); it.quest = true; this.items.push(it);
+      this.events.onToast?.('💍 Da glitzert was im Gras…');
+    }
+    if (this.checkpointAt != null && !this.cpShown && this.progress >= this.checkpointAt) { this.cpShown = true; this.events.onToast?.('🚩 Checkpoint!'); sfx('memory'); }
+    if (this.distance >= this.lvTarget) this.startGoal();
+  }
+
+  checkQuest() {
+    if (!this.lv || this.questDone) return;
+    const qs = this.questStatus();
+    if (qs && qs.done && !qs.fail && !this.quest.survive && !this.quest.avoid) {
+      this.questDone = true; sfx('fanfare');
+      this.events.onToast?.('🎯 Quest geschafft! ⭐');
+      this.fx.burst(this.p.x, this.screenY(80), { n: 36, type: 'confetti', speed: 260, size: 4, gravity: 300 });
+    }
+  }
+
+  startGoal() {
+    if (this.state !== 'run') return;
+    this.state = 'goal'; this.goalT = 0;
+    const p = this.p; p.duck = false; p.expr = 'party'; p.exprT = 999;
+    for (const o of this.obstacles) this.fx.burst(o.x + o.w / 2, this.screenY(o.yOff + 20), { n: 20, type: 'confetti', speed: 240, size: 4, gravity: 400 });
+    this.obstacles = []; this.items = this.items.filter((i) => !i.bad); this.rockets = [];
+    if (this.hero) { this.hero.ph = 'out'; this.hero.t = 0; }
+    this.flash = 0.7; sfx('fanfare');
+    const qs = this.questStatus();
+    if (this.quest.survive || (this.quest.avoid && qs && !qs.fail) || (qs && qs.done && !qs.fail)) this.questDone = true;
+    const seen = new Set(), stage = [];
+    const src = this.lvP.guests === 'all' ? this.guestList(this.lvP) : (this.lvP.guests || []);
+    for (const c of src) { const k = c.face || c.emoji; if (seen.has(k) || (c.face && c.face === this.lvP.heroFace)) continue; seen.add(k); stage.push(c); if (stage.length >= 6) break; }
+    this.stage = stage.map((c, i) => ({ ...c, x: 0, i, color: pick(['#5b7bd5', '#d55b8f', '#3ea37a', '#d58a3e', '#8e5aa8']) }));
+    this.events.onGoal?.();
+  }
+
+  levelResult() {
+    const noDamage = this.hitCount === 0 && !this.revived;
+    const stars = 1 + (this.questDone ? 1 : 0) + (noDamage && !this.god ? 1 : 0);
+    return { id: this.lvId, score: Math.floor(this.score), stars, questDone: this.questDone, noDamage, god: this.god, stats: this.stats, time: this.t };
+  }
+
+  updateFire(dt, input) {
+    const p = this.p;
+    this.fireCd -= dt;
+    if (input.fire && this.fireCd <= 0) {
+      this.fireCd = 0.22;
+      this.rockets.push({ x: p.x + this.facing * 24, y: p.y + 70, vx: this.facing * 720, t: 0 });
+      sfx('launch');
+    }
+  }
+
+  updateRockets(dt, dx) {
+    const V = this.V;
+    for (const r of this.rockets) {
+      r.t += dt; r.x += r.vx * dt - dx;
+      if (Math.floor(r.t / 0.03) !== Math.floor((r.t - dt) / 0.03)) this.fx.list.push({ x: r.x - Math.sign(r.vx) * 14, y: this.screenY(r.y), vx: -r.vx * 0.1, vy: rand(-20, 20), life: 0.4, max: 0.4, color: pick(['rgba(255,170,60,0.9)', 'rgba(200,200,200,0.7)']), size: 3, gravity: -10, type: 'smoke', rot: 0, vr: 0, drag: 1 });
+      for (const o of this.obstacles) {
+        if (o.knock || o.secret) continue;
+        const top = o.yOff + Math.max(...o.rects.map((q) => q.y1)), bot = o.yOff;
+        if (r.x > o.x - 8 && r.x < o.x + o.w + 8 && r.y > bot - 14 && r.y < top + 20) {
+          r.dead = true;
+          o.knock = { vx: Math.sign(r.vx) * 300, vy: 900, vr: 12 };
+          const ox = o.x + o.w / 2, oy = this.screenY(o.yOff + 20);
+          this.fx.burst(ox, oy, { n: 30, colors: ['#ffd23f', '#ff7b39', '#ff3b3b', '#fff'], speed: 320, size: 4 });
+          this.fx.burst(ox, oy, { n: 12, type: 'smoke', colors: ['#bdbdbd', '#757575'], speed: 120, size: 7, gravity: -40 });
+          this.fx.text(ox, oy - 26, pick(['BOOM!', 'KAWUMM!', 'ZACK!', 'WEG DAMIT!']), { color: '#ffd23f', size: 22 });
+          this.shake = Math.max(this.shake, 7); this.score += 2; sfx('smash');
+          break;
+        }
+      }
+      if (r.x > V.w + 60 || r.x < -60) r.dead = true;
+    }
+    this.rockets = this.rockets.filter((r) => !r.dead);
   }
 
   spawn(dx, dt) {
@@ -188,16 +450,20 @@ export class Game {
       const minGap = sp * 0.95 + 80;
       this.nextGap = (minGap + Math.random() * minGap * 0.9) * (this.mercy ? 1.12 : 1);
       let type = weighted(this.biome ? this.biome.obstacles : this.M.obstacles);
-      if ((['flyshirt', 'ghost', 'stink'].includes(type) || OBS[type]?.fly) && this.distance < 4000 && this.mode !== 'horror') type = this.mode === 'birthday' ? 'tax' : 'candles';
+      if ((['flyshirt', 'ghost', 'stink'].includes(type) || OBS[type]?.fly) && this.distance < (this.lv ? 1500 : 4000) && !this.horror) {
+        if (this.lv) { const ground = Object.keys(obsList).filter((k) => !OBS[k]?.fly && !['flyshirt', 'ghost', 'stink'].includes(k)); if (ground.length) type = pick(ground); }
+        else type = this.mode === 'birthday' ? 'tax' : 'candles';
+      }
       if (this.hour === 6 && Math.random() < 0.3) type = 'alarm';
       if (!this.boxSpawned && this.biome && this.t > 25 && Math.random() < 0.05) { this.boxSpawned = true; type = 'fipsbox'; }
+      if (this.lv?.fipsBox && !this.boxSpawned && this.progress > 0.35) { this.boxSpawned = true; type = 'fipsbox'; }
       const ob = this.makeObstacle(type, V.w + 40);
       this.obstacles.push(ob);
       if (this.M.collect === 'candle' && this.candleTimer <= 0) this.candleTimer = 1.8 * this.spawnCandles(ob, V.w + 40) - 0.4;
       // Item in der Lücke
       const gapX = V.w + 40 + this.nextGap * 0.5;
       if (Math.random() < this.M.bad) {
-        this.items.push(this.makeItem(pick(['fig', 'shrimp']), gapX, pick([12, 12, 70])));
+        this.items.push(this.makeItem(pick(this.badItems || ['fig', 'shrimp']), gapX, pick([12, 12, 70])));
       } else if (Math.random() < this.M.items) {
         const food = this.biome?.items || ['wine', 'pizza', 'burger', 'nachos'];
         const type2 = this.biome?.bonus && Math.random() < 0.55 ? this.biome.bonus : Math.random() < 0.07 ? 'egg' : pick(food);
@@ -205,7 +471,7 @@ export class Game {
       }
     }
     this.candleTimer = (this.candleTimer ?? 1) - dt;
-    if ((this.mode === 'endless' || this.mode === 'roadtrip') && this.biome !== FIPSLAND) {
+    if (false) { // Fotoalbum vorerst deaktiviert
       this.nextPolaroid -= dt;
       if (this.nextPolaroid <= 0) {
         this.nextPolaroid = rand(24, 34);
@@ -214,18 +480,18 @@ export class Game {
       }
     }
     // Herzen = Extra-Leben (max. 3)
-    this.nextHeart = (this.nextHeart ?? (this.mode === 'birthday' ? rand(9, 14) : rand(18, 26))) - dt;
+    this.nextHeart = (this.nextHeart ?? (this.mode === 'birthday' || this.lv ? rand(9, 14) : rand(18, 26))) - dt;
     if (this.nextHeart <= 0) {
-      this.nextHeart = this.mode === 'birthday' ? rand(14, 20) : this.mode === 'horror' ? rand(28, 38) : rand(22, 30);
+      this.nextHeart = this.mode === 'birthday' || this.lv ? rand(16, 22) : this.horror ? rand(28, 38) : rand(22, 30);
       if (this.hearts < 3) this.items.push(this.makeItem('heart', V.w + 40 + this.nextGap * 0.5, pick([24, 70, 105])));
     }
     this.nextPower -= dt;
     if (this.nextPower <= 0) {
       this.nextPower = this.mercy >= 1 ? rand(12, 18) : rand(22, 34);
-      const type = this.mode === 'horror' || this.hero ? 'fips' : (Math.random() < 0.55 ? 'fips' : 'hammer');
+      const type = this.horror || this.hero ? 'fips' : (Math.random() < 0.55 ? 'fips' : 'hammer');
       this.items.push(this.makeItem(type, V.w + 40 + this.nextGap * 0.5, 60));
     }
-    if (this.mode !== 'horror') this.spawnCameos(dt);
+    if (!this.horror) this.spawnCameos(dt);
   }
 
   /** Legt ein Kerzen-Muster an und gibt die Anzahl zurück (ca. 1 Kerze alle 2 s). */
@@ -243,13 +509,16 @@ export class Game {
   }
 
   spawnCameos(dt) {
-    const list = (this.biome && this.cfg.biomeCameos?.[this.biome.id]) || this.cfg.cameos || [];
-    if (!list.length) return;
+    const list = this.lv ? this.levelGuests : this.biome?.guests || (this.biome && this.cfg.biomeCameos?.[this.biome.id]) || this.cfg.cameos || [];
+    if (!list.length || this.state === 'goal') return;
     this.nextCameo -= dt;
     if (this.nextCameo <= 0) {
-      this.nextCameo = this.state === 'idle' ? rand(6, 9) : rand(16, 26);
-      const c = list[this.cameoIdx++ % list.length];
-      this.cameos.push({ ...c, x: this.V.w + 60, t: 0, said: false, threw: false, color: pick(['#5b7bd5', '#d55b8f', '#3ea37a', '#d58a3e']) });
+      this.nextCameo = this.state === 'idle' ? rand(6, 9) : this.lv ? this.cameoGap * rand(0.85, 1.15) : rand(16, 26);
+      const group = this.lvP?.guests === 'all' ? 3 : 1;
+      for (let i = 0; i < group; i++) {
+        const c = list[this.cameoIdx++ % list.length];
+        this.cameos.push({ ...c, x: this.V.w + 60 + i * 46, t: -i * 0.2, said: false, threw: false, color: pick(['#5b7bd5', '#d55b8f', '#3ea37a', '#d58a3e']) });
+      }
     }
   }
 
@@ -278,9 +547,9 @@ export class Game {
       c.x += (target - c.x) * Math.min(1, dt * (c.t < 4.2 ? 1.8 : 0.9));
       if (c.t > 4.2 && !c.gaveUp) { c.gaveUp = true; if (this.state === 'run') { this.stats.chases++; this.events.onChase?.(); } this.fx.text(c.x + 10, V.groundY - 95, 'Puh…', { color: '#fff', size: 14 }); }
       if (c.t > 7) this.chase = null;
-    } else if (active && this.cfg.chaser && this.mode !== 'horror' && !this.hero && !this.omaRide) {
+    } else if (active && this.cfg.chaser && !this.horror && !this.hero && !this.omaRide) {
       this.nextChase -= dt;
-      if (this.nextChase <= 0) { this.nextChase = rand(22, 32); this.chase = { x: -60, t: 0, face: this.cfg.chaser.face, line: this.cfg.chaser.line }; }
+      if (this.nextChase <= 0) { this.nextChase = this.lv ? freqT(this.lvP.freq?.chaser) : rand(22, 32); this.chase = { x: -60, t: 0, face: this.cfg.chaser.face, line: this.cfg.chaser.line }; }
     }
     // Fips flitzt durchs Bild, überholt und springt wieder raus
     if (this.dash) {
@@ -289,9 +558,9 @@ export class Game {
       if (d.x > V.w * 0.62 && !d.jumped) { d.jumped = true; d.vy = 520; this.fx.text(d.x, V.groundY - 60, this.green ? 'Igitt, grün! 🤢' : pick(this.cfg.catLines || ['Miau!']), { color: '#ffb36b', size: 16 }); sfx('meow'); }
       if (d.jumped) { d.vy -= 1300 * dt; d.y = Math.max(0, d.y + d.vy * dt); }
       if (d.x > V.w + 80) this.dash = null;
-    } else if (active && this.mode !== 'horror' && this.fips <= 0 && this.biome !== FIPSLAND) {
+    } else if (active && !this.horror && this.fips <= 0 && this.biome !== FIPSLAND) {
       this.nextDash -= dt;
-      if (this.nextDash <= 0) { this.nextDash = this.state === 'idle' ? rand(7, 10) : rand(18, 28); this.dash = { x: -50, y: 0, t: 0 }; }
+      if (this.nextDash <= 0) { this.nextDash = this.state === 'idle' ? rand(7, 10) : this.lv ? freqT(this.lvP.freq?.cat || 'normal') : rand(18, 28); this.dash = { x: -50, y: 0, t: 0 }; }
     }
   }
 
@@ -300,15 +569,15 @@ export class Game {
     this.biomeIdx++;
     if (this.biomeIdx >= this.worldList.length) {
       this.biomeIdx = 0;
-      if (this.mode === 'endless') { const last = this.biome; do { this.worldList = shuffle(BIOMES.slice()); } while (this.worldList[0] === last); }
+      if (this.mode === 'endless') { const last = this.biome, pool = this.levelPool || BIOMES; do { this.worldList = shuffle(pool.slice()); } while (pool.length > 1 && this.worldList[0] === last); }
     }
     this.biome = this.worldList[this.biomeIdx];
-    this.stats.worlds.add(this.biome.id); this.events.onWorld?.(this.biome.id, this.stats.worlds.size);
+    this.stats.worlds.add(this.biome.id); this.events.onWorld?.(this.biome.id, this.stats.worlds.size, this.biome);
     this.nextBiomeAt += 60;
     // Cameos der alten Welt, die noch nicht im Bild sind, nicht mit rübernehmen
     this.cameos = this.cameos.filter((c) => c.x < this.V.w);
     this.nextCameo = Math.max(this.nextCameo, 3);
-    this.events.onToast?.(`📍 ${biomeName(this.biome)}`);
+    this.events.onToast?.(`📍 ${this.biome.title || biomeName(this.biome)}`);
     sfx('memory');
   }
 
@@ -322,17 +591,18 @@ export class Game {
 
   leaveFipsland() {
     this.prevBiome = this.biome; this.biome = this.savedBiome || this.worldList[this.biomeIdx]; this.biomeFade = 0;
-    this.events.onToast?.(`📍 Zurück: ${biomeName(this.biome)}`);
+    this.events.onToast?.(`📍 Zurück: ${this.biome.title || this.lvP?.title || biomeName(this.biome)}`);
   }
 
   summonFips() { if (!this.dash && this.fips <= 0 && this.biome !== FIPSLAND) this.dash = { x: -50, y: 0, t: 0 }; }
 
   // Super-Christoph: einfliegen -> landen -> 5 s alles zerstören -> abheben
   updateHero(dt) {
-    const p = this.p, V = this.V, H = this.cfg.heroLines || {};
-    const zombie = this.mode === 'horror';
+    const p = this.p, V = this.V, H0 = this.cfg.heroLines || {};
+    const HL = this.lvP?.heroLines, H = HL ? { ...H0, land: HL, out: HL } : H0;
+    const zombie = this.horror;
     if (!this.hero) {
-      if (this.state !== 'run' || this.fipsT > 0 || this.chase || this.omaRide || this.hammer > 0) return;
+      if (this.state !== 'run' || this.fipsT > 0 || this.chase || this.omaRide || this.hammer > 0 || this.god) return;
       this.nextHero -= dt;
       if (this.nextHero <= 0) {
         this.hero = { ph: 'in', t: 0, x: -110, y: 120, punch: 0 };
@@ -368,7 +638,7 @@ export class Game {
       if (h.t > 5) { h.ph = 'out'; h.t = 0; h.say = pick(H.out || ['Bis später!']); }
     } else if (h.ph === 'out') {
       h.x += 560 * dt; h.y += 70 * dt;
-      if (h.y > 420 || h.x > V.w + 120) { this.hero = null; this.nextHero = rand(40, 55); }
+      if (h.y > 420 || h.x > V.w + 120) { this.hero = null; this.nextHero = this.lv ? this.lv.len * rand(0.35, 0.5) : rand(40, 55); }
     }
   }
 
@@ -390,22 +660,23 @@ export class Game {
       this.items.push(it);
       this.fx.text(o.x, V.groundY - 90, pick(this.cfg.omaDropLines || ['Hier, Kind – iss was!']), { color: '#fff', size: 15, life: 1.4 });
     }
-    if (o.x > V.w + 120) { this.omaRide = null; this.nextOma = rand(38, 52); }
+    if (o.x > V.w + 120) { this.omaRide = null; this.nextOma = this.lv ? freqT(this.lvP.freq?.oma) : rand(38, 52); }
   }
 
   drawHeroFx(g) {
     const h = this.hero; if (!h) return;
-    const V = this.V, zombie = this.mode === 'horror';
+    const V = this.V, zombie = this.horror;
     const pose = h.ph === 'land' ? 'land' : 'fly';
     const yy = V.groundY - h.y;
     if (h.ph !== 'land') { g.fillStyle = 'rgba(0,0,0,0.15)'; g.beginPath(); g.ellipse(h.x, V.groundY + 2, Math.max(4, 22 - h.y * 0.08), 4, 0, 0, 7); g.fill(); }
-    drawHero(g, h.x, yy, { pose, t: this.t, zombie, scale: CHAR_SCALE * 1.18 });
+    drawHero(g, h.x, yy, { pose, t: this.t, zombie, scale: CHAR_SCALE * 1.18, costume: this.costume, faceKey: this.lvP?.heroFace || null });
     if (h.say && ((h.ph === 'land' && h.t < 0.8) || (h.ph === 'smash' && h.t < 1.2) || (h.ph === 'out' && h.t < 1.0))) speech(g, h.x - 10, yy - 108, h.say);
   }
 
   makeObstacle(type, x) {
     const o = { type, x, t: 0, yOff: 0, rot: 0, rects: [] };
     const def = OBS[type];
+    if (type === 'facewalk' || type === 'facefly') { o.face = this.lvP?.faceObs; o.line = this.lvP?.faceObsLine; }
     if (def && !def.fly) { def.make(o); return o; }
     if (def && def.fly) type = 'flyshirt';
     if (type === 'candles') {
@@ -486,7 +757,14 @@ export class Game {
       sfx('meow');
       return;
     }
+    if (this.god) {
+      o.knock = { vx: 420, vy: 700, vr: 9 };
+      this.fx.text(ox, oy - 30, pick(['GODMODE!', 'Nö!', 'Unbesiegbar!']), { color: '#3ee6b4', size: 16 });
+      this.fx.burst(ox, oy, { n: 12, colors: ['#3ee6b4', '#fff'], speed: 200 });
+      return;
+    }
     if (p.invuln > 0) return;
+    this.hitCount++;
     if (this.hearts > 0) {
       this.hearts--; p.invuln = 1.6; this.shake = 8;
       o.knock = { vx: 380, vy: 600, vr: 7 };
@@ -503,6 +781,19 @@ export class Game {
     this.stats.items[it.type] = (this.stats.items[it.type] || 0) + 1;
     if (it.bad) this.stats.bad = true;
     this.events.onCollect?.(it.type);
+    if (this.lv) this.checkQuest();
+    if (it.quest || this.questItems?.includes(it.type)) {
+      this.score += 10; p.expr = 'happy'; p.exprT = 0.7;
+      const qs = this.questStatus();
+      this.fx.text(it.x, this.screenY(iy) - 20, qs?.n ? `${qs.cur}/${qs.n}` : '+10', { color: '#ffd23f', size: 20 });
+      this.fx.burst(it.x, this.screenY(iy), { n: 16, colors: ['#ffd23f', '#fff', '#ff4fa3'], speed: 190, size: 2.8 });
+      sfx('power');
+      if (it.type !== 'monkey' && it.type !== 'candle') return;
+    }
+    if (it.type === 'mimisoup') {
+      this.turbo = 3; p.invuln = Math.max(p.invuln, 3); this.score += 5;
+      this.fx.text(it.x, this.screenY(iy) - 20, 'SCHARF! 🌶️ TURBO!', { color: '#ff5b2b', size: 20 }); sfx('power'); return;
+    }
     if (it.type === 'treat') {
       this.score += 3;
       this.fx.text(it.x, this.screenY(iy) - 16, pick(['Leckerli!', '+3 🐾', 'Mjam!']), { color: '#ff6fae', size: 16 });
@@ -552,6 +843,9 @@ export class Game {
       sfx('heart'); this.events.onHearts?.(this.hearts);
       return;
     }
+    if (it.type === 'candle' && this.mode !== 'birthday' && this.mode !== 'attract') {
+      this.score += 2; this.fx.burst(it.x, this.screenY(iy), { n: 14, colors: ['#ffd23f', '#ff9f1c', '#fff3a0'], speed: 170, size: 2.6 }); sfx('candle', (this.stats.items.candle || 0)); return;
+    }
     if (it.type === 'candle') {
       this.score += 1;
       const n = Math.floor(this.score);
@@ -578,7 +872,8 @@ export class Game {
       return;
     }
     if (it.bad) {
-      if (this.mode === 'horror' && this.fips <= 0 && this.hammer <= 0 && p.invuln <= 0) { this.die(it.type); return; }
+      if (this.god) return;
+      if (this.horror && this.fips <= 0 && this.hammer <= 0 && p.invuln <= 0) { this.die(it.type); return; }
       this.score = Math.max(0, this.score + def.points);
       p.swell = 1; p.expr = 'shock'; p.exprT = 1.2; this.shake = 6;
       this.fx.text(it.x, this.screenY(iy) - 24, def.line || 'ALLERGIE!', { color: '#ff5b5b', size: 20 });
@@ -597,10 +892,17 @@ export class Game {
 
   die(cause) {
     const p = this.p;
+    if (this.lv && !this.revived && this.cfg.revive && Math.random() < 0.25) {
+      this.revived = true; this.state = 'revive'; this.reviveT = 0;
+      this.revive = { x: -60, t: 0 };
+      p.expr = 'sad'; p.exprT = 0.9; p.duck = false; this.shake = 10; sfx('hurt');
+      this.events.onToast?.(`💚 ${this.cfg.revive?.line || 'Jemand baut dich wieder auf!'}`);
+      return;
+    }
     this.state = 'dying';
     p.expr = 'shock'; p.exprT = 0.45; p.vy = 520; p.duck = false;
     this.shake = 14; this.flash = 0.5;
-    this.deathInfo = { cause, score: Math.floor(this.score), mode: this.mode, stats: this.stats, time: this.t };
+    this.deathInfo = { cause, score: Math.floor(this.score), mode: this.mode, stats: this.stats, time: this.t, level: this.lvId, progress: this.progress };
     this.polaroids = [];
     sfx('hit'); sfx('no');
   }
@@ -648,19 +950,25 @@ export class Game {
     g.save();
     if (this.shake > 0) g.translate(rand(-1, 1) * this.shake * 0.5, rand(-1, 1) * this.shake * 0.5);
     if (this.biome) {
-      const bg = (b) => { if (!drawBiomeBg(g, V, b.id, this.bgOffset, this.t)) drawBackground(g, V, 'day', this.bgOffset, this.t, 0); };
+      const bg = (b) => {
+        if (b.id === 'horror' || b.id === 'birthday') drawBackground(g, V, b.id, this.bgOffset, this.t, 0);
+        else if (!drawScene(g, V, b.id, this.bgOffset, this.t, this.lvP)) drawBackground(g, V, 'day', this.bgOffset, this.t, 0);
+      };
       if (this.prevBiome && this.biomeFade < 1) { bg(this.prevBiome); g.save(); g.globalAlpha = this.biomeFade; bg(this.biome); g.restore(); }
       else bg(this.biome);
-      if (this.biomeFade < 1) {
+      if (this.lv?.garlands) drawBunting(g, V, this.bgOffset);
+      const bname = this.lv ? null : this.biome.title || biomeName(this.biome);
+      if (this.biomeFade < 1 && bname) {
         const a = Math.sin(this.biomeFade * Math.PI);
         g.save(); g.globalAlpha = a; g.textAlign = 'center'; g.font = `900 ${Math.min(34, V.w / 14)}px ui-rounded, system-ui, sans-serif`;
         g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,0.5)'; const ty = V.groundY * 0.35;
-        g.strokeText(`📍 ${biomeName(this.biome)}`, V.w / 2, ty, V.w - 30); g.fillStyle = '#fff'; g.fillText(`📍 ${biomeName(this.biome)}`, V.w / 2, ty, V.w - 30);
+        g.strokeText(`📍 ${bname}`, V.w / 2, ty, V.w - 30); g.fillStyle = '#fff'; g.fillText(`📍 ${bname}`, V.w / 2, ty, V.w - 30);
         g.restore();
       }
     } else drawBackground(g, V, this.M.theme, this.bgOffset, this.t, night);
     for (const c of this.cameos) this.drawCameo(g, c);
-    outlined(g, this.mode === 'horror' ? 'rgba(225,255,210,0.95)' : 'rgba(40,14,48,0.95)', (lg) => {
+    if (this.lv) this.drawGoalArch(g);
+    outlined(g, this.horror ? 'rgba(225,255,210,0.95)' : 'rgba(40,14,48,0.95)', (lg) => {
       for (const o of this.obstacles) this.drawObstacle(lg, o);
       for (const it of this.items) this.drawItem(lg, it);
     });
@@ -678,16 +986,24 @@ export class Game {
       const blink = this.fips < 1.5 && Math.floor(this.t * 10) % 2;
       if (!blink) drawCat(g, p.x + 46 + Math.sin(this.t * 3) * 8, V.groundY, { phase: p.phase * 1.4, scale: 0.85, t: this.t });
     }
-    const pose = this.state === 'dying' ? 'dead' : this.state === 'finale' ? (this.speed > 5 ? 'run' : 'cheer') : this.state === 'idle' ? 'run' : p.y > 0.5 ? 'jump' : p.duck ? 'duck' : 'run';
+    const goalish = this.state === 'finale' || this.state === 'goal';
+    let pose = this.state === 'dying' ? 'dead' : goalish ? (this.speed > 5 ? 'run' : 'cheer') : this.state === 'idle' ? 'run' : p.y > 0.5 ? 'jump' : p.duck ? 'duck' : 'run';
+    if (this.state === 'revive') pose = this.reviveT < 0.9 ? 'duck' : 'cheer';
+    if (this.god && this.state === 'run' && !this.walking && p.y < 0.5 && !p.duck) pose = 'cheer';
+    if (this.state === 'goal') this.drawStage(g);
     const blink = p.invuln > 0 && Math.floor(this.t * 12) % 2;
     if (!blink) {
       // Schatten
       g.fillStyle = 'rgba(0,0,0,0.18)';
       g.beginPath(); g.ellipse(p.x + 2, V.groundY + 2, Math.max(6, 20 - p.y * 0.08), 4, 0, 0, 7); g.fill();
+      const flip = this.god && this.facing < 0;
+      if (flip) { g.save(); g.translate(p.x, 0); g.scale(-1, 1); g.translate(-p.x, 0); }
       drawCharacter(g, p.x, V.groundY - p.y, {
         pose, phase: p.phase, outfit: this.outfit, expr: p.expr, scale: CHAR_SCALE, t: this.t, swell: p.swell, headScale: this.eggT > 0 ? 1.9 : 0,
         rot: this.state === 'dying' ? -Math.min(1.2, this.deadT * 4) : 0,
       });
+      if (this.god) drawLauncher(g, p.x, V.groundY - p.y - (p.duck && p.y < 1 ? 46 : 70), this.t);
+      if (flip) g.restore();
       if (this.hammer > 0 && this.state === 'run') drawJackhammer(g, p.x + 22, V.groundY - p.y - 28, this.t, this.hammer < 1.5);
     }
     if (this.state === 'finale' && this.speed <= 5) {
@@ -700,6 +1016,12 @@ export class Game {
       if (o.t < 1.8) speech(g, o.x - 30, V.groundY - 100, o.say);
     }
     this.drawHeroFx(g);
+    for (const r of this.rockets) emoji(g, '🚀', r.x, this.screenY(r.y), 22, r.vx > 0 ? Math.PI / 4 : -Math.PI * 0.75);
+    if (this.revive) {
+      const k = this.revive;
+      drawPerson(g, k.x, V.groundY, { faceKey: this.cfg.revive?.face, t: this.t, color: '#3ea37a', scale: 0.78, run: this.state !== 'revive' || this.reviveT < 0.7, expr: 'happy' });
+      if (this.state === 'revive' && this.reviveT > 0.5) speech(g, k.x - 20, V.groundY - 118, this.cfg.revive?.line || 'Kopf hoch!');
+    }
     this.fx.draw(g);
     for (const pl of this.polaroids) this.drawPolaroid(g, pl);
     if (this.bigNum) {
@@ -716,15 +1038,53 @@ export class Game {
     }
     g.restore();
     if (this.flash > 0) {
-      g.fillStyle = this.mode === 'horror' ? `rgba(200,255,200,${this.flash * 0.6})` : `rgba(255,255,255,${this.flash * 0.6})`;
+      g.fillStyle = this.horror ? `rgba(200,255,200,${this.flash * 0.6})` : `rgba(255,255,255,${this.flash * 0.6})`;
       g.fillRect(0, 0, V.w, V.h);
     }
     if (this.green) { g.fillStyle = 'rgba(70,200,70,0.13)'; g.fillRect(0, 0, V.w, V.h); }
-    if (this.mode === 'horror') {
+    if (this.lv?.lowGrav) { g.fillStyle = `rgba(90,200,90,${0.1 + Math.sin(this.t) * 0.04})`; g.fillRect(0, 0, V.w, V.h); }
+    if (this.state === 'goal') this.drawOutro(g);
+    if (this.horror) {
       const gr = g.createRadialGradient(p.x, V.groundY - 50, 80, p.x, V.groundY - 50, Math.max(V.w, V.h));
       gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,0.75)');
       g.fillStyle = gr; g.fillRect(0, 0, V.w, V.h);
     }
+  }
+
+  drawGoalArch(g) {
+    const V = this.V, rem = this.lvTarget - this.distance;
+    if (rem > V.w + 40) return;
+    const x = this.p.x + rem + 30, gy = V.groundY;
+    g.fillStyle = '#eee'; g.fillRect(x - 4, gy - 150, 8, 150); g.fillRect(x + 116, gy - 150, 8, 150);
+    for (let i = 0; i < 12; i++) for (let r = 0; r < 2; r++) { g.fillStyle = (i + r) % 2 ? '#111' : '#fff'; g.fillRect(x - 4 + i * 10.7, gy - 168 + r * 10, 10.7, 10); }
+    g.fillStyle = '#ff4fa3'; g.font = '900 13px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('ZIEL 🏁', x + 60, gy - 172);
+    for (let i = 0; i < 6; i++) { g.fillStyle = ['#ff4fa3', '#ffd23f', '#3ee6b4', '#7cc6ff'][i % 4]; g.beginPath(); g.ellipse(x + (i < 3 ? -12 : 132), gy - 150 - (i % 3) * 22 + Math.sin(this.t * 3 + i) * 3, 9, 12, 0, 0, 7); g.fill(); }
+  }
+
+  drawStage(g) {
+    const V = this.V, p = this.p, k = Math.min(1, this.goalT / 1.6);
+    (this.stage || []).forEach((c, i) => {
+      const tx = p.x + 70 + i * 44, x = lerp(V.w + 60 + i * 50, tx, k * k * (3 - 2 * k));
+      drawPerson(g, x, V.groundY - 6 - Math.max(0, Math.sin(this.goalT * 6 + i)) * (k >= 1 ? 8 : 0), { faceKey: c.face, t: this.goalT + i, color: c.color, oma: c.oma, scale: 0.72, wave: true, pet: c.pet, emojiHead: c.emoji });
+    });
+    if (this.goalT > 1.2) drawCat(g, p.x - 50, V.groundY, { pose: 'sit', scale: 0.9, t: this.t });
+  }
+
+  drawOutro(g) {
+    const V = this.V, txt = this.lvP?.outro || 'Geschafft!';
+    const a = Math.min(1, Math.max(0, (this.goalT - 1.1) * 2));
+    if (a <= 0) return;
+    g.save(); g.globalAlpha = a;
+    g.font = '800 15px ui-rounded, system-ui, sans-serif';
+    const lines = wrapText(g, txt, Math.min(420, V.w - 60));
+    const w = Math.min(440, V.w - 40), h = 34 + lines.length * 20, x = (V.w - w) / 2, y = 14;
+    g.fillStyle = 'rgba(255,255,255,0.94)'; roundRect(g, x, y, w, h, 14); g.fill();
+    g.strokeStyle = '#ff4fa3'; g.lineWidth = 3; g.stroke();
+    g.fillStyle = '#ff4fa3'; g.font = '900 12px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('🎬 GESCHAFFT!', V.w / 2, y + 18);
+    g.fillStyle = '#2a1830'; g.font = '800 15px ui-rounded, system-ui, sans-serif';
+    lines.forEach((l, i) => g.fillText(l, V.w / 2, y + 38 + i * 20));
+    if (this.goalT > 2) { g.globalAlpha = a * (0.5 + Math.sin(this.goalT * 4) * 0.3); g.fillStyle = '#fff'; g.font = '800 11px ui-rounded, system-ui, sans-serif'; g.fillText('Tippen = weiter', V.w / 2, V.groundY + 40); }
+    g.restore();
   }
 
   drawCameo(g, c) {
@@ -735,8 +1095,10 @@ export class Game {
       if (c.said && c.sayT < 2.6 && c.line) speech(g, c.x + 30, V.groundY - 150, c.line);
       return;
     }
-    drawPerson(g, c.x, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.color, oma: c.oma, scale: 0.72, wave: true });
-    if (c.said && c.sayT < 2.6 && c.line) speech(g, c.x + 12, V.groundY - 112, c.line);
+    const jx = c.secret ? Math.sin(c.t * 40) * 2 : 0;
+    drawPerson(g, c.x + jx, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.secret ? '#c62828' : c.color, oma: c.oma, scale: 0.72, wave: true, pet: c.pet, emojiHead: c.emoji });
+    if (c.secret) { g.fillStyle = 'rgba(255,60,60,0.25)'; g.beginPath(); g.arc(c.x, V.groundY - 60, 34 + Math.sin(c.t * 12) * 4, 0, 7); g.fill(); }
+    if (c.said && (c.sayT < 2.6 || c.secret) && c.line) speech(g, c.x + 12, V.groundY - (c.pet ? 50 : 112), c.line);
   }
 
   drawObstacle(g, o) {
@@ -1161,4 +1523,33 @@ function hills(g, w, groundY, off, amp, period, color) {
     g.lineTo(x, groundY - amp * (0.55 + 0.3 * Math.sin(u * 2.1) + 0.15 * Math.sin(u * 5.3)));
   }
   g.lineTo(w, groundY); g.closePath(); g.fill();
+}
+
+function wrapText(g, text, maxW) {
+  const words = String(text).split(' '), lines = []; let cur = '';
+  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (g.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+function drawBunting(g, V, off) {
+  const cols = ['#ff4fa3', '#ffd23f', '#3ee6b4', '#7cc6ff', '#c77dff', '#ff7b39'];
+  const span = 300, y0 = 14;
+  for (let k = -1; k < V.w / span + 1; k++) {
+    const sx = k * span - wrap(off * 0.5, span);
+    g.strokeStyle = '#8a5a7a'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(sx, y0); g.quadraticCurveTo(sx + span / 2, y0 + 40, sx + span, y0); g.stroke();
+    for (let i = 1; i < 10; i++) { const u = i / 10, fx = sx + span * u, fy = y0 + 40 * u * (1 - u) * 2; g.fillStyle = cols[i % cols.length]; g.beginPath(); g.moveTo(fx - 7, fy); g.lineTo(fx + 7, fy); g.lineTo(fx, fy + 14); g.fill(); }
+  }
+}
+
+// Raketenwerfer auf der Schulter (Godmode)
+function drawLauncher(g, x, y, t) {
+  g.save(); g.translate(x + 2, y); g.rotate(-0.08);
+  g.fillStyle = '#3d5a3a'; roundRect(g, -16, -6, 44, 11, 5); g.fill();
+  g.fillStyle = '#2b3f29'; g.fillRect(24, -7, 6, 13); g.fillRect(-18, -5, 4, 9);
+  g.fillStyle = '#ffd23f'; g.fillRect(-4, -6, 3, 11);
+  g.fillStyle = '#222'; g.fillRect(4, 5, 4, 8);
+  g.fillStyle = `rgba(255,120,40,${0.4 + Math.sin(t * 20) * 0.3})`; g.beginPath(); g.arc(31, -1, 3, 0, 7); g.fill();
+  g.restore();
 }

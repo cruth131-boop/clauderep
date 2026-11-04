@@ -1,6 +1,8 @@
 // WebAudio: synthetisierte Soundeffekte + eigene Chiptune-Tracks.
 // Eigene MP3s (z.B. "no", "music_run") aus dem Bundle ersetzen die Synth-Varianten.
 import { assets } from './assets.js';
+import { SONGS, compileSong } from './songs.js';
+const compiled = {};
 
 let ctx = null, master, sfxBus, musicBus, noiseBuf;
 let muted = false;
@@ -172,8 +174,9 @@ export function playMusic(name) {
     current = { name, stop: () => { gn.gain.setTargetAtTime(0, ctx.currentTime, 0.1); src.stop(ctx.currentTime + 0.5); } };
     return;
   }
+  if (SONGS[name]) { playSong(name); return; }
   const tr = TRACKS[name];
-  if (!tr) return;
+  if (!tr) { if (name !== 'run') playMusic('run'); return; }
   const stepDur = 60 / tr.bpm / 2; // Achtelnoten
   let step = 0, nextT = ctx.currentTime + 0.05, alive = true;
   const bus = ctx.createGain(); bus.gain.value = 1; bus.connect(musicBus);
@@ -190,6 +193,41 @@ export function playMusic(name) {
       if (d === 'k') tone({ type: 'sine', f0: 140, f1: 45, dur: 0.12, vol: 0.5, at, bus });
       if (d === 's') noise({ dur: 0.1, vol: 0.2, freq: 3000, type: 'bandpass', at, bus });
       if (d === 'h') noise({ dur: 0.03, vol: 0.06, freq: 7000, type: 'highpass', at, bus });
+      nextT += stepDur; step++;
+    }
+  };
+  const iv = setInterval(tick, 25); tick();
+  current = { name, stop: () => { alive = false; clearInterval(iv); bus.gain.setTargetAtTime(0, ctx.currentTime, 0.05); setTimeout(() => bus.disconnect(), 400); } };
+}
+
+function playSong(name) {
+  const tr = compiled[name] || (compiled[name] = compileSong(SONGS[name]));
+  const stepDur = 60 / tr.bpm / tr.div;
+  let step = 0, nextT = ctx.currentTime + 0.06, alive = true;
+  const bus = ctx.createGain(); bus.gain.value = 1; bus.connect(musicBus);
+  const lt = tr.leadType, drumEvery = tr.div / 2; // Schlagzeug-Muster in Achteln
+  const tick = () => {
+    if (!alive) return;
+    while (nextT < ctx.currentTime + 0.15) {
+      const i = step % tr.len, at = nextT - ctx.currentTime;
+      const L = tr.lead[i], B = tr.bass[i], S = tr.stab[i];
+      if (L) {
+        const dur = stepDur * L.d * 0.92;
+        tone({ type: lt, f0: N(L.n), dur, vol: lt === 'triangle' ? 0.3 : lt === 'sawtooth' ? 0.1 : 0.12, at, bus, filter: lt === 'sawtooth' ? 2200 : 0, vib: L.d >= 4 ? 4 : 0, attack: 0.008 });
+        if (lt === 'square') tone({ type: 'triangle', f0: N(L.n + 12), dur: dur * 0.6, vol: 0.05, at, bus });
+      }
+      if (B) {
+        if (B.drone) { tone({ type: 'sawtooth', f0: N(B.n - 12), dur: stepDur * B.d, vol: 0.07, at, bus, filter: 700, attack: 0.05 }); tone({ type: 'sawtooth', f0: N(B.n - 5), dur: stepDur * B.d, vol: 0.05, at, bus, filter: 800, attack: 0.05 }); }
+        else if (B.organ) tone({ type: 'square', f0: N(B.n), dur: stepDur * B.d * 0.95, vol: 0.12, at, bus, filter: 600, attack: 0.03 });
+        else tone({ type: 'triangle', f0: N(B.n), dur: stepDur * B.d * 0.85, vol: 0.34, at, bus });
+      }
+      if (S) for (const n of S.n) tone({ type: S.arp ? 'square' : S.soft ? 'sawtooth' : 'square', f0: N(n), dur: stepDur * S.d, vol: S.arp ? 0.05 : S.soft ? 0.035 : 0.04, at, bus, filter: S.soft ? 1200 : 1800, attack: S.soft ? 0.04 : 0.005 });
+      if (step % drumEvery === 0) {
+        const d = tr.drums[(step / drumEvery) % tr.drums.length];
+        if (d === 'k') tone({ type: 'sine', f0: 140, f1: 45, dur: 0.12, vol: 0.5, at, bus });
+        if (d === 's') noise({ dur: 0.1, vol: 0.2, freq: 3000, type: 'bandpass', at, bus });
+        if (d === 'h') noise({ dur: 0.03, vol: 0.06, freq: 7000, type: 'highpass', at, bus });
+      }
       nextT += stepDur; step++;
     }
   };

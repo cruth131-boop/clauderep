@@ -202,8 +202,12 @@ export const ACHIEVEMENTS = {
   stumble: ['Stolperkönigin', '10× gescheitert', '🤕'],
   roadtrip: ['Auf Achse', 'Den Roadtrip-Modus gespielt', '🚗'],
   hero: ['Gerettet!', 'Der Superheld ist erschienen', '🦸'],
-  album: ['Fotografin', 'Alle Fotos im Album gesammelt', '📸'],
   soup: ['Graupensuppe!', 'Omas Suppe von der Rollator-Rakete gegessen', '🍲'],
+  horrorlv: ['Freitag der 13.', 'Level 13 überlebt', '👻'],
+  levels: ['Lebenswerk', 'Alle 38 Level geschafft', '🗺️'],
+  allstars: ['Sternenhimmel', 'Alle Level mit 3 Sternen', '🌟'],
+  secret: ['Psst…', 'Das geheime Level gefunden', '🌿'],
+  god: ['Cheaterin!', 'Den Godmode entdeckt', '⚡'],
 };
 
 // Tages-Challenges (je Tag eine, abhängig vom Datum)

@@ -24,13 +24,21 @@
     <button id="btn-pause" class="icon-btn" aria-label="Pause">❚❚</button>
     <div id="hearts"></div>
   </div>
-  <div id="progress" class="hidden"><div id="progress-bar"></div><span id="progress-cake">🎂</span></div>
+  <div class="hud-mid">
+    <div id="progress" class="hidden"><div id="progress-bar"></div><span id="progress-cake">🎂</span></div>
+    <div id="quest" class="hidden"></div>
+  </div>
   <div class="hud-right">
     <div id="score">0</div>
     <div id="best">HI 0</div>
   </div>
 </div>
 <button id="btn-duck" class="hidden" aria-label="Ducken">⬇</button>
+<div id="god-ctl" class="hidden">
+  <button id="btn-fire" class="ctl" aria-label="Feuer">🚀</button>
+  <div class="lr"><button id="btn-left" class="ctl" aria-label="Links">◀</button><button id="btn-right" class="ctl" aria-label="Rechts">▶</button></div>
+  <div id="god-badge">⚡ GODMODE</div>
+</div>
 
 <!-- Passwort -->
 <section id="scr-lock" class="screen hidden">
@@ -53,14 +61,14 @@
     <p id="menu-sub" class="subtitle"></p>
     <div class="menu-buttons">
       <button class="btn primary big" data-mode="birthday">🎂 Geburtstags-Modus</button>
-      <button class="btn big" data-mode="endless">♾️ Endlos-Modus</button>
-      <button class="btn big horror" data-mode="horror" id="btn-horror">👻 Horror-Modus</button>
+      <button class="btn big levels hidden" id="btn-levels">🗺️ Level-Modus</button>
+      <button class="btn big hidden" data-mode="endless" id="btn-endless">♾️ Endlos-Modus</button>
+      <button class="btn big horror hidden" data-mode="horror" id="btn-horror">👻 Horror-Modus</button>
       <button class="btn big roadtrip" data-mode="roadtrip" id="btn-roadtrip">🚗 Roadtrip</button>
       <button class="btn big gift hidden" id="btn-gift">🎁 Mein Geschenk</button>
       <div class="row">
         <button class="btn" id="btn-wardrobe">👗 Kleiderschrank</button>
         <button class="btn" id="btn-ach">🏆 Erfolge</button>
-        <button class="btn" id="btn-album">📸 Album</button>
         <button class="btn" id="btn-shake" title="Schüttel mich!">📳</button>
         <button class="btn" id="btn-mute">🔊</button>
       </div>
@@ -110,6 +118,51 @@
   <div id="album-big" class="album-big hidden"><figure><img id="album-big-img" alt=""><figcaption id="album-big-cap"></figcaption></figure></div>
 </section>
 
+<!-- Level-Auswahl -->
+<section id="scr-levels" class="screen hidden">
+  <div class="panel levels-panel">
+    <div class="wardrobe-head">
+      <h2>🗺️ Level <small id="lv-count"></small></h2>
+      <button class="btn" id="btn-levels-done">Menü</button>
+    </div>
+    <button class="btn primary big" id="btn-lv-continue">▶ Weiter</button>
+    <p class="hint save-hint">💾 Fortschritt wird automatisch gespeichert.</p>
+    <div id="lv-list"></div>
+  </div>
+</section>
+
+<!-- Level-Intro -->
+<section id="scr-lvintro" class="screen hidden">
+  <div class="panel lvintro">
+    <div class="big-emoji" id="lvi-icon"></div>
+    <small id="lvi-num"></small>
+    <h2 id="lvi-title"></h2>
+    <p id="lvi-ctx"></p>
+    <p class="quest-line" id="lvi-quest"></p>
+    <div id="lvi-faces" class="faces"></div>
+    <div id="lvi-stars" class="stars"></div>
+    <button class="btn primary big" id="btn-lvi-go">Los geht's! ▶</button>
+    <button class="btn" id="btn-lvi-back">Zurück</button>
+  </div>
+</section>
+
+<!-- Level geschafft -->
+<section id="scr-lvdone" class="screen hidden">
+  <div class="panel lvdone">
+    <h2 id="lvd-title">Geschafft!</h2>
+    <div id="lvd-stars" class="stars big"></div>
+    <ul id="lvd-list" class="lvd-list"></ul>
+    <div class="over-score"><span id="lvd-score">0</span><small id="lvd-best"></small></div>
+    <p id="lvd-unlock" class="hint"></p>
+    <div id="lvd-credits" class="credits hidden"><div class="roll" id="lvd-roll"></div></div>
+    <button class="btn primary big" id="btn-lvd-next">Nächstes Level ▶</button>
+    <div class="row">
+      <button class="btn" id="btn-lvd-again">↻ Nochmal</button>
+      <button class="btn" id="btn-lvd-levels">🗺️ Levels</button>
+    </div>
+  </div>
+</section>
+
 <!-- Pause -->
 <section id="scr-pause" class="screen hidden">
   <div class="panel">
@@ -127,6 +180,7 @@
     <div class="over-score"><span id="over-score">0</span><small id="over-best"></small></div>
     <p id="over-mercy" class="mercy hidden"></p>
     <button class="btn primary big" id="btn-again">Nochmal!</button>
+    <button class="btn big hidden" id="btn-checkpoint">🚩 Ab Checkpoint</button>
     <button class="btn" id="btn-over-menu">Menü</button>
   </div>
 </section>

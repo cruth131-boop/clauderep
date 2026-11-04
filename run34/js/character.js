@@ -1,4 +1,5 @@
 // Prozedural gezeichnete Spielfigur (Comic-Körper + Foto-Kopf), Katze & Cameo-Figuren.
+import { emoji } from './emoji.js';
 import { getFace, faceMeta } from './assets.js';
 import { OUTFIT_PARTS } from './config.js';
 
@@ -832,8 +833,18 @@ function drawCatHead(g, x, y, photo, orange, dark, light, front) {
 // ---------------------------------------------------------------------------
 // Cameo-Figuren (Eltern, Oma) am Wegesrand
 // ---------------------------------------------------------------------------
-export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wave = true, oma = false, scale = 1, expr = 'happy', run = false }) {
+export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wave = true, oma = false, scale = 1, expr = 'happy', run = false, pet = false, emojiHead = null }) {
   g.save(); g.translate(x, footY); g.scale(scale, scale);
+  if (pet) { // kleiner Hund: Körper + Fotokopf
+    const hop = Math.abs(Math.sin(t * 8)) * 3;
+    g.translate(0, -hop);
+    g.fillStyle = '#8d6e63'; roundRect(g, -16, -26, 30, 16, 8); g.fill();
+    for (const lx of [-12, -4, 4, 10]) { g.fillRect(lx, -12, 4, 12); }
+    g.strokeStyle = '#8d6e63'; g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); g.moveTo(-15, -22); g.lineTo(-22, -32 + Math.sin(t * 14) * 4); g.stroke();
+    drawFaceOn(g, faceKey, 'normal', 12, -14, 15);
+    g.restore(); return;
+  }
+  const face = (fx, fy) => { if (faceKey) drawFaceOn(g, faceKey, expr, fx, fy, 21); else if (emojiHead) emoji(g, emojiHead, fx, fy - 18, 40); };
   const legC = oma ? '#6b5b4b' : '#333a4a';
   if (run) {
     const ph = t * 14, bob = Math.abs(Math.sin(ph)) * 3;
@@ -849,7 +860,7 @@ export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wav
       const a = -Math.sin(ph + off) * 0.9, e = pt(0, -68, a, 15), h = pt(e[0], e[1], a + 1.4, 13);
       seg(g, 0, -68, e[0], e[1], 8, color); seg(g, e[0], e[1], h[0], h[1], 7, SKIN);
     }
-    drawFaceOn(g, faceKey, expr, 0, -74, 21);
+    face(0, -74);
     g.restore();
     return;
   }
@@ -865,7 +876,7 @@ export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wav
   const hx = 12 + Math.sin(Math.PI * 0.8 + w) * 22, hy = -70 + Math.cos(Math.PI * 0.8 + w) * 22;
   seg(g, 12, -68, hx, hy, 8, oma ? '#8a5aa8' : color);
   g.fillStyle = SKIN; g.beginPath(); g.arc(hx, hy, 5, 0, 7); g.fill();
-  drawFaceOn(g, faceKey, expr, 0, -74, 21);
+  face(0, -74);
   g.restore();
 }
 
@@ -896,7 +907,8 @@ function zombieFace(img) {
   return c;
 }
 
-function heroHead(g, x, y, unit, zombie) {
+function heroHead(g, x, y, unit, zombie, faceKey) {
+  if (faceKey && !zombie) { drawFaceOn(g, faceKey, 'happy', x, y, unit); return; }
   const { img, name } = getFace('him', 'hero');
   const m = faceMeta(name);
   const src = zombie ? zombieFace(img) : img;
@@ -916,10 +928,23 @@ function heroHead(g, x, y, unit, zombie) {
  * pose: 'fly' (waagrecht, Faust voraus), 'land' (Superhelden-Landung), 'punch', 'hover'
  * (x, y) = Fußpunkt bzw. Körpermitte unten
  */
-export function drawHero(g, x, y, { pose = 'fly', t = 0, zombie = false, scale = 1 } = {}) {
-  const suit = zombie ? '#5b6b52' : '#1f4fd6', suit2 = zombie ? '#3e4a38' : '#163a9e';
-  const cape = zombie ? '#6e1f2a' : '#d62839', trunk = zombie ? '#4a3a3a' : '#d62839', belt = zombie ? '#7a7a3a' : '#ffd23f';
+function absLines(g, x, y) { g.strokeStyle = 'rgba(150,80,50,0.55)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, y - 6); g.lineTo(x, y + 10); for (let i = 0; i < 3; i++) { g.moveTo(x - 6, y - 4 + i * 6); g.lineTo(x + 6, y - 4 + i * 6); } g.moveTo(x - 9, y - 12); g.quadraticCurveTo(x - 3, y - 8, x, y - 11); g.quadraticCurveTo(x + 3, y - 8, x + 9, y - 12); g.stroke(); }
+
+export function drawHero(g, x, y, { pose = 'fly', t = 0, zombie = false, scale = 1, costume = null, faceKey = null } = {}) {
+  const C = (!zombie && costume) || {};
+  const skinSuit = C.skin ? SKIN : null;
+  const suit = zombie ? '#5b6b52' : skinSuit || C.suit || '#1f4fd6', suit2 = zombie ? '#3e4a38' : (C.skin ? SKIN_DARK : C.suit2 || '#163a9e');
+  const cape = zombie ? '#6e1f2a' : C.cape || '#d62839', trunk = zombie ? '#4a3a3a' : C.trunk || '#d62839', belt = zombie ? '#7a7a3a' : C.belt || '#ffd23f';
+  const noCape = !!C.noCape || !!C.wings;
   g.save(); g.translate(x, y); g.scale(scale, scale);
+  const headHook = (hx, hy) => {
+    if (C.hat) emoji(g, C.hat, hx, hy - 40, 20);
+    if (C.face) emoji(g, C.face, hx + 2, hy - 24, 15);
+    C.draw?.(g, hx, hy - 34, t);
+    C.drawTop?.(g, hx, hy - 42, t);
+  };
+  const heldHook = (fx, fy) => { if (C.held) emoji(g, C.held, fx + 4, fy - 4, 16); };
+  const wings = (cx, cy) => { if (!C.wings) return; g.fillStyle = 'rgba(255,255,255,0.92)'; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx, cy); g.quadraticCurveTo(cx + s * 30, cy - 34 + Math.sin(t * 10) * 4, cx + s * 40, cy - 6); g.quadraticCurveTo(cx + s * 22, cy - 2, cx, cy + 10); g.fill(); g.strokeStyle = '#cfd8dc'; g.lineWidth = 1; g.stroke(); } };
   const capePiece = (sx, sy, ex, ey, wave) => ({
     path: (g) => {
       g.moveTo(sx - 7, sy);
@@ -933,8 +958,8 @@ export function drawHero(g, x, y, { pose = 'fly', t = 0, zombie = false, scale =
   });
   const emblem = (cx, cy) => ({
     path: (g) => { g.moveTo(cx, cy - 6); g.lineTo(cx + 6, cy); g.lineTo(cx, cy + 6); g.lineTo(cx - 6, cy); g.closePath(); },
-    fill: zombie ? '#9a9a5a' : '#ffd23f',
-    detail: (g) => { g.fillStyle = zombie ? '#3e4a38' : '#d62839'; g.font = '900 7px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('C', cx, cy + 0.5); },
+    fill: zombie ? '#9a9a5a' : C.noCape || C.skin ? 'rgba(0,0,0,0)' : '#ffd23f',
+    detail: (g) => { g.fillStyle = zombie ? '#3e4a38' : '#d62839'; g.font = '900 7px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(C.emblem || 'C', cx, cy + 0.5); },
   });
   const fist = (p) => ({ path: (g) => g.arc(p[0], p[1], 4.8, 0, Math.PI * 2), fill: zombie ? '#8fae7a' : '#e8e8ee' });
   const boot = (a, b) => cap(a, b, 8.6, 8.2, zombie ? '#4a3a3a' : '#d62839', 1);
@@ -942,21 +967,26 @@ export function drawHero(g, x, y, { pose = 'fly', t = 0, zombie = false, scale =
   if (pose === 'land') {
     const wave = Math.sin(t * 10) * 2;
     const hip = [0, -24], sh = [9, -50];
-    drawGroup(g, [capePiece(sh[0] - 2, sh[1], -26, -2, wave)]);
+    wings(sh[0], sh[1] + 6);
+    if (!noCape) drawGroup(g, [capePiece(sh[0] - 2, sh[1], -26, -2, wave)]);
     drawGroup(g, [cap(hip, [-10, -4], 11, 9.5, suit2, 0.85), cap([-10, -4], [-24, -2], 9.5, 8, suit2, 0.85), boot([-18, -2], [-26, -1])]);
     drawGroup(g, [cap(sh, [-4, -38], 9.5, 8, suit2, 0.85), cap([-4, -38], [-10, -26], 8, 7, suit2, 0.85), fist([-10, -26])]);
     drawGroup(g, [{ path: (g) => capPath(g, hip, sh, 20, 22), fill: (g) => cylFill(g, hip, sh, 22, suit, 1) }, { path: (g) => capPath(g, [hip[0] - 1, hip[1] - 2], [hip[0] + 1, hip[1] + 3], 18, 18), fill: trunk }, emblem(6, -40)]);
     drawGroup(g, [cap(hip, [12, -14], 12, 10, suit, 1), cap([12, -14], [14, -3], 10, 8.5, suit, 1), boot([13, -6], [16, -1])]);
     drawGroup(g, [cap(sh, [15, -30], 9.5, 8, suit, 1), cap([15, -30], [17, -6], 8, 7, suit, 1), fist([17, -5])]);
     g.fillStyle = belt; g.fillRect(-9, -27, 17, 3);
-    heroHead(g, sh[0] + 4, sh[1] - 3, 19, zombie);
+    if (C.abs) absLines(g, 5, -42);
+    heroHead(g, sh[0] + 4, sh[1] - 3, 19, zombie, faceKey);
+    headHook(sh[0] + 4, sh[1] - 3);
+    heldHook(17, -5);
   } else {
     // aufrecht zeichnen und für den Flug drehen
     const ang = pose === 'fly' ? Math.PI / 2 : pose === 'hover' ? 0.5 : 0.25;
     g.rotate(ang); g.translate(0, 40);
     const wave = Math.sin(t * 16) * 3;
     const hip = [0, -40], sh = [0, -70];
-    drawGroup(g, [capePiece(sh[0], sh[1] + 2, -2, -8, wave)]);
+    wings(sh[0], sh[1] + 8);
+    if (!noCape) drawGroup(g, [capePiece(sh[0], sh[1] + 2, -2, -8, wave)]);
     const legSwing = pose === 'punch' ? 0.2 : Math.sin(t * 8) * 0.08;
     const kB = pt(hip[0], hip[1], -0.08 - legSwing, 20), fB = pt(kB[0], kB[1], -0.1 - legSwing, 20);
     drawGroup(g, [cap(hip, kB, 11, 9.5, suit2, 0.85), cap(kB, fB, 9.5, 8.2, suit2, 0.85), boot(lerpP(kB, fB, 0.6), fB)]);
@@ -966,10 +996,13 @@ export function drawHero(g, x, y, { pose = 'fly', t = 0, zombie = false, scale =
     g.fillStyle = belt; g.fillRect(-10, -47.5, 20, 3);
     const kF = pt(hip[0], hip[1], 0.1 + legSwing, 20), fF = pt(kF[0], kF[1], 0.05 + legSwing, 20);
     drawGroup(g, [cap(hip, kF, 11.5, 10, suit, 1), cap(kF, fF, 10, 8.6, suit, 1), boot(lerpP(kF, fF, 0.6), fF)]);
-    heroHead(g, 1, sh[1] - 2, 19, zombie);
+    if (C.abs) absLines(g, 1, -62);
+    heroHead(g, 1, sh[1] - 2, 19, zombie, faceKey);
+    headHook(1, sh[1] - 2);
     // Schlagarm: im Flug nach vorne (=oben im Körpersystem), beim Punch nach vorne
     const armF = pose === 'fly' ? [[sh[0] + 2, sh[1]], [3, -88], [4, -104]] : pose === 'punch' ? [[sh[0] + 2, sh[1]], [18, -72], [34, -76]] : [[sh[0] + 2, sh[1]], [12, -62], [20, -72]];
     drawGroup(g, [cap(armF[0], armF[1], 9.6, 8.2, suit, 1), cap(armF[1], armF[2], 8.2, 7.2, suit, 1), fist(armF[2])]);
+    heldHook(armF[2][0], armF[2][1]);
     if (pose === 'fly' && !zombie) {
       g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineWidth = 1.5;
       for (let i = 0; i < 3; i++) { const yy = -30 + i * 14; g.beginPath(); g.moveTo(-16 - i * 3, yy + 16); g.lineTo(-16 - i * 3, yy + 34); g.stroke(); }
@@ -983,7 +1016,7 @@ function bodyHero(g) {
 }
 
 // ---------------------------------------------------------------------------
-// Heidi: hüpfender Fan mit Fahne
+// Hüpfender Fan mit Fahne
 // ---------------------------------------------------------------------------
 export function drawFan(g, x, footY, { faceKey, t = 0, color = '#d55b8f', scale = 1, flag = 'GO KIMI! ❤️' }) {
   const hop = Math.max(0, Math.sin(t * 7)) * 16;
