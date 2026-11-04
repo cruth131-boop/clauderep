@@ -45,6 +45,9 @@ const EO = {
   bembel: ['', 30, { draw: 'bembel' }], snowpile: ['', 34, { draw: 'snow' }], wall: ['', 40, { draw: 'wall' }], shirtrack: ['', 40, { draw: 'rack' }],
   facewalk: ['', 32, { draw: 'facewalk', move: 30 }], facefly: ['', 32, { fly: 1, draw: 'facefly' }], umbrella: ['⛱️', 40], pumpkin: ['🎃', 30],
   skull: ['💀', 28], fish2: ['🐟', 28, { move: 60 }], bolt: ['⚡', 30, { fly: 1 }],
+  snowman: ['☃️', 36], grade6: ['6', 30, { fly: 1, text: '#c0392b' }], chartfly: ['📉', 30, { fly: 1 }], target: ['🎯', 32], clown: ['🤡', 34],
+  flyball: ['🎊', 30, { fly: 1 }], hourfly: ['⏳', 28, { fly: 1 }], rocking: ['🐴', 34], dartboard: ['🎯', 30, { fly: 1 }],
+  pizzatower: ['', 34, { draw: 'pizzatower' }], weedleaf: ['', 32, { fly: 1, draw: 'weedleaf' }], lava: ['', 30, { draw: 'lava' }], couchG: ['🛋️', 40],
 };
 const CUSTOM = {
   puddle(g, x, b, o) { g.fillStyle = 'rgba(80,150,230,0.85)'; g.beginPath(); g.ellipse(x + o.w / 2, b - 3, o.w / 2, 4, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillRect(x + 8, b - 5, 8, 1.5); const s = Math.sin(o.t * 6) * 2; g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 1; g.beginPath(); g.ellipse(x + o.w * 0.6, b - 3, 4 + s, 1.5, 0, 0, TAU); g.stroke(); },
@@ -62,6 +65,9 @@ const CUSTOM = {
     if (o.face) drawFaceOn(g, o.face, 'normal', x + 16, b - 46, 17);
     if (o.line && Math.floor(o.t * 1.2) % 2 === 0) { g.font = '800 9px ui-rounded, system-ui, sans-serif'; const w = Math.min(130, g.measureText(o.line).width + 12); g.fillStyle = '#fff'; roundRect(g, x + 16 - w / 2, b - 102, w, 16, 7); g.fill(); g.fillStyle = '#c0392b'; g.textAlign = 'center'; g.fillText(o.line, x + 16, b - 91, w - 8); }
   },
+  pizzatower(g, x, b, o) { for (let i = 0; i < 3; i++) { const y = b - 12 - i * 12; g.fillStyle = '#c8a26a'; roundRect(g, x - 2 + (i % 2) * 3, y, 38, 11, 2); g.fill(); g.strokeStyle = '#8d6e3a'; g.lineWidth = 1; g.stroke(); g.fillStyle = '#c0392b'; g.font = '900 6px sans-serif'; g.textAlign = 'center'; g.fillText('PIZZA', x + 17 + (i % 2) * 3, y + 8); } },
+  weedleaf(g, x, b, o) { drawWeedLeaf(g, x + 19, b - 13, 17, Math.sin(o.t * 4) * 0.3); },
+  lava(g, x, b, o) { g.fillStyle = '#555'; g.beginPath(); g.moveTo(x + 4, b); g.lineTo(x + 26, b); g.lineTo(x + 21, b - 8); g.lineTo(x + 9, b - 8); g.fill(); g.fillStyle = 'rgba(255,90,160,0.85)'; g.beginPath(); g.moveTo(x + 9, b - 8); g.lineTo(x + 21, b - 8); g.lineTo(x + 18, b - 34); g.lineTo(x + 12, b - 34); g.fill(); g.fillStyle = '#ffd23f'; for (let i = 0; i < 2; i++) { g.beginPath(); g.ellipse(x + 15, b - 12 - ((o.t * 8 + i * 11) % 20), 2.5, 3.5, 0, 0, TAU); g.fill(); } g.fillStyle = '#555'; g.fillRect(x + 11, b - 38, 8, 4); },
   facefly(g, x, b, o) { const y = b - 13; g.fillStyle = 'rgba(255,80,80,0.35)'; g.beginPath(); g.arc(x + 19, y - 6, 18, 0, TAU); g.fill(); if (o.face) drawFaceOn(g, o.face, 'normal', x + 19, y + 6, 15); },
 };
 for (const [key, [ch, size, op = {}]] of Object.entries(EO)) {
@@ -94,14 +100,32 @@ for (const [key, [ch, size, op = {}]] of Object.entries(EO)) {
   };
 }
 
+/** 7-fingriges Hanfblatt */
+export function drawWeedLeaf(g, x, y, r, rot = 0, col = '#3fa34d') {
+  g.save(); g.translate(x, y); g.rotate(rot);
+  g.fillStyle = col; g.strokeStyle = '#1e5b28'; g.lineWidth = 1;
+  const fingers = [[-Math.PI / 2, 1], [-Math.PI / 2 - 0.45, 0.85], [-Math.PI / 2 + 0.45, 0.85], [-Math.PI / 2 - 0.95, 0.65], [-Math.PI / 2 + 0.95, 0.65], [-Math.PI / 2 - 1.45, 0.42], [-Math.PI / 2 + 1.45, 0.42]];
+  for (const [a, l] of fingers) {
+    const L = r * l, w = r * 0.13 * (0.6 + l * 0.4);
+    g.save(); g.rotate(a + Math.PI / 2); g.beginPath(); g.moveTo(0, 0);
+    for (let i = 0; i <= 6; i++) { const u = i / 6; g.lineTo(w * Math.sin(u * Math.PI) + (i % 2 ? w * 0.25 : 0), -L * u); }
+    for (let i = 6; i >= 0; i--) { const u = i / 6; g.lineTo(-w * Math.sin(u * Math.PI) - (i % 2 ? w * 0.25 : 0), -L * u); }
+    g.closePath(); g.fill(); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -L * 0.9); g.stroke(); g.strokeStyle = '#1e5b28';
+    g.restore();
+  }
+  g.strokeStyle = '#2d6b2f'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, r * 0.4); g.stroke();
+  g.restore();
+}
+
 // ---------------------------------------------------------------------------
 // Items (Emoji). Einträge mit "draw" sind eigene Zeichnungen.
 // ---------------------------------------------------------------------------
 export const ITEM_EMO = {
   milchschnitte: '🍫', cookie: '🍪', wassereis: '🍧', brause: '🍭', sweets: '🍬', shopbag2: '🛍️', schokokuss: 'draw', cake: '🍰', partybag: '🎁',
   money: '💶', coin: '🪙', voucher: '⛽', cocktail: '🍹', straw: '🥤', cupid: '💘', coffee: '☕', cheatnote: '📝', redbull: '🥫', koelsch: '🍺',
-  akte: '📁', glow: 'draw', water: '💧', cookie2: '🍪', brezn: '🥨', lebherz: '💝', gelato: '🍨', mussel: '🦪', kamelle: '🍬', struessjer: '💐',
-  wood: '🪵', clay: '🧱', woolres: '🐑', grain: '🌾', ore: '🪨', card: '🃏', psl: 'draw', brezel: '🥨', candycane: '🍭', sausage: '🌭', gulasch: '🍲',
+  akte: '📜', eierlikoer: 'draw', glow: 'draw', water: '💧', cookie2: '🍪', brezn: '🥨', lebherz: '💝', gelato: '🍨', mussel: '🦪', kamelle: '🍬', struessjer: '💐',
+  wood: '🪵', clay: '🧱', woolres: '🐑', grain: '🌾', ore: '🪨', card: '🃏', psl: 'draw', brezel: '🥨', candycane: '🍭', sausage: '🌭', gulasch: '🥣',
   steak: '🥩', glitter: '✨', mimisoup: '🌶️', ring: '💍', confetti2: '🎊', weddingcake: '🎂', schnitzel: '🍖', onion: '🧅', gerippter: 'draw', winktuch: '🏳️',
   hotdog: '🌭', beignet: '🍩', cowboyhat: '🤠', boots: '👢', asbach: '🥃', cherry: '🍒', weck: '🥖', cheese2: '🧀', blossom: '🌸', los: '🎟️', blackring: 'draw',
   turkey: '🍗', shortbread: '🍪', whisky: '🥃', snack: '🍿', domsign: 'draw', burger2: '🍔', donut: '🍩', apple: '🍎', fries2: '🍟', wine2: '🍷', cocktail2: '🍸',
@@ -112,6 +136,7 @@ const ITEM_DRAW = {
   psl(g) { emoji(g, '☕', 0, 0, 24); emoji(g, '🎃', 8, -8, 12); },
   gerippter(g) { g.fillStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.moveTo(-8, -12); g.lineTo(8, -12); g.lineTo(6, 12); g.lineTo(-6, 12); g.closePath(); g.fill(); g.fillStyle = '#e6b54a'; g.beginPath(); g.moveTo(-7.5, -6); g.lineTo(7.5, -6); g.lineTo(6, 11); g.lineTo(-6, 11); g.fill(); g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 0.8; for (let i = -6; i <= 6; i += 2) { g.beginPath(); g.moveTo(i - 1, -11); g.lineTo(i, 11); g.stroke(); } },
   blackring(g, t) { const gl = g.createRadialGradient(0, 0, 2, 0, 0, 22); gl.addColorStop(0, 'rgba(255,240,150,0.8)'); gl.addColorStop(1, 'rgba(255,240,150,0)'); g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 22, 0, TAU); g.fill(); g.strokeStyle = '#111'; g.lineWidth = 4; g.beginPath(); g.ellipse(0, 0, 9, 9 * Math.abs(Math.cos(t * 2)) + 2, 0, 0, TAU); g.stroke(); g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1; g.stroke(); },
+  eierlikoer(g) { g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.moveTo(-7, -11); g.lineTo(7, -11); g.lineTo(4, 3); g.lineTo(-4, 3); g.closePath(); g.fill(); g.fillStyle = '#f6d64a'; g.beginPath(); g.moveTo(-6, -6); g.lineTo(6, -6); g.lineTo(4, 2); g.lineTo(-4, 2); g.fill(); g.fillStyle = '#fff6b0'; g.beginPath(); g.ellipse(0, -6, 6, 1.6, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(-1, 3, 2, 6); g.fillRect(-5, 9, 10, 2); emoji(g, '🥚', 9, -9, 9); },
   domsign(g) { g.fillStyle = '#8d6e63'; g.fillRect(-1.5, -4, 3, 16); g.fillStyle = '#1565c0'; g.beginPath(); g.moveTo(-12, -13); g.lineTo(8, -13); g.lineTo(13, -8); g.lineTo(8, -3); g.lineTo(-12, -3); g.closePath(); g.fill(); g.fillStyle = '#fff'; g.font = '900 6px sans-serif'; g.textAlign = 'center'; g.fillText('DOM →', -1, -6); },
 };
 for (const [k, ch] of Object.entries(ITEM_EMO)) {
@@ -372,22 +397,52 @@ export const SCENES = {
     cobble(g, V, off, '#c2b8a8', '#a0968a');
   },
 
-  // Wiesbaden: Kurhaus (klassizistische Säulenfront „AQUIS MATTIACIS“) und neugotische Marktkirche aus rotem Backstein
+  // Wiesbaden: Gründerzeit-Häuser mit Stuck, Erkern und Balkonen, das alte Justizgebäude (1893–97, Frührenaissance) und der Kneipeneingang
   wiesbaden(g, V, off, t, lv) {
     const gy = V.groundY;
     sky(g, V, '#8fc7ee', '#f3f8ff'); clouds(g, V, off);
-    once(V, off, 0.18, 1500, 300, (x) => { const c = '#a94a35'; gothicSpire(g, x + 60, gy - 30, 30, 260, c); for (const dx of [0, 130]) gothicSpire(g, x + dx, gy - 30, 18, 160, c); for (const dx of [26, 104]) gothicSpire(g, x + dx, gy - 30, 16, 140, c); g.fillStyle = c; g.fillRect(x - 4, gy - 120, 160, 90); g.fillStyle = '#ffe0b2'; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(x + 14 + i * 36, gy - 40); g.lineTo(x + 14 + i * 36, gy - 90); g.arc(x + 24 + i * 36, gy - 90, 10, Math.PI, 0); g.lineTo(x + 34 + i * 36, gy - 40); g.fill(); } });
-    once(V, off, 0.3, 1100, 800, (x) => { g.fillStyle = '#efe6d4'; g.fillRect(x, gy - 130, 260, 100); g.fillStyle = '#e2d6bd'; g.beginPath(); g.moveTo(x + 50, gy - 130); g.lineTo(x + 130, gy - 175); g.lineTo(x + 210, gy - 130); g.fill(); g.fillStyle = '#d8ccb2'; g.fillRect(x + 50, gy - 136, 160, 8); g.fillStyle = '#fff'; for (let i = 0; i < 6; i++) g.fillRect(x + 58 + i * 28, gy - 128, 10, 98); g.fillStyle = '#6d5a3a'; g.font = '700 9px Georgia, serif'; g.textAlign = 'center'; g.fillText('AQUIS MATTIACIS', x + 130, gy - 140); });
-    rep(V, off, 0.5, 560, (x) => { g.fillStyle = '#3e2723'; g.fillRect(x, gy - 90, 150, 60); g.fillStyle = '#ffcc80'; g.fillRect(x + 10, gy - 80, 50, 36); g.fillRect(x + 90, gy - 80, 50, 36); neon(g, S(lv, 'pub', 'KNEIPE'), x + 75, gy - 96, '#ffd23f', 14, t); emoji(g, '🍺', x + 35, gy - 60, 14); });
+    // Gründerzeit-Häuserzeile
+    const fac = ['#f2e6cf', '#e9d3b0', '#f5ede0', '#e6cfa8', '#efe0d0'];
+    rep(V, off, 0.3, 132, (x, k) => {
+      const c = fac[((k % 5) + 5) % 5], h = 168 + ((k * 13) % 3) * 10;
+      g.fillStyle = c; g.fillRect(x, gy - h, 126, h);
+      g.fillStyle = '#5d6b78'; g.beginPath(); g.moveTo(x - 4, gy - h); g.lineTo(x + 10, gy - h - 26); g.lineTo(x + 116, gy - h - 26); g.lineTo(x + 130, gy - h); g.fill();
+      g.fillStyle = '#4a5763'; for (let i = 0; i < 3; i++) { roundRect(g, x + 22 + i * 34, gy - h - 22, 14, 16, 6); g.fill(); }
+      g.fillStyle = 'rgba(0,0,0,0.08)'; g.fillRect(x, gy - h + 6, 126, 4); g.fillRect(x, gy - 64, 126, 5);
+      for (let r = 0; r < 3; r++) for (let i = 0; i < 3; i++) {
+        const wx = x + 14 + i * 38, wy = gy - h + 18 + r * 36;
+        g.fillStyle = '#d8c4a0'; g.beginPath(); g.moveTo(wx - 4, wy); g.lineTo(wx + 12, wy - 8); g.lineTo(wx + 28, wy); g.fill();
+        g.fillStyle = '#7fa8c8'; g.fillRect(wx, wy + 2, 24, 26); g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.strokeRect(wx, wy + 2, 24, 26); g.beginPath(); g.moveTo(wx + 12, wy + 2); g.lineTo(wx + 12, wy + 28); g.stroke();
+        if (r === 1 && i === 1) { g.strokeStyle = '#2b2b2b'; g.lineWidth = 1.2; g.strokeRect(wx - 6, wy + 22, 36, 10); for (let b = 0; b < 7; b++) { g.beginPath(); g.moveTo(wx - 4 + b * 5, wy + 22); g.lineTo(wx - 4 + b * 5, wy + 32); g.stroke(); } }
+      }
+      if (k % 2 === 0) { g.fillStyle = c; g.fillRect(x + 44, gy - h + 8, 38, 96); g.strokeStyle = 'rgba(0,0,0,0.12)'; g.lineWidth = 1; g.strokeRect(x + 44, gy - h + 8, 38, 96); }
+      g.fillStyle = '#6d4c41'; roundRect(g, x + 50, gy - 46, 26, 46, 10); g.fill();
+    });
+    // altes Justizgebäude
+    once(V, off, 0.3, 1250, 350, (x) => {
+      const w = 300, h = 190, c = '#c98a6a', c2 = '#a86a4c';
+      g.fillStyle = c; g.fillRect(x, gy - h, w, h);
+      for (const [dx, tw, th] of [[0, 54, 250], [w - 54, 54, 250], [w / 2 - 40, 80, 230]]) {
+        g.fillStyle = c2; g.fillRect(x + dx, gy - th, tw, th);
+        g.beginPath(); g.moveTo(x + dx - 2, gy - th); for (let st = 0; st < 4; st++) { g.lineTo(x + dx + st * tw / 8, gy - th - st * 10); g.lineTo(x + dx + (st + 1) * tw / 8, gy - th - st * 10); } g.lineTo(x + dx + tw / 2, gy - th - 42); for (let st = 3; st >= 0; st--) { g.lineTo(x + dx + tw - (st + 1) * tw / 8, gy - th - st * 10); g.lineTo(x + dx + tw - st * tw / 8, gy - th - st * 10); } g.lineTo(x + dx + tw + 2, gy - th); g.fill();
+      }
+      g.fillStyle = '#e8d8c0'; g.fillRect(x, gy - h + 60, w, 6); g.fillRect(x, gy - h + 120, w, 6);
+      for (let r = 0; r < 3; r++) for (let i = 0; i < 7; i++) { const wx = x + 12 + i * 42, wy = gy - h + 14 + r * 60; g.fillStyle = '#e8d8c0'; g.beginPath(); g.arc(wx + 11, wy + 6, 13, Math.PI, 0); g.fill(); g.fillStyle = '#5a7d9a'; g.beginPath(); g.moveTo(wx, wy + 40); g.lineTo(wx, wy + 6); g.arc(wx + 11, wy + 6, 11, Math.PI, 0); g.lineTo(wx + 22, wy + 40); g.fill(); }
+      g.fillStyle = '#4e342e'; g.beginPath(); g.moveTo(x + w / 2 - 22, gy); g.lineTo(x + w / 2 - 22, gy - 52); g.arc(x + w / 2, gy - 52, 22, Math.PI, 0); g.lineTo(x + w / 2 + 22, gy); g.fill();
+      for (let st = 0; st < 3; st++) { g.fillStyle = '#d6c4a8'; g.fillRect(x + w / 2 - 40 - st * 6, gy - 6 + st * 2 - 6, 80 + st * 12, 6); }
+      emoji(g, '⚖️', x + w / 2, gy - 112, 30);
+      g.fillStyle = '#3e2723'; g.font = '900 13px Georgia, serif'; g.textAlign = 'center'; g.fillText(S(lv, 'court', 'GERICHT'), x + w / 2, gy - 82);
+    });
+    // Kneipeneingang
+    once(V, off, 0.5, 900, 650, (x) => {
+      g.fillStyle = '#3e2723'; g.fillRect(x, gy - 96, 120, 96);
+      g.fillStyle = '#ffcc80'; g.fillRect(x + 8, gy - 80, 34, 34); g.fillRect(x + 78, gy - 80, 34, 34);
+      g.fillStyle = '#5d4037'; roundRect(g, x + 46, gy - 62, 28, 62, 4); g.fill(); g.fillStyle = '#ffd23f'; g.beginPath(); g.arc(x + 69, gy - 30, 2, 0, TAU); g.fill();
+      g.fillStyle = '#1b1b1b'; roundRect(g, x + 6, gy - 124, 108, 26, 6); g.fill();
+      neon(g, S(lv, 'pub', 'KNEIPE'), x + 60, gy - 104, '#ffd23f', 18, t);
+      g.strokeStyle = '#3e2723'; g.lineWidth = 2; g.beginPath(); g.moveTo(x + 120, gy - 100); g.lineTo(x + 140, gy - 100); g.stroke(); emoji(g, '🍺', x + 140, gy - 86, 20);
+    });
     cobble(g, V, off, '#a8a39a', '#868077');
-  },
-  // Gerichtssaal: Holzvertäfelung, Richterbank, Waage der Justitia
-  court(g, V, off, t) {
-    const gy = V.groundY;
-    sky(g, V, '#d7c4a3', '#bfa784');
-    g.fillStyle = '#7b5532'; rep(V, off, 0.5, 60, (x) => { g.fillRect(x, gy - 110, 56, 110); g.strokeStyle = '#5d3e22'; g.lineWidth = 2; g.strokeRect(x + 6, gy - 104, 44, 98); });
-    once(V, off, 0.5, 900, 300, (x) => { g.fillStyle = '#4e342e'; g.fillRect(x, gy - 130, 220, 100); g.fillStyle = '#6d4c41'; g.fillRect(x - 10, gy - 136, 240, 10); emoji(g, '⚖️', x + 110, gy - 168, 40); emoji(g, '🔨', x + 180, gy - 146, 20); });
-    planks(g, V, off, '#6d4c41', '#4e342e');
   },
 
   // Cocoon Club Frankfurt (3deluxe): weiße Waben-Membranwand mit Projektionen und eingelassenen „Cocoons“
@@ -420,12 +475,39 @@ export const SCENES = {
       for (let i = 0; i < 3; i++) emoji(g, '🧦', x + 180 + i * 30, gy - 86, 16);
       xmasTree(g, x + 360, gy, 150, t); emoji(g, '🎁', x + 330, gy - 12, 22); emoji(g, '🎁', x + 395, gy - 12, 20);
       if (variant) { g.fillStyle = '#795548'; g.fillRect(x + 20, gy - 40, 110, 6); emoji(g, '🍺', x + 40, gy - 54, 18); emoji(g, '🥃', x + 70, gy - 52, 14); emoji(g, '🍗', x + 105, gy - 52, 18); }
-      else { g.fillStyle = '#795548'; g.fillRect(x + 20, gy - 40, 110, 6); emoji(g, '🍷', x + 40, gy - 54, 18); emoji(g, '🍪', x + 75, gy - 50, 14); emoji(g, '🍷', x + 105, gy - 54, 18); }
+      else { g.fillStyle = '#795548'; g.fillRect(x + 20, gy - 40, 110, 6); emoji(g, '🍷', x + 34, gy - 54, 18); emoji(g, '🍪', x + 58, gy - 50, 14); g.save(); g.translate(x + 84, gy - 52); ITEM_ICONS.eierlikoer(g, 0); g.restore(); g.save(); g.translate(x + 108, gy - 52); ITEM_ICONS.eierlikoer(g, 0); g.restore(); }
     });
     stringLights(g, V, off, 0.5, 14, t, 240, 16);
     planks(g, V, off, '#9c6b45', '#7a5032');
   },
-  xmasRustler(g, V, off, t, lv) { SCENES.xmasRoom(g, V, off, t, lv, 1); },
+  // Weihnachten bei den Rustlers: großes Esszimmer, silber-blauer Baum, Eisenbahn ums Bäumchen, Tafel mit Truthahn, Weizen & Ouzo
+  xmasRustler(g, V, off, t, lv) {
+    const gy = V.groundY;
+    g.fillStyle = '#e9eef4'; g.fillRect(0, 0, V.w, gy);
+    g.fillStyle = '#c9d6e3'; rep(V, off, 0.5, 46, (x) => g.fillRect(x, 0, 2, gy));
+    g.fillStyle = '#8fa3b8'; g.fillRect(0, gy - 70, V.w, 6);
+    rep(V, off, 0.5, 520, (x) => {
+      // Panoramafenster mit verschneitem Garten
+      g.fillStyle = '#1e2d4a'; g.fillRect(x + 20, gy - 200, 170, 110); g.fillStyle = '#e8f1ff'; g.beginPath(); g.moveTo(x + 20, gy - 100); g.quadraticCurveTo(x + 100, gy - 125, x + 190, gy - 102); g.lineTo(x + 190, gy - 90); g.lineTo(x + 20, gy - 90); g.fill();
+      g.fillStyle = '#fff'; for (let i = 0; i < 10; i++) { g.beginPath(); g.arc(x + 26 + ((i * 37 + t * 14) % 160), gy - 196 + ((i * 23 + t * 22) % 100), 1.4, 0, TAU); g.fill(); }
+      g.strokeStyle = '#fff'; g.lineWidth = 4; g.strokeRect(x + 20, gy - 200, 170, 110); g.beginPath(); g.moveTo(x + 105, gy - 200); g.lineTo(x + 105, gy - 90); g.stroke();
+      // silber-blauer Baum
+      const tx = x + 270;
+      g.fillStyle = '#5d4037'; g.fillRect(tx - 5, gy - 26, 10, 26);
+      for (let i = 0; i < 4; i++) { const w = 66 - i * 13, y = gy - 22 - i * 34; g.fillStyle = '#2f6b4f'; g.beginPath(); g.moveTo(tx - w, y); g.lineTo(tx, y - 50); g.lineTo(tx + w, y); g.fill(); }
+      for (let i = 0; i < 14; i++) { const u = (i * 0.618) % 1; g.fillStyle = i % 2 ? '#c0c8d8' : '#3b7dd8'; g.beginPath(); g.arc(tx + Math.sin(i * 2.4) * 50 * (1 - u * 0.8), gy - 30 - u * 120, 3.5, 0, TAU); g.fill(); }
+      g.fillStyle = '#e0e6f0'; g.beginPath(); g.arc(tx, gy - 172, 8, 0, TAU); g.fill();
+      // Spielzeugeisenbahn
+      const tr = (t * 60) % 160; emoji(g, '🚂', tx - 80 + tr, gy - 8, 18); emoji(g, '🧸', tx + 70, gy - 12, 18);
+      // Festtafel
+      g.fillStyle = '#fff'; g.fillRect(x + 360, gy - 48, 150, 8); g.fillStyle = '#d9e2ec'; g.fillRect(x + 360, gy - 40, 150, 40);
+      emoji(g, '🦃', x + 435, gy - 66, 30); emoji(g, '🍺', x + 375, gy - 60, 16); emoji(g, '🥃', x + 398, gy - 58, 14); emoji(g, '🍷', x + 478, gy - 60, 16); emoji(g, '🍺', x + 498, gy - 60, 16);
+      for (let i = 0; i < 4; i++) emoji(g, '🕯️', x + 370 + i * 40, gy - 82, 12);
+    });
+    stringLights(g, V, off, 0.5, 10, t, 260, 14, ['#e0f0ff', '#9fd0ff']);
+    planks(g, V, off, '#b9a48a', '#9c8668');
+  },
+
 
   // Plärrer Augsburg: Riesenrad hinter den Festzelten, Fahrgeschäfte, Augsburger Skyline mit Perlachturm & Rathaus
   plaerrer(g, V, off, t) {
@@ -717,7 +799,7 @@ export const SCENES = {
     const gy = V.groundY;
     sky(g, V, '#0f3d1e', '#3f8f3a');
     rep(V, off, 0.35, 260, (x) => { for (let i = 0; i < 2; i++) { const lx = x + 60 + i * 110; g.fillStyle = '#555'; g.beginPath(); g.moveTo(lx - 12, gy - 20); g.lineTo(lx + 12, gy - 20); g.lineTo(lx + 8, gy - 80); g.lineTo(lx - 8, gy - 80); g.fill(); g.fillStyle = ['rgba(255,90,160,0.85)', 'rgba(255,200,60,0.85)'][i]; for (let b = 0; b < 3; b++) { g.beginPath(); g.ellipse(lx, gy - 30 - ((t * 10 + b * 17) % 46), 4 + b, 6 + b, 0, 0, TAU); g.fill(); } } emoji(g, '🍟', x + 220, gy - 60, 22); });
-    for (let i = 0; i < 22; i++) emoji(g, '🍃', wrap(i * 59 - off * 0.2 + Math.sin(t + i) * 20, V.w), wrap(i * 37 - t * 15, gy), 16, t + i);
+    for (let i = 0; i < 22; i++) drawWeedLeaf(g, wrap(i * 59 - off * 0.2 + Math.sin(t + i) * 20, V.w), wrap(i * 37 - t * 15, gy), 16 + (i % 3) * 6, t + i, i % 2 ? '#2e7d32' : '#43a047');
     g.fillStyle = 'rgba(220,255,220,0.18)'; for (let i = 0; i < 10; i++) { g.beginPath(); g.arc(wrap(i * 97 - off * 0.1 + t * 12, V.w + 100) - 50, gy * 0.3 + Math.sin(t * 0.7 + i) * 40 + (i % 3) * 40, 50 + (i % 4) * 14, 0, TAU); g.fill(); }
     floor(g, V, '#2e5e2a', '#4caf50', off);
   },
@@ -800,41 +882,41 @@ export const LEVELS = {
   L2: { icon: '🛝', scene: 'kidStreet', music: 'entchen', len: 60, obstacles: { bobbycar: 3, football: 3, bucket: 2 }, items: ['brause', 'wassereis'], quest: { item: 'wassereis', n: 10 }, hero: 'kid', speed: 0.92 },
   L3: { icon: '🎒', scene: 'school', music: 'haenschen', len: 75, obstacles: { schoolbag: 3, trafficlight: 2, puddle: 3 }, items: ['sweets', 'cookie'], quest: { item: 'sweets', n: 10 }, hero: 'schooltuete', speed: 0.94 },
   L4: { icon: '🛍️', scene: 'mall', music: 'elise', len: 90, obstacles: { shirtrack: 3, sale: 2, shopbag: 2, shirt: 2 }, items: ['shopbag2', 'coffee'], quest: { item: 'shopbag2', n: 8 }, hero: 'fan' },
-  L5: { icon: '🎈', scene: 'garden', music: 'birthday', len: 75, obstacles: { pot: 3, balloon: 3, gift: 2 }, items: ['schokokuss', 'cake', 'partybag'], quest: { item: 'schokokuss', n: 12 }, hero: 'knight', garlands: 1 },
-  L6: { icon: '💸', scene: 'bank', music: 'entertainer', len: 75, obstacles: { invoice: 3, piggy: 2, tax: 2, cash: 2 }, items: ['coin', 'money'], quest: { item: 'money', n: 20 }, hero: 'banker', goalRain: '💸' },
+  L5: { icon: '🎈', scene: 'garden', music: 'birthday', len: 75, obstacles: { pot: 3, balloon: 3, gift: 2 }, items: ['schokokuss', 'cake'], quest: { item: 'schokokuss', n: 12 }, hero: 'knight', garlands: 1 },
+  L6: { icon: '💸', scene: 'bank', music: 'entertainer', len: 75, obstacles: { invoice: 3, piggy: 2, tax: 2, chartfly: 2 }, items: ['coin', 'money'], quest: { item: 'money', n: 20 }, hero: 'banker', goalRain: '💸' },
   L7: { icon: '🚗', scene: 'driving', music: 'tell', len: 90, obstacles: { cone: 3, blitzer: 2, bike: 2, car: 2 }, items: ['voucher'], quest: { item: 'voucher', n: 8 }, hero: 'racer' },
   L8: { icon: '🍹', scene: 'bar', music: 'habanera', len: 90, obstacles: { barstool: 3, bottle: 2, trays: 2 }, items: ['cocktail', 'straw', 'cupid'], quest: { item: 'cupid', n: 10 }, hero: 'barkeeper', goalHearts: 1 },
   L9: { icon: '🐱', scene: 'catFlat', music: 'turca', len: 90, obstacles: { log: 3, wool: 3, tp: 2 }, items: ['treat'], quest: { item: 'treat', n: 15 }, hero: 'catears', fipsBox: 1 },
-  L10: { icon: '📚', scene: 'hola', music: 'mountain', len: 150, obstacles: { books: 3, alarm: 2, exam: 3 }, items: ['coffee', 'cheatnote'], quest: { survive: 1 }, hero: 'tutor', checkpoint: 1 },
+  L10: { icon: '📚', scene: 'hola', music: 'mountain', len: 150, obstacles: { books: 3, alarm: 2, grade6: 3 }, items: ['coffee', 'cheatnote'], quest: { survive: 1 }, hero: 'tutor', checkpoint: 1 },
   L11: { icon: '🎓', scene: 'uni', music: 'ode', len: 90, obstacles: { bench: 2, tray: 3, books: 2 }, items: ['fries2', 'coffee'], quest: { item: 'fries2', n: 10 }, hero: 'graduate' },
-  L12: { icon: '⚖️', scene: ['wiesbaden', 'court'], music: 'toccata', len: 105, obstacles: { folders: 2, pubtable: 2, paragraph: 3, facewalk: 2 }, items: ['redbull', 'koelsch', 'akte'], quest: { item: 'akte', n: 8 }, hero: 'angel' },
+  L12: { icon: '⚖️', scene: 'wiesbaden', music: 'toccata', len: 105, obstacles: { folders: 2, barstool: 2, paragraph: 3, facewalk: 1 }, items: ['redbull', 'koelsch', 'akte'], quest: { item: 'akte', n: 8 }, hero: 'angel' },
   L13: { icon: '👻', scene: 'horror', music: 'horror', len: 90, horror: 1, obstacles: { shirt: 2, flyshirt: 3, ghost: 2, stink: 3, rille: 2, fish: 2, merz: 2 }, items: ['candle'], bad: 0.45, quest: { survive: 1 }, hero: 'zombie' },
-  L14: { icon: '🪩', scene: 'cocoon', music: 'techno', len: 105, obstacles: { speaker: 3, laser: 3, fog: 2, bouncer: 1 }, items: ['glow', 'water'], quest: { item: 'glow', n: 12 }, hero: 'raver', party: 1 },
-  L15: { icon: '🎄', scene: ['xmasRoom', 'omaXmas'], music: 'deckhalls', len: 105, obstacles: { gift: 3, winebottle: 2, smalltree: 2, candlebig: 2 }, items: ['wine', 'cookie2'], quest: { item: 'cookie2', n: 12 }, hero: 'santa' },
-  L16: { icon: '🎡', scene: 'plaerrer', music: 'volksfest', len: 105, obstacles: { 'maß': 3, hayball: 2, carousel: 1, lebkuchen: 3 }, items: ['brezn', 'lebherz', 'domsign'], quest: { item: 'domsign', n: 6 }, hero: 'lederhosen', party: 1, goalRain: '👶' },
+  L14: { icon: '🪩', scene: 'cocoon', music: 'techno', len: 105, obstacles: { speaker: 3, laser: 3, fog: 2, bouncer: 1 }, items: ['glow', 'water'], quest: { item: 'glow', n: 12 }, hero: 'raver', outfit: { top: 'glitter', topColor: 'f', bottom: 'tutu', socks: 'ringel', shoes: 'docs', extra: ['afro', 'starshades', 'boa'] }, party: 1 },
+  L15: { icon: '🎄', scene: ['xmasRoom', 'omaXmas'], music: 'deckhalls', len: 105, obstacles: { gift: 3, snowman: 2, smalltree: 2, candlebig: 2 }, items: ['eierlikoer', 'cookie2', 'wine'], quest: { item: 'cookie2', n: 12 }, hero: 'santa' },
+  L16: { icon: '🎡', scene: 'plaerrer', music: 'volksfest', len: 105, obstacles: { 'maß': 3, hayball: 2, carousel: 1, target: 2, dartboard: 2 }, items: ['brezn', 'lebherz', 'domsign'], quest: { item: 'domsign', n: 6 }, hero: 'lederhosen', party: 1, goalRain: '👶' },
   L17: { icon: '🏖️', scene: ['sicily', 'apulia'], music: 'mobile', len: 105, obstacles: { sandcastle: 2, crab: 2, gull: 3, wave: 2, vespa: 2 }, items: ['gelato', 'pizza', 'mussel', 'cocktail'], badItems: ['fig'], bad: 0.3, quest: { avoid: 'fig' }, hero: 'baywatch', figStory: 1 },
-  L18: { icon: '🎭', scene: 'koeln', music: 'cancan', len: 105, obstacles: { kamelle: 3, confetti: 2, dancer: 2, pubtable: 2 }, items: ['kamelle', 'struessjer', 'koelsch'], quest: { item: 'kamelle', n: 15 }, hero: 'prince', party: 1 },
-  L19: { icon: '🎲', scene: 'gameNight', music: 'tetris', len: 120, obstacles: { dice: 3, robber: 2, cards: 3 }, items: ['card'], quest: { set: ['wood', 'clay', 'woolres', 'grain', 'ore'] }, hero: 'joker' },
+  L18: { icon: '🎭', scene: 'koeln', music: 'cancan', len: 105, obstacles: { confetti: 2, dancer: 2, clown: 2, flyball: 3 }, items: ['kamelle', 'struessjer', 'koelsch'], quest: { item: 'kamelle', n: 15 }, hero: 'prince', party: 1 },
+  L19: { icon: '🎲', scene: 'gameNight', music: 'tetris', len: 120, obstacles: { dice: 3, robber: 2, hourfly: 3 }, items: ['card'], quest: { set: ['wood', 'clay', 'woolres', 'grain', 'ore'] }, hero: 'joker' },
   L20: { icon: '⏳', scene: 'timeclash', world: 'party', music: 'retro', len: 150, obstacles: { speaker: 3, crate: 3, hourglass: 2, discoball: 3 }, items: ['cocktail2', 'water'], quest: { survive: 1 }, hero: 'dj', checkpoint: 1, party: 1 },
   L21: { icon: '🐒', scene: 'serengeti', world: 'zoo', music: 'safari', len: 105, obstacles: { banana: 3, fence: 2, jeep: 2, parrot: 3, zebra: 1 }, items: ['monkey'], quest: { item: 'monkey', n: 8 }, hero: 'tarzan' },
   L22: { icon: '🗽', scene: 'nyc', music: 'jinglebells', len: 105, obstacles: { taxi: 2, snowpile: 3, skater: 2, hydrant: 2, smalltree: 1 }, items: ['psl', 'brezel', 'candycane'], quest: { item: 'psl', n: 8 }, hero: 'winter', noFamily: 1, fireworks: 1, goalHearts: 1 },
   L23: { icon: '🥕', scene: 'hanauMarkt', world: 'market', music: 'nachtmusik', len: 105, obstacles: { fruitcrate: 3, flowers: 2, basket: 2, cheese: 2, pigeon: 3 }, items: ['apple', 'sausage'], quest: { item: 'sausage', n: 6 }, hero: 'crier' },
   L24: { icon: '🍲', scene: 'bbq', music: 'hungarian', len: 105, obstacles: { kettle: 2, grill: 3, logs: 2, smoke: 2 }, items: ['gulasch', 'sausage', 'steak'], quest: { item: 'gulasch', n: 10 }, hero: 'grill' },
-  L25: { icon: '🍕', scene: 'pizzaGlitter', music: 'bday30', len: 120, obstacles: { discoball: 3, glitterbomb: 3, pizzaboxes: 3 }, items: ['pizza', 'glitter'], quest: { item: 'glitter', n: 30 }, hero: 'glitter', party: 1 },
+  L25: { icon: '🍕', scene: 'pizzaGlitter', music: 'bday30', len: 120, obstacles: { pizzatower: 3, speaker: 2, bottle: 3, confetti: 2 }, items: ['pizza', 'glitter'], quest: { item: 'glitter', n: 30 }, hero: 'glitter', party: 1, glitterRush: 1 },
   L26: { icon: '💼', scene: 'office', world: 'office', music: 'bumblebee', len: 120, obstacles: { chair: 3, boss: 2, folders: 3, paper: 3 }, items: ['coffee', 'mimisoup'], quest: { survive: 1 }, hero: 'business' },
   L27: { icon: '💍', scene: 'barn', music: 'punk', len: 150, obstacles: { hayball: 3, bench: 2, dancers: 2, bouquet: 3 }, items: ['ring', 'confetti2', 'weddingcake'], quest: { items: ['ring', 'confetti2'], n: 10 }, hero: 'groom', checkpoint: 1, party: 1, fireworks: 1, goalHearts: 1 },
   L28: { icon: '🧅', scene: 'inn', music: 'polka', len: 105, obstacles: { pan: 3, waiter: 2, bubble: 3, pubtable: 1 }, items: ['schnitzel', 'fries2', 'onion'], quest: { item: 'onion', n: 12 }, hero: 'waiter' },
   L29: { icon: '🎺', scene: 'kerb', music: 'kerbmarsch', len: 120, obstacles: { bembel: 3, trumpet: 2, drum: 2, bench: 2 }, items: ['gerippter', 'winktuch'], quest: { item: 'gerippter', n: 10 }, hero: 'kerb', party: 1 },
   L30: { icon: '🤠', scene: ['nycDay', 'nola', 'nashville'], music: 'saints', len: 105, obstacles: { taxi: 2, hydrant: 2, sax: 3, guitar: 2 }, items: ['hotdog', 'beignet', 'cowboyhat', 'boots'], quest: { item: 'boots', n: 6 }, hero: 'stars' },
-  L31: { icon: '🏴‍☠️', scene: 'pirateBar', music: 'sailor', len: 105, obstacles: { dicecup: 3, barstool: 2, ouzo: 2, slot: 2 }, items: ['asbach', 'dice', 'cherry'], quest: { item: 'cherry', n: 3 }, hero: 'pirate', party: 1 },
-  L32: { icon: '🍷', scene: ['mainzMarkt', 'rheinufer'], music: 'minuet', len: 120, obstacles: { cheesewheel: 3, winestand: 2, pigeon: 3, flowerpot: 1 }, items: ['wine2', 'cheese2', 'weck'], quest: { items: ['wine2', 'cheese2', 'weck'], n: 10 }, hero: 'winzer' },
+  L31: { icon: '🏴‍☠️', scene: 'pirateBar', music: 'sailor', len: 105, obstacles: { barstool: 3, slot: 2, bottle: 2, dartboard: 2 }, items: ['asbach', 'dice', 'cherry'], quest: { item: 'cherry', n: 3 }, hero: 'pirate', party: 1 },
+  L32: { icon: '🍷', scene: ['mainzMarkt', 'rheinufer'], music: 'minuet', len: 120, obstacles: { pigeon: 3, flowerpot: 2, umbrella: 2, bike: 2 }, items: ['wine2', 'cheese2', 'weck'], quest: { items: ['wine2', 'cheese2', 'weck'], n: 10 }, hero: 'winzer' },
   L33: { icon: '🌸', scene: 'bluetenfest', music: 'spring', len: 120, obstacles: { hayball: 3, bench: 2, flowerpot: 2, carousel: 1, bembel: 2 }, items: ['blossom', 'los', 'gerippter'], quest: { item: 'blackring', n: 1, hidden: 1 }, hero: 'flowers', party: 1 },
-  L34: { icon: '🦃', scene: 'xmasRustler', music: 'wewish', len: 105, obstacles: { weizen: 3, ouzo: 2, teddy: 2, toytrain: 2, roaster: 1 }, items: ['turkey', 'cookie2', 'wine'], quest: { face: 1, n: 5 }, hero: 'elf' },
+  L34: { icon: '🦃', scene: 'xmasRustler', music: 'wewish', len: 105, obstacles: { teddy: 2, toytrain: 2, gift: 2, rocking: 2, weizen: 1 }, items: ['turkey', 'cookie2', 'wine'], quest: { face: 1, n: 5 }, hero: 'elf' },
   L35: { icon: '🌵', scene: 'western', music: 'susanna', len: 120, obstacles: { hayball: 2, tumbleweed: 3, cactus: 2, bull: 2, facefly: 2 }, items: ['cowboyhat', 'burger2', 'hotdog'], quest: { survive: 1 }, hero: 'cowboy', party: 1 },
   L36: { icon: '🏡', scene: ['kitchen', 'garden'], world: 'kitchen', world2: 'garden', music: 'run', len: 150, obstacles: { mop: 4, pot: 2, flour: 2, laundry: 2, tomato: 2, grill: 2 }, items: ['pizza', 'wine'], quest: { survive: 1 }, hero: 'chef', checkpoint: 1 },
   L37: { icon: '🏰', scene: ['edinburgh', 'highlands'], music: 'auldlang', len: 120, obstacles: { sheep: 3, wall: 2, rain: 2, nessie: 1, leftcar: 3 }, items: ['shortbread', 'whisky'], quest: { item: 'shortbread', n: 10 }, hero: 'kilt' },
   L38: { icon: '🎂', scene: 'birthday', music: 'finaleBday', len: 150, obstacles: { wool: 1, bobbycar: 1, schoolbag: 1, shirtrack: 1, invoice: 1, cone: 1, barstool: 1, books: 1, laser: 1, gift: 1, 'maß': 1, gull: 1, dice: 1, discoball: 1, jeep: 1, taxi: 1, kettle: 1, hayball: 1, pan: 1, bembel: 1, slot: 1, cactus: 1, mop: 1, sheep: 1 }, items: ['candle'], quest: { item: 'candle', n: 34 }, hero: 'tux', checkpoint: 1, party: 1, finale: 1 },
-  G: { icon: '🌿', scene: 'haze', music: 'cucaracha', len: 90, obstacles: { smoke: 3, leaf: 3, lavalamp: 2, chipsbag: 2 }, items: ['snack', 'donut', 'fries2'], quest: { item: 'snack', n: 15 }, hero: 'hippie', lowGrav: 1, secret: 1 },
+  G: { icon: '🌿', scene: 'haze', music: 'cucaracha', len: 90, obstacles: { smoke: 2, weedleaf: 3, lava: 2, couchG: 1 }, items: ['snack', 'donut', 'fries2'], quest: { item: 'snack', n: 15 }, hero: 'hippie', lowGrav: 1, trip: 1, secret: 1 },
 };
 // Siedler-Rohstoffe als Items
 for (const k of ['wood', 'clay', 'woolres', 'grain', 'ore']) LEVELS.L19.items.push(k);

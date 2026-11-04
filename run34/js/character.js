@@ -672,10 +672,51 @@ function drawHead(g, neck, lean, expr, faceKey, extras, t, opt = {}) {
     }
     g.strokeStyle = OL; g.lineWidth = 1.6; g.beginPath(); g.moveTo(-w * 0.02, ly - 1); g.quadraticCurveTo(0, ly - 2.4, w * 0.02, ly - 1); g.stroke();
   }
+  if (extras.has('afro')) drawAfro(g, w, h, t);
+  if (extras.has('starshades')) drawStarShades(g, w, h, t);
+  if (extras.has('stache')) drawStache(g, w, h);
+  if (extras.has('boa')) drawBoa(g, w, h, t);
   if (extras.has('crown')) drawCrown(g, 0, -h / 2 + 2, w * 0.55);
   if (extras.has('safari')) drawSafari(g, 0, -h / 2 + 6, w);
   if (extras.has('chef')) drawChefHat(g, 0, -h / 2 + 5, w);
   g.restore();
+}
+
+// Verkleidungs-Accessoires (Ursprung = Augenhöhe)
+function drawAfro(g, w, h, t) {
+  const cols = ['#ff4fd8', '#ffd23f', '#3ee6b4', '#7cc6ff', '#ff7b39'];
+  for (let i = 0; i < 16; i++) {
+    const a = Math.PI + (i / 15) * Math.PI, r = w * (0.62 + (i % 3) * 0.06);
+    g.fillStyle = cols[i % 5]; g.beginPath(); g.arc(Math.cos(a) * r * 1.05, -h * 0.18 + Math.sin(a) * r * 0.95, w * 0.22, 0, 7); g.fill();
+  }
+  for (let i = 0; i < 7; i++) { g.fillStyle = cols[(i + 2) % 5]; g.beginPath(); g.arc(-w * 0.45 + i * w * 0.15, -h * 0.62, w * 0.2, 0, 7); g.fill(); }
+}
+function drawStarShades(g, w, h, t) {
+  const ly = -h * 0.06;
+  for (const lx of [-w * 0.24, w * 0.24]) {
+    g.fillStyle = '#ff2d95'; g.strokeStyle = OL; g.lineWidth = 1.6;
+    g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? w * 0.11 : w * 0.25; g.lineTo(lx + Math.cos(a) * r, ly + Math.sin(a) * r); } g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.arc(lx - w * 0.05, ly - h * 0.03, w * 0.04, 0, 7); g.fill();
+  }
+  g.strokeStyle = '#ff2d95'; g.lineWidth = 2; g.beginPath(); g.moveTo(-w * 0.04, ly); g.lineTo(w * 0.04, ly); g.stroke();
+}
+function drawCowboyHat(g, w, h) {
+  const y = -h * 0.42;
+  g.fillStyle = '#8d5a33'; g.beginPath(); g.ellipse(0, y, w * 0.85, h * 0.09, -0.08, 0, 7); g.fill();
+  g.beginPath(); g.moveTo(-w * 0.42, y); g.quadraticCurveTo(-w * 0.45, y - h * 0.42, 0, y - h * 0.36); g.quadraticCurveTo(w * 0.45, y - h * 0.42, w * 0.42, y); g.fill();
+  g.fillStyle = '#5d3a1f'; g.fillRect(-w * 0.42, y - h * 0.1, w * 0.84, h * 0.07);
+  g.strokeStyle = OL; g.lineWidth = 1.2; g.beginPath(); g.ellipse(0, y, w * 0.85, h * 0.09, -0.08, 0, 7); g.stroke();
+}
+function drawStache(g, w, h) {
+  g.fillStyle = '#2a1a10';
+  g.beginPath(); g.moveTo(0, h * 0.2); g.quadraticCurveTo(-w * 0.18, h * 0.12, -w * 0.32, h * 0.24); g.quadraticCurveTo(-w * 0.16, h * 0.28, 0, h * 0.23);
+  g.quadraticCurveTo(w * 0.16, h * 0.28, w * 0.32, h * 0.24); g.quadraticCurveTo(w * 0.18, h * 0.12, 0, h * 0.2); g.fill();
+}
+function drawBoa(g, w, h, t) {
+  for (let i = 0; i < 14; i++) {
+    const x = -w * 0.7 + i * w * 0.1, y = h * 0.62 + Math.sin(i * 1.3 + t * 3) * 3;
+    g.fillStyle = i % 2 ? '#ff6fd8' : '#ff9ce6'; g.beginPath(); g.arc(x, y, w * 0.1, 0, 7); g.fill();
+  }
 }
 
 function faceFx(g, expr, w, h, t) {
@@ -833,7 +874,7 @@ function drawCatHead(g, x, y, photo, orange, dark, light, front) {
 // ---------------------------------------------------------------------------
 // Cameo-Figuren (Eltern, Oma) am Wegesrand
 // ---------------------------------------------------------------------------
-export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wave = true, oma = false, scale = 1, expr = 'happy', run = false, pet = false, emojiHead = null }) {
+export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wave = true, oma = false, scale = 1, expr = 'happy', run = false, pet = false, emojiHead = null, acc = null }) {
   g.save(); g.translate(x, footY); g.scale(scale, scale);
   if (pet) { // kleiner Hund: Körper + Fotokopf
     const hop = Math.abs(Math.sin(t * 8)) * 3;
@@ -844,7 +885,10 @@ export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wav
     drawFaceOn(g, faceKey, 'normal', 12, -14, 15);
     g.restore(); return;
   }
-  const face = (fx, fy) => { if (faceKey) drawFaceOn(g, faceKey, expr, fx, fy, 21); else if (emojiHead) emoji(g, emojiHead, fx, fy - 18, 40); };
+  const face = (fx, fy) => {
+    if (faceKey) drawFaceOn(g, faceKey, expr, fx, fy, 21); else if (emojiHead) emoji(g, emojiHead, fx, fy - 18, 40);
+    if (acc?.length) { g.save(); g.translate(fx, fy - 21 + 4); const set = new Set(acc); const w = 40, h = 58; if (set.has('afro')) drawAfro(g, w, h, t); if (set.has('starshades')) drawStarShades(g, w, h, t); if (set.has('stache')) drawStache(g, w, h); if (set.has('boa')) drawBoa(g, w, h, t); if (set.has('cowboyhat')) drawCowboyHat(g, w, h); g.restore(); }
+  };
   const legC = oma ? '#6b5b4b' : '#333a4a';
   if (run) {
     const ph = t * 14, bob = Math.abs(Math.sin(ph)) * 3;
