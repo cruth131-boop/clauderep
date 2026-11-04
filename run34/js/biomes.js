@@ -46,16 +46,19 @@ export const OBS = {
       roundRect(g, x + 4, b - 62, 20, 30, 5); g.fill();
       g.fillStyle = '#fff'; g.beginPath(); g.moveTo(x + 11, b - 62); g.lineTo(x + 17, b - 62); g.lineTo(x + 14, b - 52); g.fill();
       g.fillStyle = tie; g.beginPath(); g.moveTo(x + 13, b - 60); g.lineTo(x + 15, b - 60); g.lineTo(x + 16, b - 47); g.lineTo(x + 14, b - 45); g.lineTo(x + 12, b - 47); g.fill();
+      if (o.face) drawFaceOn(g, o.face, 'normal', x + 14, b - 61, 13);
+      else {
       g.fillStyle = '#f0c4a2'; g.beginPath(); g.ellipse(x + 14, b - 70, 8, 9, 0, 0, 7); g.fill();
       g.fillStyle = o.variant ? '#6b4a2b' : '#bdbdbd'; g.beginPath(); g.ellipse(x + 14, b - 76, 8.4, 4.5, 0, Math.PI, 0); g.fill();
       g.fillStyle = '#222'; g.fillRect(x + 15, b - 72, 2, 2); g.fillRect(x + 19, b - 72, 2, 2);
       g.strokeStyle = '#7a2b2b'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x + 15, b - 66); g.lineTo(x + 21, b - 66.5); g.stroke();
+      }
       // Kaffeetasse
       g.fillStyle = '#fff'; roundRect(g, x + 23, b - 47, 6, 7, 1.5); g.fill();
       g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + 26, b - 49); g.quadraticCurveTo(x + 28, b - 53, x + 26, b - 56); g.stroke();
       if (Math.floor(o.t * 2) % 2) {
-        g.fillStyle = '#fff'; roundRect(g, x - 8, b - 98, 44, 14, 6); g.fill();
-        g.fillStyle = '#c0392b'; g.font = '900 8px sans-serif'; g.textAlign = 'center'; g.fillText('DEADLINE!', x + 14, b - 88);
+        g.fillStyle = '#fff'; roundRect(g, x - 8, b - (o.face ? 104 : 98), 44, 14, 6); g.fill();
+        g.fillStyle = '#c0392b'; g.font = '900 8px sans-serif'; g.textAlign = 'center'; g.fillText('DEADLINE!', x + 14, b - (o.face ? 94 : 88));
       }
     },
   },

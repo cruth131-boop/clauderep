@@ -790,6 +790,7 @@ export class Game {
     const o = { type, x, t: 0, yOff: 0, rot: 0, rects: [] };
     const def = OBS[type];
     if (type === 'facewalk' || type === 'facefly') { o.face = this.lvP?.faceObs; o.line = this.lvP?.faceObsLine; }
+    if (type === 'boss' && this.lvP?.bossFaces) o.face = pick(this.lvP.bossFaces);
     if (def && !def.fly) { def.make(o); return o; }
     if (def && def.fly) type = 'flyshirt';
     if (type === 'candles') {
@@ -1344,10 +1345,10 @@ export class Game {
       for (let i = 0; i < 3; i++) { const sx = x + 10 + i * 9; g.beginPath(); g.moveTo(sx, base - 20); g.bezierCurveTo(sx + 5, base - 26, sx - 5, base - 32, sx, base - 38 - Math.sin(o.t * 6 + i) * 3); g.stroke(); }
     } else if (o.type === 'merz') {
       g.fillStyle = '#6b4a2b'; g.fillRect(x + 20, base - 42, 6, 42);
-      g.fillStyle = '#f4f1ea'; roundRect(g, x, base - 82, 46, 42, 3); g.fill();
+      g.fillStyle = '#f4f1ea'; roundRect(g, x, base - 88, 46, 48, 3); g.fill();
       g.strokeStyle = '#1b2b5a'; g.lineWidth = 2; g.stroke();
       const mimg = assets.images.merz;
-      if (mimg) { g.save(); g.beginPath(); g.rect(x + 3, base - 79, 40, 24); g.clip(); const sc = Math.max(40 / mimg.width, 24 / mimg.height); g.drawImage(mimg, x + 23 - mimg.width * sc / 2, base - 67 - mimg.height * sc / 2, mimg.width * sc, mimg.height * sc); g.restore(); }
+      if (mimg) { g.save(); g.beginPath(); g.rect(x + 3, base - 85, 40, 34); g.clip(); const sc = Math.max(40 / mimg.width, 34 / mimg.height); g.drawImage(mimg, x + 23 - mimg.width * sc / 2, base - 68 - mimg.height * sc / 2, mimg.width * sc, mimg.height * sc); g.restore(); }
       else { g.fillStyle = '#1b2b5a'; g.beginPath(); g.arc(x + 23, base - 69, 8, 0, 7); g.fill(); g.fillRect(x + 13, base - 61, 20, 6); }
       g.fillStyle = '#1b2b5a'; g.font = '900 9px sans-serif'; g.textAlign = 'center'; g.fillText('MERZ', x + 23, base - 45);
     } else if (o.type === 'ghost') {
