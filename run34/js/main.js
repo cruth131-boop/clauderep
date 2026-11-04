@@ -352,7 +352,7 @@ canvas.addEventListener('pointerdown', (e) => {
     $('tap-hint').classList.add('hidden');
   }
 });
-const release = () => { input.jumpHeld = false; };
+const release = (e) => { input.jumpHeld = false; if (e && screen === 'play' && game?.state === 'story') game.storyInput('up', ...worldPos(e)); };
 canvas.addEventListener('pointermove', (e) => { if (screen === 'play' && !paused && game?.state === 'story') game.storyInput('move', ...worldPos(e)); });
 canvas.addEventListener('pointerup', release);
 canvas.addEventListener('pointercancel', release);
@@ -695,6 +695,7 @@ function onLevelDone(res) {
     '✅ Ziel erreicht',
     `${res.questDone ? '✅' : '❌'} Quest: ${escH(l.quest || '')}`,
     `${res.noDamage && !res.god ? '✅' : '❌'} Ohne Treffer${res.god ? ' (Godmode zählt nicht 😉)' : ''}`,
+    ...(res.minis || []).map((m) => `🎮 ${escH(m.label)}: ${escH(m.value)} <b>+${m.bonus}</b>`),
   ].map((x) => `<li>${x}</li>`).join('');
   $('lvd-score').textContent = res.score;
   $('lvd-best').textContent = `Bestwert: ${save.levels[id].best}`;

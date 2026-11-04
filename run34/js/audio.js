@@ -104,6 +104,9 @@ export function sfx(name, arg = 0) {
       noise({ dur: 0.9, vol: 0.45, freq: 1800, f1: 120 });
       for (let i = 0; i < 6; i++) noise({ dur: 0.05, vol: 0.12, freq: 5000, type: 'highpass', at: 0.2 + Math.random() * 0.6 });
       break;
+    case 'kick': tone({ type: 'sine', f0: 150, f1: 45, dur: 0.16, vol: 0.6 }); noise({ dur: 0.03, vol: 0.1, freq: 6000, type: 'highpass' }); break;
+    case 'clap': noise({ dur: 0.08, vol: 0.3, freq: 1800, type: 'bandpass' }); noise({ dur: 0.08, vol: 0.2, freq: 1800, type: 'bandpass', at: 0.02 }); tone({ type: 'triangle', f0: N(arg ? 91 : 84), dur: 0.12, vol: 0.18 }); break;
+    case 'dig': noise({ dur: 0.25, vol: 0.35, freq: 600, f1: 200 }); break;
     case 'beep': tone({ type: 'square', f0: 700 + arg * 1100, dur: 0.05, vol: 0.12 }); break;
     case 'tap': tone({ type: 'square', f0: N(60 + arg * 2), dur: 0.1, vol: 0.2 }); noise({ dur: 0.06, vol: 0.15, freq: 2500 }); break;
     case 'explode': noise({ dur: 1.2, vol: 0.6, freq: 4000, f1: 100 }); [72, 76, 79, 84, 88, 91].forEach((n, i) => tone({ type: 'triangle', f0: N(n), dur: 0.3, vol: 0.2, at: 0.1 + i * 0.07 })); break;
@@ -235,6 +238,8 @@ function playSong(name) {
   const iv = setInterval(tick, 25); tick();
   current = { name, stop: () => { alive = false; clearInterval(iv); bus.gain.setTargetAtTime(0, ctx.currentTime, 0.05); setTimeout(() => bus.disconnect(), 400); } };
 }
+
+export function duckMusic(on) { if (musicBus) musicBus.gain.setTargetAtTime(on ? 0.07 : 0.32, ctx.currentTime, 0.15); }
 
 export function stopMusic() { current?.stop(); current = null; }
 

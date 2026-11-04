@@ -154,8 +154,7 @@ export class Game {
       this.speed = start + (max - start) * startAt;
       this.checkSceneSwitch(true);
     }
-    this.evDone = new Set();
-    (P.events || []).forEach((ev, i) => { if (ev.at < startAt) this.evDone.add(i); });
+    this.endStarted = false; this.endQueue = null; this.miniResults = [];
     this.checkpointAt = L.checkpoint ? 0.5 : null;
     if (startAt >= 0.5) this.cpShown = true;
     if (L.world) this.events.onWorld?.(L.world, 0);
@@ -242,14 +241,16 @@ export class Game {
       p.x = lerp(p.x, this.V.w * 0.3, Math.min(1, dt * 1.4));
       if (this.goalFx) updateStory(this, this.goalFx, dt);
       if (this.goalT > 0.4 && Math.floor(this.goalT * 3) !== Math.floor((this.goalT - dt) * 3)) this.fx.burst(rand(40, this.V.w - 40), rand(20, this.V.groundY * 0.5), { n: 24, type: 'confetti', speed: 200, size: 4, gravity: 260 });
-      if ((this.goalT > 6 || (this.goalT > 1.5 && input.jumpPressed)) && !this.goalSent) { this.goalSent = true; this.events.onLevelDone?.(this.levelResult()); }
+      if ((this.goalT > 4.2 || (this.goalT > 1.2 && input.jumpPressed)) && !this.goalSent) { this.goalSent = true; this.events.onLevelDone?.(this.levelResult()); }
     } else if (this.state === 'story') {
       updateStory(this, this.story, dt);
       p.vy -= GRAV0 * dt; p.y = Math.max(0, p.y + p.vy * dt); if (p.y === 0) p.vy = this.story.kimiPose === 'jump' ? 300 : 0;
       p.phase += dt * (this.story.kimiPose === 'run' ? 12 : 0);
       if (this.story.done) {
-        this.state = 'run'; this.story = null; p.invuln = Math.max(p.invuln, 1.2);
-        this.obstacles = []; this.sinceSpawn = 0; this.nextGap = 400;
+        if (this.story.result) { this.miniResults.push(this.story.result); this.score += this.story.result.bonus; }
+        this.story = null;
+        if (this.endQueue?.length) this.beginStory(this.endQueue.shift());
+        else { this.state = 'run'; p.invuln = Math.max(p.invuln, 3); this.obstacles = []; p.expr = 'party'; p.exprT = 99; }
       }
     } else if (this.state === 'revive') {
       this.reviveT += dt;
@@ -381,10 +382,11 @@ export class Game {
       const it = this.makeItem('blackring', V.w + 40, pick([20, 104])); it.quest = true; this.items.push(it);
       this.events.onToast?.('💍 Da glitzert was im Gras…');
     }
+    // Finale kurz vor dem Ziel: Einspieler & Minispiele
     const evs = this.lvP.events || [];
-    for (let i = 0; i < evs.length; i++) {
-      if (this.evDone.has(i) || this.progress < evs[i].at || this.biome === FIPSLAND || this.god && evs[i].kind === 'escalator') continue;
-      this.evDone.add(i); this.beginStory(evs[i]); return;
+    if (!this.endStarted && evs.length && this.lvTarget - this.distance <= 190) {
+      if (this.biome === FIPSLAND) this.leaveFipsland();
+      this.fipsT = 0; this.endStarted = true; this.endQueue = evs.slice(); this.beginStory(this.endQueue.shift()); return;
     }
     if (this.checkpointAt != null && !this.cpShown && this.progress >= this.checkpointAt) { this.cpShown = true; this.events.onToast?.('🚩 Checkpoint!'); sfx('memory'); }
     if (this.distance >= this.lvTarget) this.startGoal();
@@ -429,14 +431,14 @@ export class Game {
     if (L.finale || L.fireworks) gfx.fireworks = 1;
     if (L.goalHearts) gfx.hearts = 1;
     if (L.goalRain) gfx.rain = L.goalRain;
-    this.goalFx = { kind: 'goalfx', ev: {}, t: 0, parts: [], fw: [], fx: gfx };
+    this.goalFx = { kind: 'goalfx', ev: {}, t: 0, parts: [], fw: [], pops: [], fx: gfx };
     this.events.onGoal?.();
   }
 
   levelResult() {
     const noDamage = this.hitCount === 0 && !this.revived;
     const stars = 1 + (this.questDone ? 1 : 0) + (noDamage && !this.god ? 1 : 0);
-    return { id: this.lvId, score: Math.floor(this.score), stars, questDone: this.questDone, noDamage, god: this.god, stats: this.stats, time: this.t };
+    return { id: this.lvId, minis: this.miniResults || [], score: Math.floor(this.score), stars, questDone: this.questDone, noDamage, god: this.god, stats: this.stats, time: this.t };
   }
 
   updateFire(dt, input) {
@@ -476,6 +478,7 @@ export class Game {
   }
 
   spawn(dx, dt) {
+    if (this.endStarted) return;
     const V = this.V;
     this.sinceSpawn += dx;
     const obsList = this.biome ? this.biome.obstacles : this.M.obstacles;
@@ -1139,20 +1142,16 @@ export class Game {
   }
 
   drawOutro(g) {
-    const V = this.V, txt = this.lvP?.outro || 'Geschafft!';
-    const a = Math.min(1, Math.max(0, (this.goalT - 1.1) * 2));
+    // zeigen statt erzählen: kein Erzähltext, nur ein kurzer Jubel-Schriftzug
+    const V = this.V, a = Math.min(1, Math.max(0, (this.goalT - 0.6) * 2));
     if (a <= 0) return;
-    g.save(); g.globalAlpha = a;
-    g.font = '800 15px ui-rounded, system-ui, sans-serif';
-    const lines = wrapText(g, txt, Math.min(420, V.w - 60));
-    const w = Math.min(440, V.w - 40), h = 34 + lines.length * 20, x = (V.w - w) / 2, y = 14;
-    g.fillStyle = 'rgba(255,255,255,0.94)'; roundRect(g, x, y, w, h, 14); g.fill();
-    g.strokeStyle = '#ff4fa3'; g.lineWidth = 3; g.stroke();
-    g.fillStyle = '#ff4fa3'; g.font = '900 12px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('🎬 GESCHAFFT!', V.w / 2, y + 18);
-    g.fillStyle = '#2a1830'; g.font = '800 15px ui-rounded, system-ui, sans-serif';
-    lines.forEach((l, i) => g.fillText(l, V.w / 2, y + 38 + i * 20));
-    if (this.goalT > 2) { g.globalAlpha = a * (0.5 + Math.sin(this.goalT * 4) * 0.3); g.fillStyle = '#fff'; g.font = '800 11px ui-rounded, system-ui, sans-serif'; g.fillText('Tippen = weiter', V.w / 2, V.groundY + 40); }
+    const pulse = 1 + Math.sin(this.goalT * 7) * 0.05, size = Math.min(46, V.w / 9);
+    g.save(); g.globalAlpha = a; g.translate(V.w / 2, Math.max(56, V.groundY * 0.26)); g.scale(pulse, pulse);
+    g.font = `900 ${size}px ui-rounded, system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = size * 0.22; g.strokeStyle = 'rgba(40,10,50,0.85)'; g.strokeText('🏁 GESCHAFFT!', 0, 0, V.w - 30);
+    g.fillStyle = `hsl(${(this.goalT * 200) % 360},95%,65%)`; g.fillText('🏁 GESCHAFFT!', 0, 0, V.w - 30);
     g.restore();
+    if (this.goalT > 1.6) { g.save(); g.globalAlpha = 0.5 + Math.sin(this.goalT * 4) * 0.3; g.fillStyle = '#fff'; g.font = '800 11px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('Tippen = weiter', V.w / 2, V.groundY + 40); g.restore(); }
   }
 
   drawCameo(g, c) {
