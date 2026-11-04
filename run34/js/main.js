@@ -18,7 +18,7 @@ const save = {
   album: [], totalFails: 0, ach: {}, worlds: [], stats: { monkeys: 0, mops: 0, chases: 0 }, challengeDone: {}, greenTaps: 0, greenUnlocked: false, eggNext: false,
 };
 if (new URLSearchParams(location.search).has('reset')) {
-  try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem('br.snaps.v1'); } catch {}
+  try { localStorage.removeItem(SAVE_KEY); } catch {}
   const u = new URL(location.href); u.searchParams.delete('reset'); history.replaceState(null, '', u);
 }
 try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch {}
@@ -166,7 +166,6 @@ function startGame(mode) {
         const total = (assets.config.memories || []).length;
         if (total && save.album.length >= total) unlockAch('album');
       },
-      onSnap: (caption) => { pendingSnap = caption; },
     },
   });
   if (mode === 'roadtrip') unlockAch('roadtrip');
@@ -512,28 +511,9 @@ $('btn-ach-done').addEventListener('click', toMenu);
 
 $('btn-gift').addEventListener('click', () => { initAudio(); sfx('memory'); showReveal(true); });
 
-// ----------------------------------------------------------------- Schnappschüsse & Album
-const SNAP_KEY = 'br.snaps.v1';
-let pendingSnap = null;
-const loadSnaps = () => { try { return JSON.parse(localStorage.getItem(SNAP_KEY) || '[]'); } catch { return []; } };
-function captureSnap(caption) {
-  try {
-    const w = 480, h = Math.round(w * canvas.height / canvas.width);
-    const c = document.createElement('canvas'); c.width = w; c.height = h;
-    c.getContext('2d').drawImage(canvas, 0, 0, w, h);
-    const data = c.toDataURL('image/jpeg', 0.72);
-    const snaps = loadSnaps();
-    const d = new Date();
-    snaps.unshift({ data, caption, date: `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}` });
-    while (snaps.length > 30) snaps.pop();
-    for (;;) { try { localStorage.setItem(SNAP_KEY, JSON.stringify(snaps)); break; } catch { if (snaps.length <= 1) break; snaps.pop(); } }
-    save.snapCount = (save.snapCount || 0) + 1; persist();
-    if (save.snapCount >= 10) unlockAch('snaps');
-    const fl = document.createElement('div'); fl.className = 'snapflash'; document.body.appendChild(fl); setTimeout(() => fl.remove(), 400);
-  } catch {}
-}
-const _frameHook = () => { if (pendingSnap) { const cap = pendingSnap; pendingSnap = null; captureSnap(cap); } requestAnimationFrame(_frameHook); };
-requestAnimationFrame(_frameHook);
+// ----------------------------------------------------------------- Album
+// Alte Schnappschüsse aus früheren Versionen entfernen
+try { localStorage.removeItem('br.snaps.v1'); } catch {}
 
 function showAlbum() {
   screen = 'album';
@@ -545,9 +525,6 @@ function showAlbum() {
     return on ? `<div class="pol" style="--r:${(i % 2 ? 2 : -2.5)}deg" data-src="mem:${esc(m.img)}" data-cap="${esc(m.caption || '')}"><img src="${assets.images[m.img].src}" alt=""><span>${esc(m.caption || '')}</span></div>`
       : `<div class="pol" style="--r:${(i % 2 ? 2 : -2.5)}deg"><div class="q">?</div><span>Noch nicht gefunden</span></div>`;
   }).join('');
-  const snaps = loadSnaps();
-  $('album-snaps').innerHTML = snaps.length ? snaps.map((s, i) => `<div class="pol" style="--r:${(i % 2 ? -1.5 : 2)}deg" data-src="snap:${i}" data-cap="${esc(s.caption)} · ${esc(s.date)}"><img src="${s.data}" alt=""><span>${esc(s.caption)}</span></div>`).join('')
-    : '<p class="album-empty">Noch keine Schnappschüsse – die entstehen bei lustigen Momenten im Spiel 😉</p>';
   show('scr-album');
 }
 $('scr-album').addEventListener('click', (e) => {
@@ -555,7 +532,8 @@ $('scr-album').addEventListener('click', (e) => {
   if (!big.classList.contains('hidden')) { if (e.target === big) big.classList.add('hidden'); return; }
   const pol = e.target.closest('.pol[data-src]'); if (!pol) return;
   const [kind, id] = pol.dataset.src.split(':');
-  $('album-big-img').src = kind === 'mem' ? assets.images[id].src : loadSnaps()[+id].data;
+  if (kind !== 'mem') return;
+  $('album-big-img').src = assets.images[id].src;
   $('album-big-cap').textContent = pol.dataset.cap;
   big.classList.remove('hidden');
 });

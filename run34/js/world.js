@@ -67,7 +67,6 @@ export class Game {
     this.lightning = 0;
     this.album = new Set(album);
     this.nextPolaroid = rand(16, 24);
-    this.snapped = new Set();
     this.worldList = mode === 'roadtrip' ? BIOMES_RT : mode === 'endless' ? shuffle(BIOMES.slice()) : BIOMES;
     this.biomeIdx = 0; this.biome = mode === 'endless' || mode === 'roadtrip' ? this.worldList[0] : null;
     this.stats = { items: {}, passed: {}, bad: false, worlds: new Set(this.biome ? [this.biome.id] : []), chases: 0 };
@@ -275,7 +274,6 @@ export class Game {
     // Hagen läuft Kimi hinterher ("Payback!") – holt sie aber nie ein
     if (this.chase) {
       const c = this.chase; c.t += dt;
-      if (c.t > 1.6 && c.t < 1.7) this.snap('chase', 'Payback-Alarm! 💳');
       const target = c.t < 4.2 ? p.x - 78 + Math.sin(c.t * 2.2) * 14 : -120;
       c.x += (target - c.x) * Math.min(1, dt * (c.t < 4.2 ? 1.8 : 0.9));
       if (c.t > 4.2 && !c.gaveUp) { c.gaveUp = true; if (this.state === 'run') { this.stats.chases++; this.events.onChase?.(); } this.fx.text(c.x + 10, V.groundY - 95, 'Puh…', { color: '#fff', size: 14 }); }
@@ -288,7 +286,7 @@ export class Game {
     if (this.dash) {
       const d = this.dash; d.t += dt;
       d.x += (this.state === 'idle' ? 330 : 420) * dt;
-      if (d.x > V.w * 0.62 && !d.jumped) { d.jumped = true; d.vy = 520; setTimeout(() => this.snap('fips', 'Fips war hier! 🐱'), 150); this.fx.text(d.x, V.groundY - 60, this.green ? 'Igitt, grün! 🤢' : pick(this.cfg.catLines || ['Miau!']), { color: '#ffb36b', size: 16 }); sfx('meow'); }
+      if (d.x > V.w * 0.62 && !d.jumped) { d.jumped = true; d.vy = 520; this.fx.text(d.x, V.groundY - 60, this.green ? 'Igitt, grün! 🤢' : pick(this.cfg.catLines || ['Miau!']), { color: '#ffb36b', size: 16 }); sfx('meow'); }
       if (d.jumped) { d.vy -= 1300 * dt; d.y = Math.max(0, d.y + d.vy * dt); }
       if (d.x > V.w + 80) this.dash = null;
     } else if (active && this.mode !== 'horror' && this.fips <= 0 && this.biome !== FIPSLAND) {
@@ -350,7 +348,6 @@ export class Game {
       h.x = -110 + (p.x - 70 + 110) * k; h.y = 120 * (1 - e) + Math.sin(k * Math.PI) * 10;
       if (k >= 1) {
         h.ph = 'land'; h.t = 0; h.y = 0; this.shake = 12; sfx('smash'); sfx('boom');
-        setTimeout(() => this.snap('hero', this.mode === 'horror' ? 'Zombie-Christoph landet! 🧟' : 'Super-Christoph landet! 🦸'), 120);
         this.fx.burst(h.x, V.groundY, { n: 26, type: 'smoke', colors: ['#d7ccc8', '#ffffff'], speed: 160, size: 6, gravity: -30, spread: Math.PI, angle: -Math.PI / 2 });
         h.say = zombie ? pick(H.zombieLand || ['BRAAAINS… äh, POW!']) : pick(H.land || ['Keine Angst!']);
       }
@@ -387,7 +384,6 @@ export class Game {
     const o = this.omaRide; o.t += dt;
     o.x += (o.x < p.x + 40 ? 330 : 420) * dt;
     if (o.t % 0.05 < dt) this.fx.list.push({ x: o.x - 40, y: V.groundY - 22, vx: -60 - Math.random() * 40, vy: -10 + Math.random() * 20, life: 0.7, max: 0.7, color: 'rgba(200,200,200,0.8)', size: 3 + Math.random() * 2, gravity: -20, type: 'smoke', rot: 0, vr: 0, drag: 1 });
-    if (o.x > p.x - 10 && o.x < p.x + 40) this.snap('oma', 'Oma hat Turbo! 🚀');
     if (!o.dropped && o.x > p.x + 110) {
       o.dropped = true;
       const it = this.makeItem('soup', o.x, 40); it.flying = true; it.vx = -40; it.vy = 260; it.restY = 34;
@@ -605,7 +601,6 @@ export class Game {
     p.expr = 'shock'; p.exprT = 0.45; p.vy = 520; p.duck = false;
     this.shake = 14; this.flash = 0.5;
     this.deathInfo = { cause, score: Math.floor(this.score), mode: this.mode, stats: this.stats, time: this.t };
-    if (Math.random() < 0.35) setTimeout(() => this.snap('death', `Autsch! – ${pick(this.cfg.obstacleLines?.[cause] || this.cfg.loseLines || ['Autsch!'])}`), 260);
     this.polaroids = [];
     sfx('hit'); sfx('no');
   }
@@ -645,11 +640,6 @@ export class Game {
     return pick(fresh.length ? fresh : mems);
   }
 
-  snap(id, caption) {
-    if (this.snapped.has(id)) return;
-    this.snapped.add(id);
-    this.events.onSnap?.(caption);
-  }
 
   // ------------------------------------------------------------------ Draw
   draw(g) {
