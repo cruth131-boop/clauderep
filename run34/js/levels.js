@@ -47,7 +47,7 @@ const EO = {
   skull: ['💀', 28], fish2: ['🐟', 28, { move: 60 }], bolt: ['⚡', 30, { fly: 1 }],
   snowman: ['☃️', 36], grade6: ['6', 30, { fly: 1, text: '#c0392b' }], chartfly: ['📉', 30, { fly: 1 }], target: ['🎯', 32], clown: ['🤡', 34],
   flyball: ['🎊', 30, { fly: 1 }], hourfly: ['⏳', 28, { fly: 1 }], rocking: ['🐴', 34], dartboard: ['🎯', 30, { fly: 1 }],
-  pizzatower: ['', 34, { draw: 'pizzatower' }], weedleaf: ['', 32, { fly: 1, draw: 'weedleaf' }], lava: ['', 30, { draw: 'lava' }], couchG: ['🛋️', 40],
+  pizzatower: ['', 34, { draw: 'pizzatower' }], griess: ['', 34, { draw: 'griess' }], weedleaf: ['', 32, { fly: 1, draw: 'weedleaf' }], lava: ['', 30, { draw: 'lava' }], couchG: ['🛋️', 40],
 };
 const CUSTOM = {
   puddle(g, x, b, o) { g.fillStyle = 'rgba(80,150,230,0.85)'; g.beginPath(); g.ellipse(x + o.w / 2, b - 3, o.w / 2, 4, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillRect(x + 8, b - 5, 8, 1.5); const s = Math.sin(o.t * 6) * 2; g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 1; g.beginPath(); g.ellipse(x + o.w * 0.6, b - 3, 4 + s, 1.5, 0, 0, TAU); g.stroke(); },
@@ -64,6 +64,13 @@ const CUSTOM = {
     g.fillStyle = '#c0392b'; g.beginPath(); g.moveTo(x + 15, b - 45); g.lineTo(x + 18, b - 45); g.lineTo(x + 19, b - 30); g.lineTo(x + 16, b - 27); g.lineTo(x + 14, b - 30); g.fill();
     if (o.face) drawFaceOn(g, o.face, 'normal', x + 16, b - 46, 17);
     if (o.line && Math.floor(o.t * 1.2) % 2 === 0) { g.font = '800 9px ui-rounded, system-ui, sans-serif'; const w = Math.min(130, g.measureText(o.line).width + 12); g.fillStyle = '#fff'; roundRect(g, x + 16 - w / 2, b - 102, w, 16, 7); g.fill(); g.fillStyle = '#c0392b'; g.textAlign = 'center'; g.fillText(o.line, x + 16, b - 91, w - 8); }
+  },
+  griess(g, x, b, o) {
+    g.fillStyle = '#fafafa'; g.beginPath(); g.moveTo(x, b - 22); g.lineTo(x + 34, b - 22); g.quadraticCurveTo(x + 32, b, x + 17, b); g.quadraticCurveTo(x + 2, b, x, b - 22); g.fill();
+    g.fillStyle = '#5b8fd8'; g.fillRect(x + 2, b - 16, 30, 3);
+    g.fillStyle = '#f1e0b5'; for (const [dx, dy, r] of [[8, -24, 7], [17, -29, 9], [27, -24, 7], [12, -31, 5], [23, -32, 5]]) { g.beginPath(); g.arc(x + dx, b + dy, r, 0, TAU); g.fill(); }
+    g.fillStyle = 'rgba(160,120,60,0.35)'; for (const [dx, dy] of [[10, -27], [20, -33], [26, -26], [15, -24]]) { g.beginPath(); g.arc(x + dx, b + dy, 1.8, 0, TAU); g.fill(); }
+    g.save(); g.translate(x + 18, b - 30); g.rotate(Math.sin(o.t * 3) * 0.05); g.fillStyle = '#b0bec5'; roundRect(g, -1.5, -26, 3, 26, 1.5); g.fill(); g.beginPath(); g.ellipse(0, -28, 4, 6, 0, 0, TAU); g.fill(); g.restore();
   },
   pizzatower(g, x, b, o) { for (let i = 0; i < 3; i++) { const y = b - 12 - i * 12; g.fillStyle = '#c8a26a'; roundRect(g, x - 2 + (i % 2) * 3, y, 38, 11, 2); g.fill(); g.strokeStyle = '#8d6e3a'; g.lineWidth = 1; g.stroke(); g.fillStyle = '#c0392b'; g.font = '900 6px sans-serif'; g.textAlign = 'center'; g.fillText('PIZZA', x + 17 + (i % 2) * 3, y + 8); } },
   weedleaf(g, x, b, o) { drawWeedLeaf(g, x + 19, b - 13, 17, Math.sin(o.t * 4) * 0.3); },
@@ -913,7 +920,7 @@ export const COSTUMES = {
 // Level-Definitionen (Spielmechanik). Reihenfolge & Texte: config.levels
 // ---------------------------------------------------------------------------
 export const LEVELS = {
-  L1: { icon: '👵', scene: 'omaRoom', music: 'augustin', len: 60, obstacles: { wool: 3, teapot: 2, slipper: 3, couch: 1 }, items: ['cookie', 'milchschnitte'], quest: { item: 'milchschnitte', n: 12 }, hero: 'classic', speed: 0.92 },
+  L1: { icon: '👵', scene: 'omaRoom', music: 'augustin', len: 60, obstacles: { wool: 3, teapot: 2, slipper: 3, couch: 1, griess: 2 }, items: ['cookie', 'milchschnitte'], quest: { item: 'milchschnitte', n: 12 }, hero: 'classic', speed: 0.92 },
   L2: { icon: '🛝', scene: 'kidStreet', music: 'entchen', len: 60, obstacles: { bobbycar: 3, football: 3, bucket: 2 }, items: ['brause', 'wassereis'], quest: { item: 'wassereis', n: 10 }, hero: 'kid', speed: 0.92 },
   L3: { icon: '🎒', scene: 'school', music: 'haenschen', len: 75, obstacles: { schoolbag: 3, trafficlight: 2, puddle: 3 }, items: ['sweets', 'cookie'], quest: { item: 'sweets', n: 10 }, hero: 'schooltuete', speed: 0.94 },
   L4: { icon: '🛍️', scene: 'mall', music: 'elise', len: 90, obstacles: { shirtrack: 3, sale: 2, shopbag: 2, shirt: 2 }, items: ['shopbag2', 'coffee'], quest: { item: 'shopbag2', n: 8 }, hero: 'fan' },
