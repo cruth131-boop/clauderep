@@ -6,7 +6,7 @@ import { sfx } from './audio.js';
 import { BIOMES, BIOMES_RT, FIPSLAND, OBS, ITEM_ICONS, drawMonkey, biomeName } from './biomes.js';
 import { LEVELS, COSTUMES, ITEM_EMO, drawScene, faceItem } from './levels.js';
 import { emoji } from './emoji.js';
-import { startStory, updateStory, drawStory, drawStoryBack, storyInput, makeClips, drawClip } from './story.js';
+import { startStory, updateStory, drawStory, drawStoryBack, storyInput } from './story.js';
 
 export const MODES = {
   birthday: { start: 330, accel: 5, max: 540, theme: 'birthday', obstacles: { shirt: 3, height: 2, alarm: 2, tax: 2, flyshirt: 3 }, items: 0.1, bad: 0.16, collect: 'candle' },
@@ -158,7 +158,6 @@ export class Game {
     this.rampT = P.rampage ? L.len * rand(0.12, 0.2) : Infinity; this.ramp = null;
     this.tripNext = L.trip ? rand(12, 18) : Infinity; this.tripT = 0;
     this.glitter = 0; this.rushT = 0;
-    this.clips = makeClips(this); this.clip = null;
     this.checkpointAt = L.checkpoint ? 0.5 : null;
     if (startAt >= 0.5) this.cpShown = true;
     if (L.world) this.events.onWorld?.(L.world, 0);
@@ -403,9 +402,6 @@ export class Game {
     // Glitzer-Rausch
     this.rushT = Math.max(0, this.rushT - dt);
     if (this.rushT > 0) this.p.invuln = Math.max(this.p.invuln, 0.2);
-    // kleine Video-Einspieler (laufen nebenher)
-    if (this.clip) { this.clip.t += dt; if (this.clip.t > this.clip.dur) this.clip = null; }
-    else if (this.clips.length && this.progress >= this.clips[0].at && !this.hero) { this.clip = { ...this.clips.shift(), t: 0 }; sfx('memory'); }
     if (this.checkpointAt != null && !this.cpShown && this.progress >= this.checkpointAt) { this.cpShown = true; this.events.onToast?.('🚩 Checkpoint!'); sfx('memory'); }
     if (this.distance >= this.lvTarget) this.startGoal();
   }
@@ -465,7 +461,7 @@ export class Game {
 
   startGoal() {
     if (this.state !== 'run') return;
-    this.state = 'goal'; this.goalT = 0; this.dash = null; this.chase = null; this.ramp = null; this.clip = null;
+    this.state = 'goal'; this.goalT = 0; this.dash = null; this.chase = null; this.ramp = null;
     this.goalReached = true; this.goalPhase = 'slow'; this.endStarted = true; this.endQueue = (this.lvP.events || []).slice();
     if (this.biome === FIPSLAND) this.leaveFipsland();
     this.fx.text(this.p.x + 40, this.V.groundY - 150, 'ZIEL! 🏁', { color: '#ffd23f', size: 30 });
@@ -1191,7 +1187,6 @@ export class Game {
       g.fillRect(0, 0, V.w, V.h);
     }
     if (this.green) { g.fillStyle = 'rgba(70,200,70,0.13)'; g.fillRect(0, 0, V.w, V.h); }
-    if (this.clip) drawClip(g, this, this.clip);
     if (this.rushT > 0) { g.fillStyle = `hsla(${(this.t * 300) % 360},100%,70%,0.14)`; g.fillRect(0, 0, V.w, V.h); for (let i = 0; i < 12; i++) emoji(g, '✨', rand(0, V.w), rand(0, V.groundY), rand(10, 20)); }
     if (this.lv?.glitterRush && this.state === 'run') {
       const bx = 14, by = 64;
