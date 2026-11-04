@@ -817,12 +817,12 @@ export function roundRect(g, x, y, w, h, r) {
 // ---------------------------------------------------------------------------
 // Rot getigerter Kater
 // ---------------------------------------------------------------------------
-export function drawCat(g, x, footY, { phase = 0, scale = 1, pose = 'run', flip = false, t = 0 } = {}) {
+export function drawCat(g, x, footY, { phase = 0, scale = 1, pose = 'run', flip = false, t = 0, coat = null } = {}) {
   const { img } = getFace('fips', 'normal');
-  const hasPhoto = img && !(img instanceof HTMLCanvasElement);
+  const hasPhoto = !coat && img && !(img instanceof HTMLCanvasElement); // fremde Katzen (coat) bekommen einen gezeichneten Kopf
   g.save();
   g.translate(x, footY); g.scale(flip ? -scale : scale, scale);
-  const orange = '#e8843a', dark = '#b8561c', light = '#f7c08a';
+  const [orange, dark, light] = coat || ['#e8843a', '#b8561c', '#f7c08a'];
   if (pose === 'sit') {
     g.fillStyle = orange;
     g.beginPath(); g.ellipse(0, -16, 13, 17, 0, 0, 7); g.fill();

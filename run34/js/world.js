@@ -17,7 +17,7 @@ export const MODES = {
   attract: { start: 230, accel: 0, max: 230, theme: 'birthday', obstacles: {}, items: 0, bad: 0 },
 };
 
-const GRAV0 = 2400, JUMP_V0 = 760, CHAR_SCALE = 0.95, PLAYER_X = 95;
+const GRAV0 = 2400, JUMP_V0 = 760, CHAR_SCALE = 0.95, PLAYER_X = 95, CAMEO_SCALE = 1.02, PACE = 0.92;
 const STAND_H = 122, DUCK_H = 78;
 const FREQ = { viel: [12, 18], normal: [24, 34], wenig: [45, 65] };
 const freqT = (f) => (FREQ[f] ? rand(...FREQ[f]) : Infinity);
@@ -54,7 +54,7 @@ export class Game {
     this.outfit = this.horror ? { ...outfit, top: 'green', topColor: 'a' } : this.lv?.outfit ? { ...outfit, ...this.lv.outfit } : outfit;
     this.events = events;
     this.mercy = mode === 'birthday' ? mercy : 0;
-    this.speedFactor = this.mercy >= 1 ? 0.85 : 1;
+    this.speedFactor = (this.mercy >= 1 ? 0.85 : 1) * (mode === 'attract' ? 1 : PACE); // etwas gemütlicheres Grundtempo
     this.speed = this.M.start;
     this.t = 0; this.distance = 0; this.bgOffset = 0;
     this.score = this.mercy >= 3 ? 25 : 0; // im Geburtstags-Modus = Anzahl Kerzen
@@ -126,7 +126,7 @@ export class Game {
     this.M.start = start; this.M.max = max; this.M.accel = (max - start) / L.len;
     if (L.bad != null) this.M.bad = L.bad;
     this.speed = start;
-    this.lvTarget = L.len * (start + max) / 2 * (L.quest?.survive || L.quest?.avoid ? 0.85 : 1);
+    this.lvTarget = L.len * (start + max) / 2 * PACE * (L.quest?.survive || L.quest?.avoid ? 0.85 : 1);
     this.scenes = [].concat(L.scene);
     this.sceneIdx = 0;
     this.biome = { id: this.scenes[0], obstacles: L.obstacles, items: L.items };
@@ -430,7 +430,7 @@ export class Game {
     const qs = this.questStatus();
     if (qs && qs.done && !qs.fail && !this.quest.survive && !this.quest.avoid) {
       this.questDone = true; sfx('fanfare');
-      const rest = this.speed * 12;
+      const rest = this.speed * this.speedFactor * 12;
       if (this.lvTarget - this.distance > rest) this.lvTarget = this.distance + rest;
       this.events.onToast?.('🎯 Quest geschafft! ⭐');
       this.fx.burst(this.p.x, this.screenY(80), { n: 36, type: 'confetti', speed: 260, size: 4, gravity: 300 });
@@ -1138,7 +1138,8 @@ export class Game {
     }
 
     const p = this.p;
-    if (this.fips > 0) {
+    if (this.biome === FIPSLAND) this.drawCatGang(g);
+    else if (this.fips > 0) {
       const blink = this.fips < 1.5 && Math.floor(this.t * 10) % 2;
       if (!blink) drawCat(g, p.x + 46 + Math.sin(this.t * 3) * 8, V.groundY, { phase: p.phase * 1.4, scale: 1.05, t: this.t });
     }
@@ -1259,7 +1260,7 @@ export class Game {
       const tx = p.x + 80 + i * 52, x = lerp(V.w + 60 + i * 56, tx, k * k * (3 - 2 * k));
       const dance = this.lv.party && k >= 1;
       if (dance) { g.save(); const yy = V.groundY - 40; g.translate(x, yy); g.rotate(Math.sin(this.goalT * 4 + i) * 0.2); g.translate(-x, -yy); }
-      drawPerson(g, x, V.groundY - 6 - Math.max(0, Math.sin(this.goalT * (dance ? 8 : 6) + i)) * (k >= 1 ? (dance ? 14 : 8) : 0), { faceKey: c.face, t: this.goalT + i, color: this.lv.glitterGuests ? ['#d4af37', '#c0c0c0', '#ff4fa3', '#b388ff'][i % 4] : c.color, oma: c.oma, scale: 0.88, wave: true, pet: c.pet, emojiHead: c.emoji, acc: this.lv.glitterGuests ? [...(c.acc || []), 'sequins'] : c.acc });
+      drawPerson(g, x, V.groundY - 6 - Math.max(0, Math.sin(this.goalT * (dance ? 8 : 6) + i)) * (k >= 1 ? (dance ? 14 : 8) : 0), { faceKey: c.face, t: this.goalT + i, color: this.lv.glitterGuests ? ['#d4af37', '#c0c0c0', '#ff4fa3', '#b388ff'][i % 4] : c.color, oma: c.oma, scale: CAMEO_SCALE, wave: true, pet: c.pet, emojiHead: c.emoji, acc: this.lv.glitterGuests ? [...(c.acc || []), 'sequins'] : c.acc });
       if (dance) g.restore();
     });
     if (this.goalT > 1.2) drawCat(g, p.x - 50, V.groundY, { pose: 'sit', scale: 1.1, t: this.t });
@@ -1278,22 +1279,42 @@ export class Game {
     if (this.goalT > 1.0) { g.save(); g.globalAlpha = 0.6 + Math.sin(this.goalT * 4) * 0.3; g.fillStyle = '#fff'; g.font = '900 14px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('👆 Tippen für deine Punkte', V.w / 2, V.groundY + 40); g.restore(); }
   }
 
+  // Fips' Geheimversteck: Fips hüpft die ganze Zeit neben Kimi, dazu tobt eine Katzenbande herum
+  drawCatGang(g) {
+    const V = this.V, p = this.p, t = this.t;
+    const COATS = [['#8c8c96', '#55555e', '#d6d6dc'], ['#2b2b30', '#111114', '#5a5a64'], ['#f4efe6', '#c9bfae', '#ffffff'], ['#c98a4b', '#7a4a22', '#f2d3a8'], ['#a7a7b0', '#6b5444', '#efe3d0']];
+    for (let i = 0; i < COATS.length; i++) {
+      const sp = 0.45 + i * 0.13, ph = t * sp + i * 1.9;
+      const x = V.w * (0.36 + 0.13 * i) + Math.sin(ph) * V.w * 0.1;
+      const dir = Math.cos(ph) >= 0 ? 1 : -1;
+      const hopT = t * (3.2 + i * 0.35) + i;
+      const hop = Math.max(0, Math.sin(hopT)) * (26 + (i % 3) * 14);
+      const sit = (Math.floor(t * 0.5 + i) % 4) === 3;
+      drawCat(g, x, V.groundY - (sit ? 0 : hop), { phase: t * 12 + i, scale: 0.8 + (i % 2) * 0.12, t: t + i, pose: sit ? 'sit' : 'run', flip: dir < 0, coat: COATS[i] });
+      if (!sit && hop > 0 && Math.sin(hopT) > 0.97 && Math.random() < 0.15) this.fx.burst(x, V.groundY - hop - 30, { n: 4, colors: ['#ff6fae', '#fff'], speed: 60, size: 2, gravity: 100 });
+    }
+    // Fips selbst: immer an Kimis Seite, hüpft im Takt mit
+    const fh = Math.max(0, Math.sin(t * 4.2)) * 34;
+    drawCat(g, p.x + 52 + Math.sin(t * 1.3) * 10, V.groundY - Math.max(fh, p.y * 0.6), { phase: p.phase * 1.4, scale: 1.12, t });
+    if (Math.floor(t / 2.8) !== this.fipsSayN) { this.fipsSayN = Math.floor(t / 2.8); if (this.fipsSayN % 2 === 0) this.fx.text(p.x + 60, V.groundY - 90, pick(this.cfg.catLines || ['Miau!']), { color: '#ffb36b', size: 16 }); }
+  }
+
   drawCameo(g, c) {
     const V = this.V;
     if (c.flag) {
-      drawFan(g, c.x, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.color, scale: 0.88, flag: c.flag });
+      drawFan(g, c.x, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.color, scale: CAMEO_SCALE, flag: c.flag });
       if (Math.floor(c.t * 7 / Math.PI) !== c.lastHop) { c.lastHop = Math.floor(c.t * 7 / Math.PI); if (c.lastHop % 2 === 0) this.fx.burst(c.x, V.groundY - 90, { n: 6, type: 'confetti', speed: 90, size: 3, gravity: 200 }); }
-      if (c.said && c.sayT < 2.6 && c.line) speech(g, c.x + 30, V.groundY - 180, c.line);
+      if (c.said && c.sayT < 2.6 && c.line) speech(g, c.x + 30, V.groundY - 200, c.line);
       return;
     }
     const jx = c.secret ? Math.sin(c.t * 40) * 2 : c.drunk ? Math.sin(c.t * 2.2) * 10 : 0;
     if (c.drunk) { g.save(); const yy = V.groundY - 40; g.translate(c.x + jx, yy); g.rotate(Math.sin(c.t * 2.2) * 0.22); g.translate(-(c.x + jx), -yy); }
-    drawPerson(g, c.x + jx, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.secret ? '#c62828' : c.color, oma: c.oma, scale: 0.88, wave: !c.ice, pet: c.pet, emojiHead: c.emoji, acc: c.acc, twerk: c.twerk });
-    if (c.ice) drawIceToss(g, c.x + jx, V.groundY - 6, c.t);
-    if (c.prop) emoji(g, c.prop, c.x + jx + 18, V.groundY - 66, 20);
+    drawPerson(g, c.x + jx, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.secret ? '#c62828' : c.color, oma: c.oma, scale: CAMEO_SCALE, wave: !c.ice, pet: c.pet, emojiHead: c.emoji, acc: c.acc, twerk: c.twerk });
+    if (c.ice) { g.save(); g.translate(c.x + jx, V.groundY - 6); g.scale(CAMEO_SCALE / 0.88, CAMEO_SCALE / 0.88); drawIceToss(g, 0, 0, c.t); g.restore(); }
+    if (c.prop) emoji(g, c.prop, c.x + jx + 21, V.groundY - 76, 23);
     if (c.drunk) g.restore();
     if (c.secret) { g.fillStyle = 'rgba(255,60,60,0.25)'; g.beginPath(); g.arc(c.x, V.groundY - 60, 34 + Math.sin(c.t * 12) * 4, 0, 7); g.fill(); }
-    if (c.said && (c.sayT < 2.6 || c.secret) && c.line) speech(g, c.x + 12, V.groundY - (c.pet ? 62 : 135), c.line);
+    if (c.said && (c.sayT < 2.6 || c.secret) && c.line) speech(g, c.x + 12, V.groundY - (c.pet ? 70 : 154), c.line);
   }
 
   drawObstacle(g, o) {
