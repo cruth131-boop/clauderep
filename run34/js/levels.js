@@ -124,7 +124,7 @@ export function drawWeedLeaf(g, x, y, r, rot = 0, col = '#3fa34d') {
 export const ITEM_EMO = {
   milchschnitte: '🍫', cookie: '🍪', wassereis: '🍧', brause: '🍭', sweets: '🍬', shopbag2: '🛍️', schokokuss: 'draw', cake: '🍰', partybag: '🎁',
   money: '💶', coin: '🪙', voucher: '⛽', cocktail: '🍹', straw: '🥤', cupid: '💘', coffee: '☕', cheatnote: '📝', redbull: '🥫', koelsch: '🍺',
-  akte: '📜', eierlikoer: 'draw', glow: 'draw', water: '💧', cookie2: '🍪', brezn: '🥨', lebherz: '💝', gelato: '🍨', mussel: '🦪', kamelle: '🍬', struessjer: '💐',
+  akte: '📜', eierlikoer: 'draw', saeftchen: 'draw', glow: 'draw', water: '💧', cookie2: '🍪', brezn: '🥨', lebherz: '💝', gelato: '🍨', mussel: '🦪', kamelle: '🍬', struessjer: '💐',
   wood: '🪵', clay: '🧱', woolres: '🐑', grain: '🌾', ore: '🪨', card: '🃏', psl: 'draw', brezel: '🥨', candycane: '🍭', sausage: '🌭', gulasch: '🥣',
   steak: '🥩', glitter: '✨', mimisoup: '🌶️', ring: '💍', confetti2: '🎊', weddingcake: '🎂', schnitzel: '🍖', onion: '🧅', gerippter: 'draw', winktuch: '🏳️',
   hotdog: '🌭', beignet: '🍩', cowboyhat: '🤠', boots: '👢', asbach: '🥃', cherry: '🍒', weck: '🥖', cheese2: '🧀', blossom: '🌸', los: '🎟️', blackring: 'draw',
@@ -136,6 +136,7 @@ const ITEM_DRAW = {
   psl(g) { emoji(g, '☕', 0, 0, 24); emoji(g, '🎃', 8, -8, 12); },
   gerippter(g) { g.fillStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.moveTo(-8, -12); g.lineTo(8, -12); g.lineTo(6, 12); g.lineTo(-6, 12); g.closePath(); g.fill(); g.fillStyle = '#e6b54a'; g.beginPath(); g.moveTo(-7.5, -6); g.lineTo(7.5, -6); g.lineTo(6, 11); g.lineTo(-6, 11); g.fill(); g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 0.8; for (let i = -6; i <= 6; i += 2) { g.beginPath(); g.moveTo(i - 1, -11); g.lineTo(i, 11); g.stroke(); } },
   blackring(g, t) { const gl = g.createRadialGradient(0, 0, 2, 0, 0, 22); gl.addColorStop(0, 'rgba(255,240,150,0.8)'); gl.addColorStop(1, 'rgba(255,240,150,0)'); g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 22, 0, TAU); g.fill(); g.strokeStyle = '#111'; g.lineWidth = 4; g.beginPath(); g.ellipse(0, 0, 9, 9 * Math.abs(Math.cos(t * 2)) + 2, 0, 0, TAU); g.stroke(); g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1; g.stroke(); },
+  saeftchen(g, t) { const c = ['#ff4fa3', '#3ee6b4', '#ffd23f', '#b388ff'][Math.floor(t) % 4]; g.fillStyle = 'rgba(255,255,255,0.65)'; g.beginPath(); g.moveTo(-6, -9); g.lineTo(6, -9); g.lineTo(5, 9); g.lineTo(-5, 9); g.closePath(); g.fill(); g.fillStyle = c; g.beginPath(); g.moveTo(-5.5, -3); g.lineTo(5.5, -3); g.lineTo(4.6, 8); g.lineTo(-4.6, 8); g.fill(); g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(-4, -2, 2, 8); },
   eierlikoer(g) { g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.moveTo(-7, -11); g.lineTo(7, -11); g.lineTo(4, 3); g.lineTo(-4, 3); g.closePath(); g.fill(); g.fillStyle = '#f6d64a'; g.beginPath(); g.moveTo(-6, -6); g.lineTo(6, -6); g.lineTo(4, 2); g.lineTo(-4, 2); g.fill(); g.fillStyle = '#fff6b0'; g.beginPath(); g.ellipse(0, -6, 6, 1.6, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(-1, 3, 2, 6); g.fillRect(-5, 9, 10, 2); emoji(g, '🥚', 9, -9, 9); },
   domsign(g) { g.fillStyle = '#8d6e63'; g.fillRect(-1.5, -4, 3, 16); g.fillStyle = '#1565c0'; g.beginPath(); g.moveTo(-12, -13); g.lineTo(8, -13); g.lineTo(13, -8); g.lineTo(8, -3); g.lineTo(-12, -3); g.closePath(); g.fill(); g.fillStyle = '#fff'; g.font = '900 6px sans-serif'; g.textAlign = 'center'; g.fillText('DOM →', -1, -6); },
 };
@@ -682,15 +683,49 @@ export const SCENES = {
     planks(g, V, off, '#8d6e63', '#6d4c41');
   },
 
-  // Kerb: Fachwerk-Rathaus mit rundem Treppenturm, geschmückter Kerbbaum, Bierbänke, Blaskapelle
+  // Kerb im Festzelt: Zeltdach mit Masten, Blaskapelle auf der Bühne, alle stehen auf den Bierbänken, Säftchenbar
   kerb(g, V, off, t, lv) {
     const gy = V.groundY;
-    sky(g, V, '#8fd0f3', '#f4fbff'); clouds(g, V, off);
-    once(V, off, 0.2, 1200, 400, (x) => { fachwerk(g, x, gy, 180, 130, '#f2e6cf', '#8d3b2a', '#4e2f1a'); g.fillStyle = '#e8dcc0'; g.fillRect(x + 180, gy - 150, 40, 150); g.strokeStyle = '#4e2f1a'; g.lineWidth = 2; g.strokeRect(x + 180, gy - 150, 40, 150); g.fillStyle = '#8d3b2a'; g.beginPath(); g.moveTo(x + 176, gy - 150); g.lineTo(x + 200, gy - 200); g.lineTo(x + 224, gy - 150); g.fill(); g.fillStyle = '#90caf9'; for (let i = 0; i < 3; i++) g.fillRect(x + 194, gy - 135 + i * 40, 12, 18); g.fillStyle = '#555'; g.font = '700 9px Georgia, serif'; g.textAlign = 'center'; g.fillText('1555', x + 90, gy - 6); });
-    rep(V, off, 0.3, 150, (x, k) => fachwerk(g, x, gy, 120, 100, ['#f3e0c0', '#efe6d6', '#e9d2b2'][((k % 3) + 3) % 3]));
-    once(V, off, 0.4, 1000, 700, (x) => { g.fillStyle = '#efe9e0'; g.fillRect(x - 3, gy - 280, 6, 280); g.strokeStyle = '#8d8d8d'; g.lineWidth = 1; for (let i = 0; i < 14; i++) { g.beginPath(); g.moveTo(x - 3, gy - 270 + i * 18); g.lineTo(x + 3, gy - 262 + i * 18); g.stroke(); } g.fillStyle = '#43a047'; g.beginPath(); g.moveTo(x, gy - 320); g.lineTo(x - 22, gy - 270); g.lineTo(x + 22, gy - 270); g.fill(); g.strokeStyle = '#2e7d32'; g.lineWidth = 4; g.beginPath(); g.ellipse(x, gy - 240, 30, 8, 0, 0, TAU); g.stroke(); for (let i = 0; i < 6; i++) { g.strokeStyle = ['#e53935', '#fff', '#1e88e5'][i % 3]; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 25 + i * 10, gy - 240); g.quadraticCurveTo(x - 25 + i * 10 + Math.sin(t * 3 + i) * 6, gy - 210, x - 28 + i * 10, gy - 185); g.stroke(); } sign(g, S(lv, 'kerb', 'KERB'), x, gy - 330, { bg: '#c62828', fg: '#fff', size: 12 }); });
-    rep(V, off, 0.55, 300, (x) => { g.fillStyle = '#8d6e63'; g.fillRect(x, gy - 30, 120, 6); g.fillRect(x + 8, gy - 24, 5, 24); g.fillRect(x + 107, gy - 24, 5, 24); CUSTOM.bembel(g, x + 20, gy - 30); emoji(g, '🎺', x + 190, gy - 60 + Math.sin(t * 6) * 2, 24); emoji(g, '🥁', x + 220, gy - 40, 24); emoji(g, '🏳️', x + 160, gy - 80 + Math.sin(t * 8) * 6, 20, Math.sin(t * 8) * 0.4); });
-    cobble(g, V, off, '#a89f92', '#857c70');
+    // Zeltdach von innen
+    const gr = g.createLinearGradient(0, 0, 0, gy); gr.addColorStop(0, '#f3ead6'); gr.addColorStop(1, '#d9c9a8');
+    g.fillStyle = gr; g.fillRect(0, 0, V.w, gy);
+    rep(V, off, 0.15, 120, (x, k) => { g.fillStyle = k % 2 ? 'rgba(200,40,40,0.18)' : 'rgba(255,255,255,0.25)'; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 120, 0); g.lineTo(x + 90, gy * 0.45); g.lineTo(x + 30, gy * 0.45); g.fill(); });
+    g.fillStyle = 'rgba(120,90,50,0.25)'; g.fillRect(0, gy * 0.45, V.w, 4);
+    // Bühne mit Blaskapelle
+    rep(V, off, 0.2, 700, (x) => {
+      g.fillStyle = '#7b5532'; g.fillRect(x, gy - 150, 320, 26); g.fillStyle = '#c62828'; g.fillRect(x, gy - 230, 320, 80);
+      g.fillStyle = 'rgba(0,0,0,0.25)'; for (let i = 0; i < 8; i++) g.fillRect(x + 6 + i * 40, gy - 230, 3, 80);
+      sign(g, S(lv, 'kerb', 'KERB'), x + 160, gy - 238, { bg: '#fff', fg: '#c62828', size: 13 });
+      for (let i = 0; i < 6; i++) { const bx = x + 30 + i * 50, hop = Math.abs(Math.sin(t * 5 + i)) * 3; g.fillStyle = '#1b2a4a'; g.beginPath(); g.arc(bx, gy - 186 - hop, 7, 0, TAU); g.fill(); roundRect(g, bx - 8, gy - 178 - hop, 16, 28, 5); g.fill(); emoji(g, ['🎺', '🥁', '🎷', '🎺', '📯', '🥁'][i], bx + 10, gy - 168 - hop, 16); }
+    });
+    // Zeltmasten & Lichterketten
+    rep(V, off, 0.35, 260, (x) => { g.fillStyle = '#8d6e47'; g.fillRect(x, 0, 9, gy); g.fillStyle = '#6d532f'; g.fillRect(x + 7, 0, 2, gy); });
+    stringLights(g, V, off, 0.35, 22, t, 260, 30, ['#fff4c2', '#ffd58a', '#ff8a80']);
+    // alle stehen auf den Bierbänken
+    for (let row = 0; row < 2; row++) {
+      const f = 0.45 + row * 0.12, yb = gy - 40 + row * 22, col = row ? '#2a1830' : '#4a3550';
+      rep(V, off, f, 240, (x, k) => {
+        g.fillStyle = '#8d6e47'; g.fillRect(x + 10, yb - 4, 200, 7); g.fillRect(x + 20, yb + 3, 6, 18); g.fillRect(x + 194, yb + 3, 6, 18);
+        g.fillStyle = '#a1825a'; g.fillRect(x + 6, yb - 16, 208, 5);
+        for (let i = 0; i < 5; i++) {
+          const px = x + 30 + i * 40, sway = Math.sin(t * 3 + i + k) * 4, hop = Math.abs(Math.sin(t * 4 + i * 1.3 + k)) * 5;
+          g.fillStyle = col; g.beginPath(); g.arc(px + sway, yb - 52 - hop, 8, 0, TAU); g.fill(); roundRect(g, px - 9 + sway, yb - 44 - hop, 18, 38, 7); g.fill();
+          g.strokeStyle = col; g.lineWidth = 4; g.beginPath(); g.moveTo(px + 6 + sway, yb - 40 - hop); g.lineTo(px + 12 + sway * 2, yb - 66 - hop); g.stroke();
+          if ((i + k) % 2) { g.fillStyle = '#fff'; g.beginPath(); g.moveTo(px + 12 + sway * 2, yb - 66 - hop); g.lineTo(px + 26 + sway * 3, yb - 72 - hop + Math.sin(t * 9 + i) * 3); g.lineTo(px + 22 + sway * 3, yb - 60 - hop); g.fill(); }
+          else emoji(g, '🍺', px + 14 + sway * 2, yb - 70 - hop, 12);
+        }
+      });
+    }
+    // Säftchenbar
+    once(V, off, 0.45, 1100, 700, (x) => {
+      g.fillStyle = '#120a1e'; g.fillRect(x, gy - 150, 210, 150);
+      g.save(); g.translate(x + 105, gy - 116); for (let i = 0; i < 28; i++) { const a = i * 0.5 + t * 2, r = 4 + i * 0.9; g.fillStyle = `hsla(${270 + i * 3},80%,${30 + i}%,0.9)`; g.beginPath(); g.arc(Math.cos(a) * r, Math.sin(a) * r * 0.55, 2.6, 0, TAU); g.fill(); } g.fillStyle = '#000'; g.beginPath(); g.ellipse(0, 0, 7, 4, 0, 0, TAU); g.fill(); g.restore();
+      neon(g, S(lv, 'bar', 'SÄFTCHENBAR'), x + 105, gy - 80, '#b388ff', 17, t, 1);
+      for (let i = 0; i < 9; i++) { g.fillStyle = ['#ff4fa3', '#3ee6b4', '#ffd23f', '#7cc6ff', '#ff7b39'][i % 5]; roundRect(g, x + 14 + i * 21, gy - 68, 8, 20, 2); g.fill(); g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(x + 15 + i * 21, gy - 72, 6, 4); }
+      g.fillStyle = '#3e2723'; g.fillRect(x - 6, gy - 44, 222, 10); g.fillStyle = '#2a1a12'; g.fillRect(x, gy - 34, 210, 34);
+      for (let i = 0; i < 7; i++) { const c = ['#ff4fa3', '#3ee6b4', '#ffd23f', '#b388ff'][i % 4]; g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillRect(x + 20 + i * 26, gy - 56, 10, 12); g.fillStyle = c; g.fillRect(x + 21, gy - 52, 0, 0); g.fillRect(x + 21 + i * 26, gy - 52, 8, 7); }
+    });
+    planks(g, V, off, '#9c7b52', '#7a5c38');
   },
 
   // Piraten-Kneipe: Würfeltisch, Asbach-Regal und blinkender Spielautomat
@@ -906,7 +941,7 @@ export const LEVELS = {
   L26: { icon: '💼', scene: 'office', world: 'office', music: 'bumblebee', len: 120, obstacles: { chair: 3, boss: 2, folders: 3, paper: 3 }, items: ['coffee', 'mimisoup'], quest: { survive: 1 }, hero: 'business' },
   L27: { icon: '💍', scene: 'barn', music: 'punk', len: 150, obstacles: { hayball: 3, bench: 2, dancers: 2, bouquet: 3 }, items: ['ring', 'confetti2', 'weddingcake'], quest: { items: ['ring', 'confetti2'], n: 10 }, hero: 'groom', checkpoint: 1, party: 1, fireworks: 1, goalHearts: 1 },
   L28: { icon: '🧅', scene: 'inn', music: 'polka', len: 105, obstacles: { pan: 3, waiter: 2, bubble: 3, pubtable: 1 }, items: ['schnitzel', 'fries2', 'onion'], quest: { item: 'onion', n: 12 }, hero: 'waiter' },
-  L29: { icon: '🎺', scene: 'kerb', music: 'kerbmarsch', len: 120, obstacles: { bembel: 3, trumpet: 2, drum: 2, bench: 2 }, items: ['gerippter', 'winktuch'], quest: { item: 'gerippter', n: 10 }, hero: 'kerb', party: 1 },
+  L29: { icon: '🎺', scene: 'kerb', music: 'kerbmarsch', len: 120, obstacles: { bembel: 3, trumpet: 2, drum: 2, bench: 2 }, items: ['gerippter', 'winktuch', 'saeftchen'], quest: { item: 'gerippter', n: 10 }, hero: 'kerb', party: 1 },
   L30: { icon: '🤠', scene: ['nycDay', 'nola', 'nashville'], music: 'saints', len: 105, obstacles: { taxi: 2, hydrant: 2, sax: 3, guitar: 2 }, items: ['hotdog', 'beignet', 'cowboyhat', 'boots'], quest: { item: 'boots', n: 6 }, hero: 'stars' },
   L31: { icon: '🏴‍☠️', scene: 'pirateBar', music: 'sailor', len: 105, obstacles: { barstool: 3, slot: 2, bottle: 2, dartboard: 2 }, items: ['asbach', 'dice', 'cherry'], quest: { item: 'cherry', n: 3 }, hero: 'pirate', party: 1 },
   L32: { icon: '🍷', scene: ['mainzMarkt', 'rheinufer'], music: 'minuet', len: 120, obstacles: { pigeon: 3, flowerpot: 2, umbrella: 2, bike: 2 }, items: ['wine2', 'cheese2', 'weck'], quest: { items: ['wine2', 'cheese2', 'weck'], n: 10 }, hero: 'winzer' },
