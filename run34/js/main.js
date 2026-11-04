@@ -165,11 +165,12 @@ function startGame(mode, { level = null, startAt = 0 } = {}) {
   const endlessLevels = mode === 'endless' ? lvOrder().map((l) => l.id).filter((id) => id !== 'L13').concat(save.secretFound ? ['G'] : []) : null;
   input.left = input.right = input.fire = false;
   game = new Game(mode, {
-    outfit: save.outfit, mercy, eggHead, album: save.album, level, startAt, endlessLevels,
+    outfit: save.outfit, mercy, eggHead, album: save.album, level, startAt, endlessLevels, seenVideos: !!(level && save.levels[level]?.done),
     events: {
       onLevelDone,
       onGod: (on) => { $('god-ctl').classList.toggle('hidden', !on); toast(on ? '⚡ GODMODE AN! ◀ ▶ laufen · 🚀 schießen' : 'Godmode aus', 2600); if (on) unlockAch('god'); },
       onSecret: () => { if (!save.secretFound) { save.secretFound = true; persist(); unlockAch('secret'); toast('🌿 Psst… Geheimes Level freigeschaltet!', 3200); } },
+      onCinema: (on) => { if (screen !== 'play' || !game || game.state === 'goal') return; setHud(!on); if (!on) tapHint('Tippen = Springen  ·  ⬇ = Ducken', 2600); },
       onGoal: () => { $('god-ctl').classList.add('hidden'); setHud(false); },
       onDeath: onDeath,
       onFinale: onFinale,
@@ -217,7 +218,8 @@ function startGame(mode, { level = null, startAt = 0 } = {}) {
   if (mode === 'level') { toast(`${LEVELS[level].icon} ${lvP?.title || ''}${startAt ? ' · ab Checkpoint 🚩' : ''}`, 2600); }
   else if (mode === 'horror') toast(`👻 ${assets.config.horror?.intro || ''}`, 3200);
   else if (mercy) toast(['', '🐱 Gnadenmodus: Fips hilft & alles etwas langsamer', '❤️❤️ Gnadenmodus: 2 Extra-Leben', '🤫 Schummel-Modus: Start mit 25 Kerzen'][mercy], 3000);
-  tapHint('Tippen = Springen  ·  ⬇ = Ducken', 2600);
+  if (game.state === 'story') setHud(false);
+  else tapHint('Tippen = Springen  ·  ⬇ = Ducken', 2600);
 }
 
 function updateHearts(n) { n = Math.max(0, Math.min(3, n)); $('hearts').textContent = '❤️'.repeat(n) + '🤍'.repeat(3 - n); }

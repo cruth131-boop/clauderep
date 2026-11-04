@@ -887,7 +887,7 @@ export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wav
   }
   const face = (fx, fy) => {
     if (faceKey) drawFaceOn(g, faceKey, expr, fx, fy, 21); else if (emojiHead) emoji(g, emojiHead, fx, fy - 18, 40);
-    if (acc?.length) { g.save(); g.translate(fx, fy - 21 + 4); const set = new Set(acc); const w = 40, h = 58; if (set.has('afro')) drawAfro(g, w, h, t); if (set.has('starshades')) drawStarShades(g, w, h, t); if (set.has('stache')) drawStache(g, w, h); if (set.has('boa')) drawBoa(g, w, h, t); if (set.has('cowboyhat')) drawCowboyHat(g, w, h); g.restore(); }
+    if (acc?.length) { g.save(); g.translate(fx, fy - 21 + 4); const set = new Set(acc); const w = 40, h = 58; if (set.has('afro')) drawAfro(g, w, h, t); if (set.has('starshades')) drawStarShades(g, w, h, t); if (set.has('stache')) drawStache(g, w, h); if (set.has('boa')) drawBoa(g, w, h, t); if (set.has('cowboyhat')) drawCowboyHat(g, w, h); if (set.has('choco')) { g.fillStyle = 'rgba(74,42,23,0.92)'; for (let k = 0; k < 6; k++) { g.beginPath(); g.arc(Math.sin(k * 2.3) * w * 0.25, h * 0.05 + Math.cos(k * 1.7) * h * 0.2, w * (0.12 + (k % 2) * 0.06), 0, 7); g.fill(); } } g.restore(); }
   };
   const legC = oma ? '#6b5b4b' : '#333a4a';
   if (run) {

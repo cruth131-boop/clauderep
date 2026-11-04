@@ -8,6 +8,7 @@ Level 38 den Endlos-Modus (alle Level-Welten in zufälliger Reihenfolge). Roadtr
 - Fortschritt (Sterne, Rekorde, Outfits) wird automatisch im Browser gespeichert (`localStorage`, Schlüssel `br.save.v1`).
   `?reset=1` löscht ihn, `?dev=1` schaltet zum Testen alles frei.
 - Cheat in jedem Level: 10× springen, 3× ducken, 3× springen (innerhalb von 12 s) → Godmode mit ◀ ▶ und Raketenwerfer.
+- Kurzvideos im Kinoformat vor dem Level (`introVideo`) und nach dem Ziel (`outroVideo`), beim Wiederholen sofort überspringbar.
 - Nach dem Zieleinlauf folgt das Finale: Einspieler oder Minispiel (Tanzen im Takt, Rolltreppe, Sonde,
   Schultüte, Schokokuss-Werfen, Spielautomat, Fips mit den Hunden). Minispiele kennen kein Scheitern, nur Bonuspunkte.
   Daten: `events` in der privaten Config, Engine: `js/story.js`.

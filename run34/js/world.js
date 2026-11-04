@@ -41,7 +41,8 @@ function weighted(obj) {
 }
 
 export class Game {
-  constructor(mode, { outfit, mercy = 0, events = {}, eggHead = false, album = [], level = null, startAt = 0, endlessLevels = null } = {}) {
+  constructor(mode, { outfit, mercy = 0, events = {}, eggHead = false, album = [], level = null, startAt = 0, endlessLevels = null, seenVideos = false } = {}) {
+    this.seenVideos = seenVideos;
     this.mode = mode;
     this.M = { ...MODES[mode] };
     this.cfg = assets.config;
@@ -97,6 +98,7 @@ export class Game {
       if (this.levelPool.length) { this.worldList = shuffle(this.levelPool.slice()); this.biome = this.worldList[0]; this.stats.worlds = new Set(); }
     }
     if (this.lv) this.initLevel(startAt);
+    if (this.lv && this.lvP.introVideo && !startAt) this.beginStory({ ...this.lvP.introVideo, kind: 'scene', cinema: 1 });
   }
 
   levelBiome(id) {
@@ -258,10 +260,12 @@ export class Game {
       p.phase += dt * (this.story.kimiPose === 'run' ? 12 : 0);
       if (this.story.done) {
         if (this.story.result) { this.miniResults.push(this.story.result); this.score += this.story.result.bonus; }
+        const wasCinema = !!this.story.ev.cinema;
         this.story = null;
         if (this.endQueue?.length) this.beginStory(this.endQueue.shift());
         else if (this.goalReached) { this.state = 'goal'; this.goalPhase = 'cheer'; this.goalT = 0; this.speed = 0; p.expr = 'party'; p.exprT = 99; }
-        else { this.state = 'run'; p.invuln = Math.max(p.invuln, 3); this.obstacles = []; }
+        else { this.state = 'run'; p.invuln = Math.max(p.invuln, wasCinema ? 0.5 : 3); this.obstacles = []; }
+        if (wasCinema && !this.story) this.events.onCinema?.(false);
       }
     } else if (this.state === 'revive') {
       this.reviveT += dt;
@@ -411,6 +415,7 @@ export class Game {
     this.p.duck = false; this.p.vy = 0;
     this.story = startStory(this, ev);
     this.state = 'story';
+    if (ev.cinema) this.events.onCinema?.(true);
   }
 
   storyInput(type, x, y) { if (this.story) storyInput(this, this.story, type, x, y); }
@@ -462,7 +467,7 @@ export class Game {
   startGoal() {
     if (this.state !== 'run') return;
     this.state = 'goal'; this.goalT = 0; this.dash = null; this.chase = null; this.ramp = null;
-    this.goalReached = true; this.goalPhase = 'slow'; this.endStarted = true; this.endQueue = (this.lvP.events || []).slice();
+    this.goalReached = true; this.goalPhase = 'slow'; this.endStarted = true; this.endQueue = (this.lvP.events || []).concat(this.lvP.outroVideo ? [{ ...this.lvP.outroVideo, kind: 'scene', cinema: 1 }] : []);
     if (this.biome === FIPSLAND) this.leaveFipsland();
     this.fx.text(this.p.x + 40, this.V.groundY - 150, 'ZIEL! 🏁', { color: '#ffd23f', size: 30 });
     const p = this.p; p.duck = false; p.expr = 'party'; p.exprT = 999;
@@ -1120,7 +1125,7 @@ export class Game {
     const goalish = this.state === 'finale' || this.state === 'goal';
     let pose = this.state === 'dying' ? 'dead' : goalish ? (this.speed > 5 ? 'run' : 'cheer') : this.state === 'idle' ? 'run' : p.y > 0.5 ? 'jump' : p.duck ? 'duck' : 'run';
     if (this.state === 'revive') pose = this.reviveT < 0.9 ? 'duck' : 'cheer';
-    if (this.state === 'story') pose = this.story.kimiPose || 'cheer';
+    if (this.state === 'story') { pose = this.story.kimiPose || 'cheer'; if (pose === 'stand') pose = 'run'; }
     if (this.god && this.state === 'run' && !this.walking && p.y < 0.5 && !p.duck) pose = 'cheer';
     if (this.state === 'goal' && this.goalPhase === 'cheer') this.drawStage(g);
     const blink = p.invuln > 0 && Math.floor(this.t * 12) % 2;
@@ -1131,7 +1136,7 @@ export class Game {
       const flip = this.god && this.facing < 0;
       if (flip) { g.save(); g.translate(p.x, 0); g.scale(-1, 1); g.translate(-p.x, 0); }
       drawCharacter(g, p.x, V.groundY - p.y, {
-        pose, phase: p.phase, outfit: this.outfit, expr: this.lvP?.kid && p.expr !== 'sad' ? 'child' : p.expr, scale: CHAR_SCALE, t: this.t, swell: p.swell, headScale: this.eggT > 0 ? 1.9 : 0,
+        pose, phase: p.phase, outfit: this.story?.outfitNow || this.outfit, expr: this.lvP?.kid && p.expr !== 'sad' ? 'child' : p.expr, scale: CHAR_SCALE, t: this.t, swell: p.swell, headScale: this.eggT > 0 ? 1.9 : 0,
         rot: this.state === 'dying' ? -Math.min(1.2, this.deadT * 4) : 0,
       });
       if (this.god) drawLauncher(g, p.x, V.groundY - p.y - (p.duck && p.y < 1 ? 56 : 86), this.t);

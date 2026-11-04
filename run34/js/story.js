@@ -2,7 +2,7 @@
 // Designregeln: eine Geste pro Spiel, per animierter Hand gezeigt statt erklärt, 6–12 s, kein Scheitern
 // (nur mehr oder weniger Bonuspunkte), viel Feedback, eine Überraschung pro Spiel. Einspieler: zeigen statt erzählen.
 // Die Ereignisse selbst (wer, was, Texte) stehen in der privaten Config: config.levels[i].events.
-import { drawPerson, drawCat, drawHero, roundRect } from './character.js';
+import { drawPerson, drawCat, drawHero, drawRollatorOma, roundRect } from './character.js';
 import { emoji } from './emoji.js';
 import { COSTUMES } from './levels.js';
 import { sfx, duckMusic } from './audio.js';
@@ -21,7 +21,7 @@ function rating(frac) { return frac >= 0.85 ? 'LEGENDÄR! 🔥' : frac >= 0.6 ? 
 // ---------------------------------------------------------------------------
 export function startStory(game, ev) {
   const V = game.V;
-  const s = { ev, kind: ev.kind, t: 0, phase: 'intro', dur: ev.dur || 5, done: false, parts: [], kimiPose: 'cheer', fw: [], pops: [] };
+  const s = { ev, kind: ev.kind, t: 0, phase: 'intro', dur: ev.dur || 5, done: false, parts: [], kimiPose: ev.kimiPose || 'cheer', fw: [], pops: [], skipAny: !!(ev.cinema && game.seenVideos), kimiX: game.p.x };
   if (s.kind === 'party') {
     const src = (ev.faces ? ev.faces.map((f) => ({ face: f })) : game.levelGuests.filter((c) => c.face)).slice(0, 7);
     const uniq = []; const seen = new Set(); for (const c of src) if (!seen.has(c.face)) { seen.add(c.face); uniq.push(c); }
@@ -85,6 +85,9 @@ export function updateStory(game, s, dt) {
   s.pops = s.pops.filter((q) => q.t < 0.9);
 
   if (s.kind === 'scene' || s.kind === 'fipsplay') {
+    s.kimiX = game.p.x;
+    if (s.fx?.flashAt != null && s.t >= s.fx.flashAt && !s.flashed) { s.flashed = true; game.flash = 0.9; sfx('fanfare'); for (let i = 0; i < 3; i++) game.fx.burst(rand(60, V.w - 60), rand(30, V.groundY * 0.5), { n: 40, type: 'confetti', speed: 260, size: 4, gravity: 260 }); }
+    if (s.ev.kimiOutfits) { let o = null; for (const [t, out] of s.ev.kimiOutfits) if (s.t >= t) o = out; if (o && o !== s.lastOutfit) { s.lastOutfit = o; game.flash = Math.max(game.flash, 0.4); sfx('tap', 6); } s.outfitNow = o ? { ...game.outfit, ...o } : null; }
     for (const a of s.actors || []) {
       if (a.knockAt && s.t >= a.knockAt && !a.knocked) { a.knocked = true; game.shake = 12; game.flash = 0.6; sfx('smash'); sfx('boom'); pop(s, ax(a, s, V), V.groundY - 110, pick(['POW!', 'KAWUMM!', 'BAM!']), '#ffd23f', 30); game.fx.burst(ax(a, s, V), V.groundY - 70, { n: 30, colors: ['#ffd23f', '#fff', '#ff7b39'], speed: 300, size: 4 }); }
     }
@@ -386,12 +389,12 @@ export function storyInput(game, s, type, x, y) {
   else if (s.kind === 'escalator') {
     if (s.phase === 'stuck') { s.help = Math.min(1, s.help + 0.085); sfx('tap', Math.floor(s.help * 10)); pop(s, game.p.x + rand(-10, 30), V.groundY - 160 - rand(0, 30), pick(['MAMAAA!', 'HILFE!', 'MAMA! 😭']), '#fff', 14); }
     else if (s.phase === 'aim') smashEscalator(game, s, true);
-  } else if ((s.kind === 'scene' || s.kind === 'fipsplay') && s.t > 0.8) s.done = true;
+  } else if ((s.kind === 'scene' || s.kind === 'fipsplay') && (s.t > 0.8 || s.skipAny)) s.done = true;
 }
 
 // ---------------------------------------------------------------------------
 function ax(a, s, V) {
-  let x = V.w * (a.x ?? 0.6);
+  let x = a.kx != null ? s.kimiX + a.kx : V.w * (a.x ?? 0.6);
   if (a.moves) { const m = a.moves; let i = 0; while (i < m.length - 1 && s.t > m[i + 1][0]) i++; const [t0, x0] = m[i], [t1, x1] = m[Math.min(i + 1, m.length - 1)]; x = V.w * (t1 > t0 ? lerp(x0, x1, clamp((s.t - t0) / (t1 - t0), 0, 1)) : x0); }
   const t0 = a.t0 || 0;
   if (a.from === 'right') x = lerp(V.w + 60, x, ease((s.t - t0) / 0.7));
@@ -470,9 +473,11 @@ function drawActor(g, game, s, a, i, extra = {}) {
   if (anim === 'twerk') rot = Math.sin(lt * 22) * 0.22;
   if (anim === 'solo') { y -= Math.abs(Math.sin(lt * 10)) * 26; rot = Math.sin(lt * 5) * 0.4; }
   if (a.knocked) { rot = (s.t - a.knockAt) * 9; y -= (s.t - a.knockAt) * 300; }
+  if (a.yUp) y -= a.yUp;
   const sc = (a.scale || 1) * SC;
   g.save(); g.translate(x, y - 40); g.rotate(rot); g.translate(-x, -(y - 40));
-  if (a.big) emoji(g, a.big, x, y - 34 * (a.scale || 1), 70 * (a.scale || 1), 0, !!a.flip);
+  if (a.rollator) { drawRollatorOma(g, x, y + 6, { t: s.t, scale: 0.95 * 1.05 }); if (a.moves && s.t > a.moves[a.moves.length - 1][0] - 1) game.fx.list.push({ x: x - 40, y: y - 16, vx: -60, vy: rand(-10, 10), life: 0.6, max: 0.6, color: 'rgba(200,200,200,0.8)', size: 4, gravity: -20, type: 'smoke', rot: 0, vr: 0, drag: 1 }); }
+  else if (a.big) emoji(g, a.big, x, y - 34 * (a.scale || 1), 70 * (a.scale || 1), 0, !!a.flip);
   else if (a.cat) {
     const salto = anim === 'salto' ? (lt % 1.6) : 0, jy = anim === 'salto' ? Math.sin(Math.min(1, salto / 0.9) * Math.PI) * 60 : 0;
     const cy = y - jy - 18;
@@ -488,14 +493,15 @@ function drawActor(g, game, s, a, i, extra = {}) {
   }
   if (a.prop && (!a.propT || s.t >= a.propT) && (!a.propEnd || s.t < a.propEnd)) emoji(g, a.prop, x + 16, y - (a.pet ? 18 : 60), 20);
   g.restore();
-  for (const [st, en, txt] of a.says || []) if (s.t >= st && s.t <= en) bubble(g, x, y - (a.pet ? 62 : 140) * (a.scale || 1), txt);
+  for (const [st, en, txt] of a.says || []) if (s.t >= st && s.t <= en) bubble(g, x, y - (a.pet ? 62 : a.rollator ? 120 : a.big ? 80 : 140) * (a.scale || 1), txt);
 }
 
 export function drawStoryBack(g, game, s) {
   const V = game.V;
   if (s.kind === 'party') disco(g, V, s.t, s.phase === 'end' ? 1 : clamp(0.3 + (s.combo || 0) * 0.08, 0, 1));
   else if (s.fx?.disco) disco(g, V, s.t);
-  if (s.fx?.dim) { g.fillStyle = `rgba(0,0,0,${s.fx.dim})`; g.fillRect(0, 0, V.w, V.h); }
+  if (s.fx?.dim && (s.fx.dimUntil == null || s.t < s.fx.dimUntil)) { g.fillStyle = `rgba(0,0,0,${s.fx.dim})`; g.fillRect(0, 0, V.w, V.h); }
+  if (s.fx?.tint && s.t >= (s.fx.tintFrom || 0)) { g.fillStyle = s.fx.tint; g.fillRect(0, 0, V.w, V.h); }
 }
 
 export function drawStory(g, game, s) {
@@ -518,7 +524,18 @@ export function drawStory(g, game, s) {
   }
   if (s.fx?.banner && s.t < (s.fx.bannerEnd || 2.2)) banner(g, V, s.fx.banner, s.t, false);
   if (ev.endBanner && s.t > (ev.endBannerAt || s.dur - 1.6)) banner(g, V, ev.endBanner, s.t, true);
-  if ((s.kind === 'scene' || s.kind === 'fipsplay') && s.t > 0.8) { g.globalAlpha = 0.45 + Math.sin(s.t * 4) * 0.25; emoji(g, '⏩', V.w - 26, gy + 36, 18); g.globalAlpha = 1; }
+  if (s.kind === 'scene') {
+    const kx = game.p.x, ky = gy - game.p.y;
+    if (ev.kimiProp) emoji(g, ev.kimiProp, kx + 18, ky - 70, 24);
+    if (ev.kimiHat) emoji(g, ev.kimiHat, kx + 2, ky - 132, 30);
+    if (ev.kimiFx === 'zzz') for (let i = 0; i < 3; i++) { const k = (s.t * 0.6 + i / 3) % 1; g.globalAlpha = 1 - k; emoji(g, '💤', kx + 20 + k * 30, ky - 90 - k * 50, 14 + k * 10); g.globalAlpha = 1; }
+    for (const [st, en, txt] of ev.kimiSays || []) if (s.t >= st && s.t <= en) bubble(g, kx + 8, ky - 140, txt, '#c2185b');
+  }
+  if (ev.cinema) {
+    const k = clamp(Math.min(s.t, s.dur - s.t) / 0.35, 0, 1), bh = V.h * 0.09 * k;
+    g.fillStyle = '#000'; g.fillRect(0, 0, V.w, bh); g.fillRect(0, V.h - bh, V.w, bh);
+  }
+  if ((s.kind === 'scene' || s.kind === 'fipsplay') && (s.t > 0.8 || s.skipAny)) { g.globalAlpha = 0.5 + Math.sin(s.t * 4) * 0.25; g.fillStyle = '#fff'; g.font = '800 11px ui-rounded, system-ui, sans-serif'; g.textAlign = 'right'; g.fillText('⏩ Tippen zum Überspringen', V.w - 12, V.h - 10); g.globalAlpha = 1; }
 }
 
 function drawParty(g, game, s) {
