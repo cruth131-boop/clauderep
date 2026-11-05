@@ -89,7 +89,8 @@ export class Game {
     this.hour = new Date().getHours();
     this.boxSpawned = false; this.fipsT = 0; this.savedBiome = null;
     // Heidi versteckt sich im Geburtstags-Modus (und im Finale) hinter einem Busch -> Antippen = Pilzwald
-    this.heidiOn = mode === 'birthday' || level === 'L38'; this.heidiPeek = null; this.nextHeidi = rand(14, 22); this.heidiDone = false;
+    this.heidiOn = mode === 'birthday' || level === 'L38'; this.heidiPeek = null; this.nextHeidi = rand(12, 55); this.heidiDone = false; // nur ein einziger Auftritt pro Lauf, Zeitpunkt zufällig
+    this.miniDone = false;
     this.omaRide = null; this.nextOma = ['birthday', 'endless', 'roadtrip'].includes(mode) ? rand(26, 34) : Infinity;
     this.hero = null; this.nextHero = ['birthday', 'endless', 'roadtrip', 'horror'].includes(mode) ? rand(16, 24) : Infinity;
     this.prevBiome = null; this.biomeFade = 1; this.nextBiomeAt = 60;
@@ -219,6 +220,13 @@ export class Game {
       return true;
     }
     for (const c of this.cameos) {
+      if (c.mini && !this.miniDone && this.state === 'run' && Math.abs(x - c.x) < 40 && y > V.groundY - 165 && y < V.groundY + 10) {
+        this.miniDone = true; c.mini = null; c.line = c.miniLine || 'Los geht’s! 🏃‍♀️'; c.sayT = 0; c.said = true;
+        this.flash = 0.8; sfx('power');
+        this.fx.burst(c.x, V.groundY - 80, { n: 34, colors: ['#ff7043', '#fff', '#ffd23f'], speed: 240 });
+        this.beginStory({ kind: 'sprint', face: c.face, rival: c.rival, label: c.miniLabel || '🏃‍♀️ 200-m-Sprint' });
+        return true;
+      }
       if (!c.secret) continue;
       if (Math.abs(x - c.x) < 36 && y > V.groundY - 165 && y < V.groundY + 10) {
         c.secret = false; c.line = '…okay. Psst! 🌿'; c.sayT = 0; c.said = true;
@@ -371,7 +379,7 @@ export class Game {
     for (const c of this.cameos) { c.x -= dx; c.t += dt; }
     this.cameos = this.cameos.filter((c) => c.x > -80);
     if (this.heidiOn && !this.heidiDone && this.state === 'run' && !this.horror) {
-      if (this.heidiPeek) { const h = this.heidiPeek; h.x -= dx * 0.55; h.t += dt; if (h.x < -70) { this.heidiPeek = null; this.nextHeidi = rand(22, 32); } }
+      if (this.heidiPeek) { const h = this.heidiPeek; h.x -= dx * 0.55; h.t += dt; if (h.x < -70) { this.heidiPeek = null; this.heidiDone = true; } }
       else if ((this.nextHeidi -= dt) <= 0) this.heidiPeek = { x: this.V.w + 60, t: 0 };
     }
     if (this.rockets.length) this.updateRockets(dt, dx);
@@ -1335,6 +1343,7 @@ export class Game {
 
   drawCameo(g, c) {
     const V = this.V;
+    if (c.mini && !this.miniDone) { g.globalAlpha = 0.6 + Math.sin(c.t * 6) * 0.4; emoji(g, '👟', c.x + 22, V.groundY - 150, 18); emoji(g, '✨', c.x - 20, V.groundY - 140, 14); g.globalAlpha = 1; }
     if (c.shout) { // hüpft und brüllt, Flasche in der Hand – ohne Fahne
       const hop = Math.abs(Math.sin(c.t * 7)) * 12;
       drawPerson(g, c.x, V.groundY - 6 - hop, { faceKey: c.face, t: c.t, color: c.color, scale: CAMEO_SCALE, wave: true, expr: 'happy' });

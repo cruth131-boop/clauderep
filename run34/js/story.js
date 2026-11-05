@@ -53,6 +53,8 @@ export function startStory(game, ev) {
     s.items = [{ x: xs[0], e: junk[0][0], line: junk[0][1] }, { x: xs[1], e: junk[1][0], line: junk[1][1], coin: junk[1][0] === '🪙' }, { x: xs[2], e: '💍', ring: true }];
     s.items.forEach((it) => { it.dug = false; });
     s.kimiPose = 'cheer';
+  } else if (s.kind === 'sprint') {
+    s.d = 0; s.v = 0; s.rd = 0; s.rv = 0; s.taps = 0; s.go = null; s.myT = null; s.rT = null; s.lastBeep = -1; s.tapFx = [];
   } else if (s.kind === 'mushrooms') {
     s.time = ev.time || 30; s.pt = 0; s.hx = V.w * 0.3; s.hy = 0; s.hvy = 0; s.target = s.hx; s.caught = 0; s.golds = 0; s.mush = []; s.dir = 1;
     for (let i = 0; i < 5; i++) s.mush.push(newMush(V, s));
@@ -178,6 +180,92 @@ function drawMushrooms(g, game, s) {
   if (s.phase === 'end') banner(g, V, `${s.caught} Pilze im Korb! 🧺`, s.t - s.endT, true);
 }
 
+// ---------------------------------------------------------------------------
+// 200-m-Sprint: jedes Tippen beschleunigt die Läuferin, der Rivale läuft mit festem Tempo
+const SPRINT_M = 200, VIS = 1.8; // angezeigte Meter pro „Lauf-Meter“
+function updateSprint(game, s, dt) {
+  if (s.phase === 'intro' && s.t > 1.8) { s.phase = 'ready'; s.readyT = s.t; }
+  if (s.phase === 'ready') {
+    const k = Math.floor(s.t - s.readyT);
+    if (k !== s.lastBeep && k < 3) { s.lastBeep = k; sfx('beep', k === 2 ? 0 : 0.2); }
+    if (s.t - s.readyT >= 3) { s.phase = 'run'; s.go = s.t; sfx('shot'); sfx('beep', 1); game.flash = 0.3; }
+  }
+  if (s.phase === 'run' || s.phase === 'end') {
+    const rt = s.t - (s.go || s.t);
+    // eigene Läuferin: Tippen gibt Schub, Luftwiderstand bremst
+    s.v = Math.max(0, s.v - s.v * 0.9 * dt);
+    if (s.myT == null) s.d = Math.min(SPRINT_M, s.d + s.v * VIS * dt);
+    // Rivale: Reaktionszeit, Beschleunigung, gegen Ende leicht müde
+    const rTarget = rt < 0.25 ? 0 : 7.4 - Math.max(0, (s.rd - 150) / 50) * 0.5;
+    s.rv += (rTarget - s.rv) * Math.min(1, dt * 1.6);
+    if (s.rT == null) s.rd = Math.min(SPRINT_M, s.rd + s.rv * VIS * dt);
+    if (s.d >= SPRINT_M && s.myT == null) { s.myT = rt; sfx(s.rT == null ? 'fanfare' : 'bad'); game.flash = 0.5; }
+    if (s.rd >= SPRINT_M && s.rT == null) s.rT = rt;
+    for (const f of s.tapFx) f.t += dt; s.tapFx = s.tapFx.filter((f) => f.t < 0.5);
+    if (s.phase === 'run' && s.myT != null && (s.rT != null || s.t - s.go - s.myT > 1.2)) {
+      s.phase = 'end'; s.endT = s.t;
+      const win = s.rT == null || s.myT < s.rT, tm = s.myT.toFixed(2);
+      const bonus = (win ? 60 : 15) + Math.max(0, Math.round((16 - s.myT) * 10));
+      finish(game, s, s.ev.label || '🏃‍♀️ 200-m-Sprint', `${tm} s · ${win ? 'Sieg! 🥇' : 'knapp verloren 🥈'}`, bonus, win ? Math.min(1, 0.7 + (15 - s.myT) / 15) : 0.35);
+      if (win) for (let i = 0; i < 4; i++) game.fx.burst(rand(60, game.V.w - 60), rand(30, game.V.groundY * 0.5), { n: 40, type: 'confetti', speed: 260, size: 4, gravity: 260 });
+    }
+  }
+  if (s.phase === 'end' && s.t - s.endT > 3.2) s.done = true;
+}
+function sprintTap(game, s, x, y) {
+  if (s.phase === 'ready') { pop(s, game.V.w * 0.5, game.V.groundY - 140, 'Noch nicht! ✋', '#ff8a80', 18); return; }
+  if (s.phase !== 'run' || s.myT != null) return;
+  s.taps++; s.v = Math.min(11.5, s.v + 1.05);
+  sfx('tap', Math.min(12, Math.round(s.v)));
+  s.tapFx.push({ x, y, t: 0 });
+}
+function drawSprint(g, game, s) {
+  const V = game.V, gy = V.groundY, PX = 9; // Pixel pro angezeigtem Meter
+  const cam = s.d * PX - V.w * 0.35;
+  // Himmel & Tribüne
+  const sky = g.createLinearGradient(0, 0, 0, gy - 80); sky.addColorStop(0, '#6ec6ff'); sky.addColorStop(1, '#d7f0ff');
+  g.fillStyle = sky; g.fillRect(0, 0, V.w, V.h);
+  g.fillStyle = '#5c6bc0'; g.fillRect(0, gy - 150, V.w, 80);
+  for (let r = 0; r < 4; r++) for (let i = 0; i < 70; i++) { const x = ((i * 23 - cam * 0.3) % (V.w + 40) + V.w + 40) % (V.w + 40) - 20; g.fillStyle = ['#ffcc80', '#f48fb1', '#fff59d', '#80deea', '#ef9a9a'][(i + r) % 5]; g.beginPath(); g.arc(x, gy - 140 + r * 18 + Math.sin(s.t * 8 + i) * (s.phase === 'run' ? 1.5 : 0), 5, 0, 7); g.fill(); }
+  g.fillStyle = '#3949ab'; g.fillRect(0, gy - 72, V.w, 8);
+  // Bahn (Tartan) mit Linien
+  g.fillStyle = '#c4553a'; g.fillRect(0, gy - 64, V.w, V.h - gy + 64);
+  g.strokeStyle = '#fff'; g.lineWidth = 2;
+  for (const ly of [gy - 64, gy - 34, gy - 4, gy + 26]) { g.beginPath(); g.moveTo(0, ly); g.lineTo(V.w, ly); g.stroke(); }
+  for (let m = 0; m <= SPRINT_M; m += 25) {
+    const x = m * PX - cam + 60;
+    if (x < -40 || x > V.w + 40) continue;
+    g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(x, gy - 64, 2, 90);
+    g.fillStyle = '#fff'; g.font = '900 12px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(`${m} m`, x, gy + 42);
+  }
+  const fx = SPRINT_M * PX - cam + 60; // Ziellinie
+  if (fx > -40 && fx < V.w + 40) { for (let i = 0; i < 12; i++) { g.fillStyle = i % 2 ? '#111' : '#fff'; g.fillRect(fx, gy - 64 + i * 7.5, 8, 7.5); g.fillStyle = i % 2 ? '#fff' : '#111'; g.fillRect(fx + 8, gy - 64 + i * 7.5, 8, 7.5); } }
+  const sx = -cam + 60; if (sx > -40) { g.fillStyle = '#fff'; g.fillRect(sx - 3, gy - 64, 4, 90); }
+  // Läufer: Rivale hinten (obere Bahn), Läuferin vorne
+  const run = (face, dist, vel, lane, col) => {
+    const x = dist * PX - cam + 60, y = lane ? gy - 12 : gy + 22;
+    const moving = vel > 0.3;
+    drawPerson(g, x, y, { faceKey: face, t: moving ? s.t * (0.4 + vel / 9) : 0, color: col, scale: SC * (lane ? 0.84 : 1), run: moving, wave: !moving, expr: 'happy' });
+  };
+  run(s.ev.rival, s.rd, s.rv, 1, '#1e88e5');
+  run(s.ev.face, s.d, s.v, 0, '#e53935');
+  // HUD: Fortschritt beider, Tempo, Zeit
+  const bar = (y, d, col, name) => { g.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(g, 14, y, 200, 12, 6); g.fill(); g.fillStyle = col; roundRect(g, 14, y, Math.max(6, 200 * d / SPRINT_M), 12, 6); g.fill(); g.fillStyle = '#fff'; g.font = '800 11px ui-rounded, system-ui, sans-serif'; g.textAlign = 'left'; g.fillText(name, 220, y + 10); };
+  const names = game.cfg.guestNames || {};
+  bar(100, s.d, '#e53935', names[s.ev.face] || '');
+  bar(118, s.rd, '#1e88e5', names[s.ev.rival] || '');
+  const rt = s.go ? (s.myT ?? (s.t - s.go)) : 0;
+  g.fillStyle = 'rgba(0,0,0,0.4)'; roundRect(g, V.w - 150, 98, 136, 38, 10); g.fill();
+  g.fillStyle = '#fff'; g.font = '900 15px ui-rounded, system-ui, sans-serif'; g.textAlign = 'right';
+  g.fillText(`⏱ ${rt.toFixed(2)} s`, V.w - 22, 114); g.fillText(`⚡ ${Math.round(s.v * VIS * 3.6)} km/h`, V.w - 22, 131);
+  for (const f of s.tapFx) { g.globalAlpha = 1 - f.t * 2; g.strokeStyle = '#ffd23f'; g.lineWidth = 3; g.beginPath(); g.arc(f.x, f.y, 10 + f.t * 60, 0, 7); g.stroke(); g.globalAlpha = 1; }
+  if (s.phase === 'intro') { banner(g, V, '🏃‍♀️ 200-m-Sprint!', s.t); g.fillStyle = '#fff'; g.font = '800 15px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('Tippe so schnell du kannst – je schneller, desto mehr Bonus!', V.w / 2, gy + 64); }
+  if (s.phase === 'ready') { const k = Math.floor(s.t - s.readyT); banner(g, V, ['Auf die Plätze…', 'Fertig…', 'Fertig…'][k] || 'Fertig…', s.t - s.readyT - k); }
+  if (s.phase === 'run' && s.t - s.go < 0.8) banner(g, V, 'LOS! 💥', s.t - s.go, true);
+  if (s.phase === 'run' && s.myT == null && s.t - s.go > 0.8) { g.globalAlpha = 0.6 + Math.sin(s.t * 14) * 0.4; g.fillStyle = '#ffd23f'; g.font = '900 22px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('TIPP! TIPP! TIPP! 👆', V.w / 2, gy + 70); g.globalAlpha = 1; }
+  if (s.phase === 'end') { const win = s.rT == null || s.myT < s.rT; banner(g, V, win ? `🥇 Gewonnen! ${s.myT.toFixed(2)} s` : `🥈 ${names[s.ev.rival] || 'Rivale'} war schneller!`, s.t - s.endT, true); }
+}
+
 function finish(game, s, label, value, bonus, frac = null) {
   if (s.result) return;
   s.result = { label, value, bonus: Math.max(0, Math.round(bonus)), rating: frac != null ? rating(frac) : null };
@@ -211,6 +299,7 @@ export function updateStory(game, s, dt) {
   else if (s.kind === 'detector') updDetector(game, s, dt);
   else if (s.kind === 'tapgame') updTap(game, s, dt);
   else if (s.kind === 'mushrooms') updateMushrooms(game, s, dt);
+  else if (s.kind === 'sprint') updateSprint(game, s, dt);
   else if (s.kind === 'throw') updThrow(game, s, dt);
   else if (s.kind === 'slot') updSlot(game, s, dt);
   else if (s.kind === 'candles') {
@@ -483,6 +572,7 @@ function evalSpin(game, s) {
 export function storyInput(game, s, type, x, y) {
   const V = game.V;
   if (s.kind === 'mushrooms') { mushInput(game, s, type, x); return; }
+  if (s.kind === 'sprint') { if (type === 'down') sprintTap(game, s, x, y); return; }
   if (s.kind === 'candles' && s.phase === 'play' && (type === 'move' || type === 'down')) {
     for (const c of s.candles) if (c.lit && Math.abs(c.x - x) < 16 && Math.abs(c.y - 12 - y) < 26) { c.lit = false; s.out++; sfx('tap', s.out % 12); game.fx.burst(c.x, c.y - 14, { n: 6, type: 'smoke', colors: ['#ddd', '#fff'], speed: 40, size: 4, gravity: -60 }); }
     return;
@@ -750,6 +840,7 @@ export function drawStory(g, game, s) {
   else if (s.kind === 'detector') drawDetector(g, game, s);
   else if (s.kind === 'tapgame') drawTap(g, game, s);
   else if (s.kind === 'mushrooms') drawMushrooms(g, game, s);
+  else if (s.kind === 'sprint') drawSprint(g, game, s);
   else if (s.kind === 'throw') drawThrow(g, game, s);
   else if (s.kind === 'slot') drawSlot(g, game, s);
   else if (s.kind === 'candles') drawCandles(g, game, s);
