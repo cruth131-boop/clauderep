@@ -95,6 +95,7 @@ export function updateStory(game, s, dt) {
     if (s.fx?.flashAt != null && s.t >= s.fx.flashAt && !s.flashed) { s.flashed = true; game.flash = 0.9; sfx('fanfare'); for (let i = 0; i < 3; i++) game.fx.burst(rand(60, V.w - 60), rand(30, V.groundY * 0.5), { n: 40, type: 'confetti', speed: 260, size: 4, gravity: 260 }); }
     if (s.ev.kimiOutfits) { let o = null; for (const [t, out] of s.ev.kimiOutfits) if (s.t >= t) o = out; if (o && o !== s.lastOutfit) { s.lastOutfit = o; game.flash = Math.max(game.flash, 0.4); sfx('tap', 6); } s.outfitNow = o ? { ...game.outfit, ...o } : null; }
     for (const a of s.actors || []) {
+      if (a.spray) sprayUpdate(game, s, a, dt);
       if (a.knockAt && s.t >= a.knockAt && !a.knocked) { a.knocked = true; game.shake = 12; game.flash = 0.6; sfx('smash'); sfx('boom'); pop(s, ax(a, s, V), V.groundY - 110, pick(['POW!', 'KAWUMM!', 'BAM!']), '#ffd23f', 30); game.fx.burst(ax(a, s, V), V.groundY - 70, { n: 30, colors: ['#ffd23f', '#fff', '#ff7b39'], speed: 300, size: 4 }); }
     }
     if (s.t >= s.dur) s.done = true;
@@ -463,6 +464,47 @@ function disco(g, V, t, power = 1) {
   for (let i = 0; i < 10; i++) { const a = i / 10 * 6.28 + t * 3; g.fillStyle = `hsl(${(i * 50 + t * 200) % 360},100%,75%)`; g.fillRect(bx + Math.cos(a) * 9 - 1.5, by + Math.sin(a) * 9 - 1.5, 3, 3); }
 }
 
+// Champagner: erst schütteln, dann knallt der Korken, dann spritzt ein schwenkender Strahl
+function sprayGeo(game, s, a) {
+  const V = game.V, x = ax(a, s, V), y = V.groundY - 6, sp = a.spray, dir = sp.dir ?? -1;
+  const k = s.t - sp.t, tilt = k < 0 ? 0 : Math.min(1, k / 0.25);
+  const ang = -Math.PI / 2 + dir * (0.35 + tilt * 0.55) + (k > 0 ? Math.sin(s.t * 5) * 0.28 * tilt : Math.sin(s.t * 40) * 0.12 * (k > -0.8 ? 1 : 0));
+  const hx = x + dir * 14, hy = y - 64;
+  return { hx, hy, ang, mouth: [hx + Math.cos(ang) * 30, hy + Math.sin(ang) * 30], k };
+}
+function sprayUpdate(game, s, a, dt) {
+  const sp = a.spray; if (s.t < (a.t0 || 0)) return;
+  const { mouth, ang, k } = sprayGeo(game, s, a);
+  if (k >= 0 && !a.popped) {
+    a.popped = true; sfx('launch'); sfx('wine'); game.shake = Math.max(game.shake, 4);
+    a.cork = { x: mouth[0], y: mouth[1], vx: Math.cos(ang) * 260, vy: -520, r: 0 };
+    game.fx.burst(mouth[0], mouth[1], { n: 26, colors: ['#ffffff', '#fff6d6', '#ffe9a8'], speed: 260, size: 3.2, gravity: 500, spread: 1.4, angle: ang });
+    game.fx.text(mouth[0], mouth[1] - 30, sp.text || 'PLOPP! 🍾', { color: '#ffd23f', size: 22 });
+  }
+  if (a.cork) { const c = a.cork; c.vy += 900 * dt; c.x += c.vx * dt; c.y += c.vy * dt; c.r += dt * 20; if (c.y > game.V.groundY + 40) a.cork = null; }
+  if (k >= 0 && k < (sp.dur || 3.2)) {
+    const n = Math.round(dt * 260);
+    for (let i = 0; i < n; i++) {
+      const aa = ang + (Math.random() - 0.5) * 0.22, v = 380 + Math.random() * 220;
+      game.fx.list.push({ x: mouth[0], y: mouth[1], vx: Math.cos(aa) * v, vy: Math.sin(aa) * v, life: 0.7 + Math.random() * 0.5, max: 1.1, color: ['#ffd23f', '#f5c542', '#ffe27a', '#fff3b0', '#ffffff'][(Math.random() * 5) | 0], size: 1.9 + Math.random() * 2.4, gravity: 820, type: 'spark', rot: 0, vr: 0, drag: 0.995 });
+    }
+    if (Math.random() < dt * 30) game.fx.list.push({ x: mouth[0], y: mouth[1], vx: Math.cos(ang) * 60, vy: Math.sin(ang) * 60, life: 0.5, max: 0.5, color: 'rgba(255,255,255,0.9)', size: 5, gravity: -30, type: 'smoke', rot: 0, vr: 0, drag: 0.96 });
+    if (Math.random() < dt * 3) sfx('dig');
+  }
+}
+function drawChampagne(g, game, s, a) {
+  const { hx, hy, ang } = sprayGeo(game, s, a);
+  g.save(); g.translate(hx, hy); g.rotate(ang + Math.PI / 2);
+  const gl = g.createLinearGradient(-6, 0, 6, 0); gl.addColorStop(0, '#0d3b1e'); gl.addColorStop(0.45, '#2f7a45'); gl.addColorStop(1, '#0a2a15');
+  g.fillStyle = gl; g.beginPath(); g.moveTo(-6, 10); g.lineTo(-6, -8); g.quadraticCurveTo(-6, -15, -2.4, -19); g.lineTo(-2.4, -28); g.lineTo(2.4, -28); g.lineTo(2.4, -19); g.quadraticCurveTo(6, -15, 6, -8); g.lineTo(6, 10); g.closePath(); g.fill();
+  g.fillStyle = '#d9b44a'; g.fillRect(-2.9, -30, 5.8, 9); // Folie
+  g.fillStyle = '#f6efd8'; g.fillRect(-5.2, -4, 10.4, 8); g.fillStyle = '#b38b2a'; g.fillRect(-5.2, -1, 10.4, 1.4);
+  g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(-4, -12, 1.4, 20);
+  if (!a.popped) { g.fillStyle = '#c8a46a'; g.fillRect(-2.2, -33, 4.4, 4); }
+  g.restore();
+  if (a.cork) { const c = a.cork; g.save(); g.translate(c.x, c.y); g.rotate(c.r); g.fillStyle = '#c8a46a'; g.fillRect(-3, -2.5, 6, 5); g.restore(); }
+}
+
 // Gezeichnete Requisiten für Szenen
 const PROP_DRAW = {
   waferbox(g, x, y, t) { // sechseckige Waffelröllchen-Schachtel (Sonderedition) mit herausschauenden Röllchen
@@ -512,6 +554,7 @@ function drawActor(g, game, s, a, i, extra = {}) {
     drawPerson(g, x, y, { faceKey: a.face, emojiHead: a.emoji, t: s.t + i, color: a.color, scale: sc, wave: anim !== 'twerk' && !a.ice, pet: a.pet, oma: a.oma, run: anim === 'run', acc: a.acc, twerk: anim === 'twerk' || a.twerk });
     if (a.ice) drawIceToss(g, x, y, s.t + i);
   }
+  if (a.spray) drawChampagne(g, game, s, a);
   if (a.prop && (!a.propT || s.t >= a.propT) && (!a.propEnd || s.t < a.propEnd)) { if (PROP_DRAW[a.prop]) PROP_DRAW[a.prop](g, x + 20, y - 58, s.t); else emoji(g, a.prop, x + 16, y - (a.pet ? 18 : 60), 20); }
   g.restore();
   for (const [st, en, txt] of a.says || []) if (s.t >= st && s.t <= en) bubble(g, x, y - (a.pet ? 62 : a.rollator ? 120 : a.big ? 80 : 140) * (a.scale || 1), txt);
