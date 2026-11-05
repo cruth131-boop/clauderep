@@ -98,7 +98,8 @@ export function updateStory(game, s, dt) {
       if (a.spray) sprayUpdate(game, s, a, dt);
       if (a.knockAt && s.t >= a.knockAt && !a.knocked) { a.knocked = true; game.shake = 12; game.flash = 0.6; sfx('smash'); sfx('boom'); pop(s, ax(a, s, V), V.groundY - 110, pick(['POW!', 'KAWUMM!', 'BAM!']), '#ffd23f', 30); game.fx.burst(ax(a, s, V), V.groundY - 70, { n: 30, colors: ['#ffd23f', '#fff', '#ff7b39'], speed: 300, size: 4 }); }
     }
-    if (s.t >= s.dur) s.done = true;
+    if (s.ev.song && !s.songOn && s.t >= (s.ev.songAt || 0)) { s.songOn = true; s.prevMusic = currentMusic(); playMusic(hasMp3(s.ev.song) ? s.ev.song : (s.ev.songFallback || 'ballad')); }
+    if (s.t >= s.dur) { s.done = true; songEnd(s); }
   } else if (s.kind === 'party') updParty(game, s, dt);
   else if (s.kind === 'escalator') updEscalator(game, s, dt);
   else if (s.kind === 'detector') updDetector(game, s, dt);
@@ -396,8 +397,9 @@ export function storyInput(game, s, type, x, y) {
   else if (s.kind === 'escalator') {
     if (s.phase === 'stuck') { s.help = Math.min(1, s.help + 0.085); sfx('tap', Math.floor(s.help * 10)); pop(s, game.p.x + rand(-10, 30), V.groundY - 160 - rand(0, 30), pick(['MAMAAA!', 'HILFE!', 'MAMA! 😭']), '#fff', 14); }
     else if (s.phase === 'aim') smashEscalator(game, s, true);
-  } else if ((s.kind === 'scene' || s.kind === 'fipsplay') && (s.t > 0.8 || s.skipAny)) s.done = true;
+  } else if ((s.kind === 'scene' || s.kind === 'fipsplay') && (s.t > 0.8 || s.skipAny)) { s.done = true; songEnd(s); }
 }
+function songEnd(s) { if (s.songOn && s.prevMusic && !s.songOff) { s.songOff = true; playMusic(s.prevMusic); } }
 
 // ---------------------------------------------------------------------------
 function ax(a, s, V) {
@@ -570,9 +572,51 @@ function drawActor(g, game, s, a, i, extra = {}) {
     if (a.ice) drawIceToss(g, x, y, s.t + i);
   }
   if (a.spray) drawChampagne(g, game, s, a);
+  if (a.mic) drawMic(g, game, s, a, x, y);
   if (a.prop && (!a.propT || s.t >= a.propT) && (!a.propEnd || s.t < a.propEnd)) { if (PROP_DRAW[a.prop]) PROP_DRAW[a.prop](g, x + 20, y - 58, s.t); else emoji(g, a.prop, x + 16, y - (a.pet ? 18 : 60), 20); }
   g.restore();
+  if (!extra.noBubble) actorBubbles(g, game, s, a);
+}
+function actorBubbles(g, game, s, a) {
+  if (s.t < (a.t0 || 0)) return;
+  const V = game.V, x = ax(a, s, V), y = V.groundY - 6;
+  for (const [st, en] of a.sing || []) if (s.t >= st && s.t <= en) { // Musiknoten steigen auf
+    for (let k = 0; k < 3; k++) { const u = ((s.t - st) * 0.7 + k / 3) % 1; g.globalAlpha = 1 - u; emoji(g, k % 2 ? '♫' : '♪', x + 18 + Math.sin(u * 6 + k) * 14, y - 100 - u * 70, 16 + k * 2); }
+    g.globalAlpha = 1;
+  }
   for (const [st, en, txt] of a.says || []) if (s.t >= st && s.t <= en) bubble(g, x, y - (a.pet ? 66 : a.rollator ? 120 : a.big ? 80 : 158) * (a.scale || 1), txt);
+}
+// Mikrofon: steht am Ständer, wird zur Zeit mic.t geschnappt und vor den Mund gehalten
+function drawMic(g, game, s, a, x, y) {
+  const m = a.mic, sc = SC, k = clamp((s.t - (m.t || 0)) / 0.35, 0, 1);
+  const sx = x + (m.standDx ?? 0) * sc, mouth = [x + 11 * sc, y - 80 * sc], standTop = [sx, y - 74 * sc];
+  if (m.standDx != null) { g.strokeStyle = '#2a2a30'; g.lineWidth = 2.4; g.beginPath(); g.moveTo(sx, y + 2); g.lineTo(sx, standTop[1] + 4); g.stroke(); g.beginPath(); g.moveTo(sx - 10, y + 3); g.lineTo(sx, y - 4); g.lineTo(sx + 10, y + 3); g.stroke(); }
+  const mx = lerp(standTop[0], mouth[0], ease(k)), my = lerp(standTop[1], mouth[1], ease(k));
+  g.save(); g.translate(mx, my); g.rotate(-0.5 * k);
+  g.fillStyle = '#1b1b20'; roundRect(g, -2.2, 0, 4.4, 15, 2); g.fill();
+  const hg = g.createRadialGradient(-1.5, -1.5, 0.5, 0, 0, 5); hg.addColorStop(0, '#f2f2f6'); hg.addColorStop(1, '#7d7d88');
+  g.fillStyle = hg; g.beginPath(); g.arc(0, -1, 4.6, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 0.5; for (let q = -3; q <= 3; q += 2) { g.beginPath(); g.moveTo(q, -5); g.lineTo(q, 3); g.stroke(); }
+  g.restore();
+}
+// Scheinwerfer von oben auf einzelne Darsteller, Rest abgedunkelt
+function drawSpots(g, game, s) {
+  const V = game.V, gy = V.groundY - 2;
+  const on = (s.fx?.spot || []).filter(([a0, a1]) => s.t >= a0 && s.t <= a1);
+  if (!on.length) return;
+  const fade = Math.min(1, ...on.map(([a0]) => (s.t - a0) / 0.4));
+  const cones = on.map(([a0, , idx]) => { const a = s.actors[idx]; const x = a ? ax(a, s, V) : V.w / 2; const k = clamp((s.t - a0) / 0.4, 0, 1); return { x, k }; });
+  g.save();
+  g.beginPath(); g.rect(0, 0, V.w, V.h);
+  for (const c of cones) { const top = 14, bot = 70 * c.k + 10; g.moveTo(c.x - top, 0); g.lineTo(c.x + top, 0); g.lineTo(c.x + bot, gy); g.ellipse(c.x, gy, bot, 12, 0, 0, Math.PI); g.lineTo(c.x - bot, gy); g.closePath(); }
+  g.fillStyle = `rgba(5,5,20,${0.72 * fade})`; g.fill('evenodd');
+  g.globalCompositeOperation = 'lighter';
+  for (const c of cones) {
+    const lg = g.createLinearGradient(0, 0, 0, gy); lg.addColorStop(0, `rgba(255,245,200,${0.32 * c.k})`); lg.addColorStop(1, `rgba(255,245,200,${0.08 * c.k})`);
+    g.fillStyle = lg; g.beginPath(); g.moveTo(c.x - 14, 0); g.lineTo(c.x + 14, 0); g.lineTo(c.x + 70 * c.k + 10, gy); g.lineTo(c.x - 70 * c.k - 10, gy); g.closePath(); g.fill();
+    g.fillStyle = `rgba(255,245,200,${0.25 * c.k})`; g.beginPath(); g.ellipse(c.x, gy, 70 * c.k + 10, 12, 0, 0, 7); g.fill();
+  }
+  g.restore();
 }
 
 export function drawStoryBack(g, game, s) {
@@ -585,7 +629,11 @@ export function drawStoryBack(g, game, s) {
 
 export function drawStory(g, game, s) {
   const V = game.V, ev = s.ev, gy = V.groundY;
-  if (s.kind === 'scene') (s.actors || []).forEach((a, i) => drawActor(g, game, s, a, i));
+  if (s.kind === 'scene') {
+    const spot = s.fx?.spot?.length;
+    (s.actors || []).forEach((a, i) => drawActor(g, game, s, a, i, spot ? { noBubble: true } : {}));
+    if (spot) { drawSpots(g, game, s); (s.actors || []).forEach((a) => actorBubbles(g, game, s, a)); }
+  }
   else if (s.kind === 'party') drawParty(g, game, s);
   else if (s.kind === 'fipsplay') drawFipsPlay(g, game, s);
   else if (s.kind === 'escalator') drawEsc(g, game, s);

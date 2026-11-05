@@ -167,6 +167,10 @@ export const SONGS = {
   cucaracha: { bpm: 92, bar: 8, style: 'reggae', lead: 'triangle', drums: 'k...s...',
     mel: `G4 G4 G4 C5:3 E5:2  G4 G4 G4 C5:3 E5:2  C5:2 C5 B4 B4 A4 A4 G4  G4:8  G4 G4 G4 B4:3 D5:2  G4 G4 G4 B4:3 D5:2  G5:2 G5 F5 E5 D5 C5:2  C5:8`,
     ch: 'C | C | C G | G | G | G | G C | C', oct: 12 },
+  // Ruhige Gitarren-Ballade (eigene Komposition) – Ersatz, falls kein eigener Song im Bundle liegt
+  ballad: { bpm: 84, bar: 8, style: 'arp', lead: 'triangle', drums: 'k.......',
+    mel: `E5:2 G5:2 C6:4  B5:2 G5:2 D5:4  C5:2 E5:2 A5:4  F5:4 A5:4  G5:3 E5 C5:4  D5:2 F5:2 B4:4  C5:4 E5:4  C5:8`,
+    ch: 'C | G | Am | F | C | G | F G | C', oct: 0 },
   // L14 Techno (eigene Komposition)
   techno: { bpm: 132, div: 4, bar: 8, style: 'techno', lead: 'sawtooth', drums: 'k.h.k.h.',
     mel: `A4 C5 E5 A5 E5 C5 A4 E5  A4 C5 E5 A5 E5 C5 A4 E5  F4 A4 C5 F5 C5 A4 F4 C5  F4 A4 C5 F5 C5 A4 F4 C5
