@@ -791,6 +791,16 @@ const OBJ_DRAW = {
 
 // Gezeichnete Requisiten für Szenen
 const PROP_DRAW = {
+  ringbox(g, x, y, t) { // geöffnetes Ring-Etui mit funkelndem Stein
+    g.save(); g.translate(x, y);
+    g.fillStyle = '#b71c1c'; roundRect(g, -8, -2, 16, 9, 2); g.fill();
+    g.save(); g.translate(0, -2); g.rotate(-0.9); g.fillStyle = '#c62828'; roundRect(g, -8, -9, 16, 9, 2); g.fill(); g.restore();
+    g.fillStyle = '#fff3e0'; g.fillRect(-6, -1, 12, 4);
+    g.strokeStyle = '#d4af37'; g.lineWidth = 1.6; g.beginPath(); g.arc(0, -3, 3.2, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = '#e0f7ff'; g.beginPath(); g.moveTo(0, -10); g.lineTo(2.6, -7); g.lineTo(0, -5); g.lineTo(-2.6, -7); g.closePath(); g.fill();
+    const tw = (Math.sin(t * 9) + 1) / 2; g.fillStyle = `rgba(255,255,255,${tw})`; g.beginPath(); g.moveTo(0, -16); g.lineTo(1, -12); g.lineTo(5, -11); g.lineTo(1, -10); g.lineTo(0, -6); g.lineTo(-1, -10); g.lineTo(-5, -11); g.lineTo(-1, -12); g.closePath(); g.fill();
+    g.restore();
+  },
   waferbox(g, x, y, t) { // sechseckige Waffelröllchen-Schachtel (Sonderedition) mit herausschauenden Röllchen
     g.save(); g.translate(x, y); g.rotate(-0.25 + Math.sin(t * 3) * 0.05);
     g.fillStyle = '#d9a75a'; for (const [rx, ry] of [[-3, -16], [2, -19], [6, -15]]) { g.save(); g.translate(rx, ry); g.rotate(0.1); g.fillRect(-1.6, -4, 3.2, 12); g.strokeStyle = '#8a5a22'; g.lineWidth = 0.5; for (let k = -3; k < 8; k += 2) { g.beginPath(); g.moveTo(-1.6, k); g.lineTo(1.6, k + 1.4); g.stroke(); } g.restore(); }
@@ -815,6 +825,7 @@ function drawActor(g, game, s, a, i, extra = {}) {
   if (anim === 'dance') { y -= Math.abs(Math.sin(lt * 7 + i)) * 12 * amp; rot = Math.sin(lt * 3.5 + i) * 0.18 * amp; }
   if (anim === 'line') { x += (extra.step ?? 0) * 16; y -= (extra.hop ?? 0) * 10; rot = (extra.step ?? 0) * 0.1; }
   if (anim === 'hop') y -= Math.abs(Math.sin(lt * 6 + i)) * 10;
+  if (anim === 'kneel') y += 22; // auf ein Knie
   if (anim === 'shake') x += Math.sin(lt * 40) * 2.5;
   if (anim === 'drunk') { x += Math.sin(lt * 2.2) * 10; rot = Math.sin(lt * 2.2) * 0.22; }
   if (anim === 'solo') { y -= Math.abs(Math.sin(lt * 10)) * 26; rot = Math.sin(lt * 5) * 0.4; }

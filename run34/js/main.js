@@ -412,7 +412,7 @@ document.addEventListener('contextmenu', (e) => e.preventDefault());
 // Karten mit Mini-Vorschau des jeweiligen Teils. Alles ist anprobierbar – auch Gesperrtes
 // und Shop-Ware; gekauft wird direkt aus der Anprobe heraus.
 save.taler ??= 0; save.owned ??= []; save.boosts ??= {};
-if (DEV && save.taler < 500) save.taler = 999;
+if (DEV && !save.devTaler) { save.devTaler = true; save.taler = Math.max(save.taler, 999); } // Testlink: einmalig Startguthaben
 const ikey = (cat, key) => `${cat}:${key}`;
 const optOf = (cat, key) => OUTFIT_PARTS[cat]?.options[key];
 save.refuseTaps ??= {}; save.refuseOpen ??= {};
@@ -609,7 +609,7 @@ function openShop() {
   for (const [cat, def] of Object.entries(OUTFIT_PARTS)) for (const [key, opt] of Object.entries(def.options)) {
     if (!opt.shop) continue;
     const st = itemState(cat, key);
-    items.appendChild(card({ region: regionOf(cat, key), outfit: def.multi ? withItem({ ...save.outfit, extra: [] }, cat, key) : withItem(save.outfit, cat, key), name: lbl(wrTab, key), badge: st === 'shop' ? `🪙 ${opt.shop}` : '✓', cls: st === 'shop' ? 'shop' : 'on', onClick: () => openWardrobe({ cat, key }) }));
+    items.appendChild(card({ region: regionOf(cat, key), outfit: def.multi ? withItem({ ...save.outfit, extra: [] }, cat, key) : withItem(save.outfit, cat, key), name: lbl(cat, key), badge: st === 'shop' ? `🪙 ${opt.shop}` : '✓', cls: st === 'shop' ? 'shop' : 'on', onClick: () => openWardrobe({ cat, key }) }));
   }
   const boosts = $('shop-boosts'); boosts.innerHTML = '';
   for (const [id, B] of Object.entries(BOOSTS)) {

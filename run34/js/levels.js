@@ -48,7 +48,7 @@ const EO = {
   skull: ['💀', 28], fish2: ['🐟', 28, { move: 60 }], bolt: ['⚡', 30, { fly: 1 }],
   snowman: ['☃️', 36], grade6: ['6', 30, { fly: 1, text: '#c0392b' }], chartfly: ['📉', 30, { fly: 1 }], target: ['🎯', 32], clown: ['🤡', 34],
   flyball: ['🎊', 30, { fly: 1 }], hourfly: ['⏳', 28, { fly: 1 }], rocking: ['🐴', 34], dartboard: ['🎯', 30, { fly: 1 }],
-  creuset: ['', 34, { draw: 'creuset' }], smoker: ['', 46, { draw: 'smokerObs' }], pepperbox: ['', 30, { draw: 'pepperbox' }],
+  creuset: ['', 34, { draw: 'creuset' }], penguin: ['🐧', 30, { move: 35, flip: 1 }], minibus: ['🚐', 42, { move: 140, flip: 1 }], boulder: ['🪨', 34], baboon: ['🐒', 32, { move: 70, flip: 1 }], surfboard: ['🏄', 36], smoker: ['', 46, { draw: 'smokerObs' }], pepperbox: ['', 30, { draw: 'pepperbox' }],
   pizzatower: ['', 34, { draw: 'pizzatower' }], griess: ['', 34, { draw: 'griess' }], weedleaf: ['', 32, { fly: 1, draw: 'weedleaf' }], lava: ['', 30, { draw: 'lava' }], couchG: ['🛋️', 40],
 };
 // Gusseisen-Bräter (rot, Verlauf nach unten dunkler, Griffe & Knauf) – x = Mitte, y = Boden
@@ -216,7 +216,7 @@ export const ITEM_EMO = {
   wood: '🪵', clay: '🧱', woolres: '🐑', grain: '🌾', ore: '🪨', card: '🃏', psl: 'draw', brezel: '🥨', candycane: '🍭', sausage: '🌭', gulasch: '🥣',
   steak: '🥩', glitter: '✨', mimisoup: '🌶️', ring: '💍', confetti2: '🎊', weddingcake: '🎂', schnitzel: '🍖', onion: '🧅', gerippter: 'draw', winktuch: '🏳️',
   hotdog: '🌭', beignet: '🍩', cowboyhat: '🤠', boots: '👢', asbach: 'draw', jaegi: 'draw', cherry: '🍒', weck: '🥖', cheese2: '🧀', blossom: '🌸', los: '🎟️', blackring: 'draw',
-  turkey: '🍗', shortbread: '🍪', whisky: '🥃', snack: '🍿', domsign: 'draw', burger2: '🍔', donut: '🍩', apple: '🍎', fries2: '🍟', wine2: '🍷', cocktail2: '🍸', superdrink: 'draw', paprika: 'draw',
+  turkey: '🍗', shortbread: '🍪', whisky: '🥃', snack: '🍿', domsign: 'draw', burger2: '🍔', donut: '🍩', apple: '🍎', fries2: '🍟', wine2: '🍷', cocktail2: '🍸', superdrink: 'draw', paprika: 'draw', protea: 'draw', rooibos: '🍵',
 };
 const ITEM_DRAW = {
   schokokuss(g) { g.fillStyle = '#e9d8b8'; g.beginPath(); g.ellipse(0, 7, 11, 3, 0, 0, TAU); g.fill(); g.fillStyle = '#4a2a17'; g.beginPath(); g.ellipse(0, 6, 10, 15, 0, Math.PI, 0); g.fill(); g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.ellipse(-4, -3, 2, 5, 0.3, 0, TAU); g.fill(); },
@@ -227,6 +227,13 @@ const ITEM_DRAW = {
   saeftchen(g, t) { const c = ['#ff4fa3', '#3ee6b4', '#ffd23f', '#b388ff'][Math.floor(t) % 4]; g.fillStyle = 'rgba(255,255,255,0.65)'; g.beginPath(); g.moveTo(-6, -9); g.lineTo(6, -9); g.lineTo(5, 9); g.lineTo(-5, 9); g.closePath(); g.fill(); g.fillStyle = c; g.beginPath(); g.moveTo(-5.5, -3); g.lineTo(5.5, -3); g.lineTo(4.6, 8); g.lineTo(-4.6, 8); g.fill(); g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(-4, -2, 2, 8); },
   asbach(g) { drawAsbachGlass(g, 0, 12, 1); },
   paprika(g, t) { drawPaprika(g, 0, 1, 1.25, '#e0281e', Math.sin(t * 2) * 0.15); },
+  protea(g, t) { // Königsprotea: rosa Hochblätter um eine helle Mitte
+    g.save(); g.rotate(Math.sin(t * 2) * 0.12);
+    for (let i = 0; i < 12; i++) { const a = -Math.PI / 2 + (i - 5.5) * 0.26; g.fillStyle = i % 2 ? '#f48fb1' : '#e75480'; g.beginPath(); g.ellipse(Math.cos(a) * 7, Math.sin(a) * 7 + 2, 3.4, 9, a + Math.PI / 2, 0, TAU); g.fill(); }
+    g.fillStyle = '#fbe9d0'; g.beginPath(); g.ellipse(0, 0, 6, 7, 0, 0, TAU); g.fill();
+    g.fillStyle = 'rgba(200,120,140,0.6)'; for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(-3 + (i % 3) * 3, -3 + Math.floor(i / 3) * 4, 0.9, 0, TAU); g.fill(); }
+    g.fillStyle = '#4caf50'; g.fillRect(-1, 8, 2, 7); g.restore();
+  },
   superdrink(g, t) { // Superdrink: Longdrink-Glas mit leuchtendem Türkis-Blau, Strohhalm und Etikett
     const gl = g.createRadialGradient(0, 0, 3, 0, 0, 24); gl.addColorStop(0, 'rgba(62,230,180,0.55)'); gl.addColorStop(1, 'rgba(62,230,180,0)');
     g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 24, 0, TAU); g.fill();
@@ -756,6 +763,56 @@ export const SCENES = {
     grass(g, V, off);
   },
 
+  // Kapstadt: Tafelberg mit „Tischtuch“-Wolke, Lion's Head, Seilbahn, bunte Bo-Kaap-Häuser
+  capetown(g, V, off, t) {
+    const gy = V.groundY;
+    sky(g, V, '#5fb8f0', '#d9f1ff');
+    // Tafelberg (flaches Plateau), links Devil's Peak, rechts Lion's Head
+    const mx = V.w * 0.5 - wrap(off * 0.04, V.w * 2) * 0.05, top = gy - 145;
+    g.fillStyle = '#9aa58a'; g.beginPath(); g.moveTo(mx - 340, gy - 50); g.lineTo(mx - 285, top + 20); g.lineTo(mx - 262, top - 8); g.lineTo(mx - 236, top + 24);
+    g.lineTo(mx - 200, top + 2); g.lineTo(mx + 160, top); g.lineTo(mx + 196, top + 50); g.lineTo(mx + 236, top + 64); g.quadraticCurveTo(mx + 270, top - 10, mx + 300, top + 14); g.lineTo(mx + 360, gy - 50); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(60,70,50,0.18)'; for (let i = 0; i < 9; i++) { g.beginPath(); g.moveTo(mx - 180 + i * 38, top + 2); g.lineTo(mx - 172 + i * 38, top + 70); g.lineTo(mx - 164 + i * 38, top + 2); g.fill(); } // Felsrinnen
+    // „Tischtuch“: flaches Wolkenband auf dem Plateau, das über die Kante herabfließt
+    g.fillStyle = 'rgba(255,255,255,0.93)';
+    roundRect(g, mx - 205, top - 9, 375, 13, 6); g.fill();
+    for (let i = 0; i < 12; i++) { const cx = mx - 190 + i * 31; g.beginPath(); g.arc(cx, top - 8, 8 + (i % 3) * 2, 0, TAU); g.fill(); }
+    for (let i = 0; i < 9; i++) { const cx = mx - 170 + i * 40 + Math.sin(t * 0.7 + i) * 3, len = 8 + ((i * 7) % 10) + Math.sin(t * 0.9 + i) * 3; g.beginPath(); g.ellipse(cx, top + 3 + len / 2, 7, len, 0, 0, TAU); g.fill(); }
+    // Seilbahn
+    g.strokeStyle = 'rgba(40,40,40,0.55)'; g.lineWidth = 1; g.beginPath(); g.moveTo(mx - 120, gy - 64); g.lineTo(mx - 40, top + 2); g.stroke();
+    const ck = (t * 0.08) % 1; g.fillStyle = '#e53935'; roundRect(g, mx - 120 + ck * 80 - 5, gy - 64 - ck * (gy - 64 - top - 2) - 4, 10, 8, 2); g.fill();
+    // Bo-Kaap-Häuserzeile
+    rep(V, off, 0.45, 300, (x) => {
+      ['#ff5c8a', '#ffd23f', '#3ec6e0', '#7ed957', '#b388ff', '#ff8f3f'].forEach((c, i) => {
+        const hx = x + i * 48, h = 54 + (i % 2) * 10;
+        g.fillStyle = c; g.fillRect(hx, gy - h, 46, h);
+        g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(hx - 2, gy - h - 4, 50, 5); // Flachdach-Sims
+        g.fillStyle = '#5d4037'; g.fillRect(hx + 18, gy - 24, 10, 24);
+        g.fillStyle = '#e3f2fd'; for (const wx of [6, 32]) g.fillRect(hx + wx, gy - h + 12, 9, 12);
+      });
+    });
+    cobble(g, V, off, '#bdb5a6', '#9e9585');
+  },
+  // Camps Bay bei Sonnenuntergang: Zwölf Apostel, Palmen, weißer Sand, Felsen mit Pinguinen
+  capebeach(g, V, off, t) {
+    const gy = V.groundY;
+    sky(g, V, '#ff9a6b', '#ffe3b0');
+    g.fillStyle = 'rgba(255,240,180,0.9)'; g.beginPath(); g.arc(V.w * 0.72, gy - 70, 28, 0, TAU); g.fill();
+    g.fillStyle = '#6b5a7a'; g.beginPath(); g.moveTo(0, gy - 70);
+    for (let i = 0; i <= 14; i++) { const x = i * (V.w / 14) - wrap(off * 0.05, V.w / 14); g.lineTo(x, gy - 120 - (i % 2 ? 20 : 0) - Math.sin(i * 1.7) * 12); }
+    g.lineTo(V.w, gy - 70); g.closePath(); g.fill(); // Zwölf Apostel
+    sea(g, V, off, t, gy - 70, '#2f6fb5', '#7fc3e8');
+    g.fillStyle = 'rgba(255,220,150,0.5)'; g.fillRect(V.w * 0.72 - 30, gy - 68, 60, 3); g.fillRect(V.w * 0.72 - 18, gy - 60, 36, 2);
+    rep(V, off, 0.5, 340, (x) => {
+      // Palme
+      g.strokeStyle = '#8d6e63'; g.lineWidth = 6; g.beginPath(); g.moveTo(x + 40, gy); g.quadraticCurveTo(x + 30, gy - 60, x + 50, gy - 120); g.stroke();
+      g.fillStyle = '#2e7d32'; for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + (i - 2.5) * 0.55 + Math.sin(t * 1.5 + i) * 0.05; g.beginPath(); g.ellipse(x + 50 + Math.cos(a) * 22, gy - 120 + Math.sin(a) * 10 + 8, 26, 6, a, 0, TAU); g.fill(); }
+      // Granitfelsen mit Pinguinen (Boulders Beach)
+      g.fillStyle = '#9e9e9e'; g.beginPath(); g.ellipse(x + 200, gy - 12, 44, 22, 0, Math.PI, 0); g.fill(); g.fillStyle = '#bdbdbd'; g.beginPath(); g.ellipse(x + 236, gy - 8, 26, 16, 0, Math.PI, 0); g.fill();
+      emoji(g, '🐧', x + 190, gy - 40, 22); emoji(g, '🐧', x + 236, gy - 30, 18, 0, true);
+    });
+    floor(g, V, '#f3e3c3', '#e8d2a6', off, () => { g.fillStyle = 'rgba(180,150,100,0.35)'; for (let i = 0; i < 24; i++) g.fillRect(wrap(i * 47 - off, V.w + 40) - 20, gy + 10 + (i % 4) * 8, 3, 2); });
+  },
+
   // Gulasch-Küche: Fliesen, Holzschränke, Herd mit rotem Gusseisen-Bräter, Paprikaschnüre & Gemüse
   gulaschKitchen(g, V, off, t) {
     const gy = V.groundY;
@@ -1158,6 +1215,7 @@ export const LEVELS = {
   L24: { icon: '🍲', scene: ['gulaschKitchen', 'bbq'], music: 'hungarian', len: 105, obstacles: { creuset: 3, pepperbox: 2, flour: 2 }, obstacles2: { smoker: 3, logs: 2, smoke: 2 }, items: ['gulasch', 'paprika'], items2: ['gulasch', 'sausage', 'steak'], quest: { item: 'gulasch', n: 10 }, hero: 'grill' },
   L25: { icon: '🍕', scene: 'pizzaGlitter', music: 'bday30', len: 120, obstacles: { pizzatower: 3, speaker: 2, bottle: 3, confetti: 2 }, items: ['pizza', 'glitter'], quest: { item: 'glitter', n: 30 }, hero: 'glitter', party: 1, glitterRush: 1, glitterGuests: 1, outfit: { top: 'glitter', topColor: 'f', bottom: 'tutu', extra: ['party'] } },
   L26: { icon: '💼', scene: 'office', world: 'office', music: 'bumblebee', len: 120, obstacles: { chair: 3, boss: 2, folders: 3, paper: 3 }, items: ['coffee', 'mimisoup'], quest: { survive: 1 }, hero: 'business' },
+  L39: { icon: '🦁', scene: ['capetown', 'capebeach'], music: 'kapstadt', len: 110, obstacles: { minibus: 2, baboon: 2, boulder: 2, penguin: 1 }, obstacles2: { penguin: 3, boulder: 2, surfboard: 2 }, items: ['protea', 'rooibos'], items2: ['protea', 'wine2'], quest: { item: 'protea', n: 8 }, hero: 'baywatch', goalHearts: 1, fireworks: 1 },
   L27: { icon: '💍', scene: 'barn', music: 'punk', len: 150, obstacles: { hayball: 3, bench: 2, dancers: 2, bouquet: 3 }, items: ['ring', 'confetti2', 'weddingcake'], quest: { items: ['ring', 'confetti2'], n: 10 }, hero: 'groom', checkpoint: 1, party: 1, fireworks: 1, goalHearts: 1 },
   L28: { icon: '🧅', scene: 'inn', music: 'polka', len: 105, obstacles: { pan: 3, waiter: 2, bubble: 3, pubtable: 1 }, items: ['schnitzel', 'fries2', 'onion'], quest: { item: 'onion', n: 12 }, hero: 'waiter' },
   L29: { icon: '🎺', scene: 'kerb', music: 'kerbmarsch', len: 120, obstacles: { bembel: 3, trumpet: 2, drum: 2, bench: 2 }, items: ['gerippter', 'winktuch', 'saeftchen'], quest: { item: 'gerippter', n: 10 }, hero: 'kerb', party: 1 },

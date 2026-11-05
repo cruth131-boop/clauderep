@@ -240,7 +240,7 @@ export const ACHIEVEMENTS = {
   hero: ['Gerettet!', 'Der Superheld ist erschienen', '🦸'],
   soup: ['Graupensuppe!', 'Omas Suppe von der Rollator-Rakete gegessen', '🍲'],
   horrorlv: ['Freitag der 13.', 'Level 13 überlebt', '👻'],
-  levels: ['Lebenswerk', 'Alle 38 Level geschafft', '🗺️'],
+  levels: ['Lebenswerk', 'Alle Level geschafft', '🗺️'],
   allstars: ['Sternenhimmel', 'Alle Level mit 3 Sternen', '🌟'],
   secret: ['Psst…', 'Das geheime Level gefunden', '🌿'],
   god: ['Cheaterin!', 'Den Godmode entdeckt', '⚡'],
