@@ -5,7 +5,7 @@ import { Game } from './world.js';
 import { LoseScene, FinaleScene, animateMap } from './scenes.js';
 import { drawCharacter, FIXED_TOP } from './character.js';
 import { MOTIFS } from './motifs.js';
-import { initAudio, sfx, playMusic, stopMusic, setMuted, isMuted, suspendAudio, resumeAudio } from './audio.js';
+import { initAudio, sfx, playMusic, stopMusic, setMuted, isMuted, suspendAudio, resumeAudio, hasMp3 } from './audio.js';
 import { LEVELS, PHASE_ICONS } from './levels.js';
 
 const $ = (id) => document.getElementById(id);
@@ -74,7 +74,7 @@ addEventListener('resize', resize); resize();
 
 // ----------------------------------------------------------------- Zustand
 let screen = 'boot';
-let game = null, scene = null, paused = false, runDouble = false;
+let game = null, scene = null, paused = false, runDouble = false, reloadPending = false;
 const input = { jumpHeld: false, jumpPressed: false, duck: false, left: false, right: false, fire: false };
 
 function show(id) {
@@ -99,6 +99,7 @@ function tapHint(text, ms) {
 
 // ----------------------------------------------------------------- Menü
 function toMenu() {
+  if (reloadPending) { location.reload(); return; }
   scene = null; paused = false;
   screen = 'menu'; setHud(false); $('tap-hint').classList.add('hidden');
   game = new Game('attract', { outfit: save.outfit });
@@ -221,7 +222,7 @@ function startGame(mode, { level = null, startAt = 0 } = {}) {
   const lvP = level && lvList().find((l) => l.id === level);
   $('best').textContent = mode === 'birthday' ? `von ${game.target} 🕯️` : mode === 'level' ? `Level ${lvNum(level)}` : `HI ${save.best[mode] || 0}`;
   updateHearts(game.hearts);
-  playMusic(mode === 'level' ? LEVELS[level].music : mode === 'horror' ? 'horror' : mode === 'endless' && game.biome?.music ? game.biome.music : 'run');
+  playMusic(mode === 'level' ? (LEVELS[level].mp3 && hasMp3(LEVELS[level].mp3) ? LEVELS[level].mp3 : LEVELS[level].music) : mode === 'horror' ? 'horror' : mode === 'endless' && game.biome?.music ? game.biome.music : 'run');
   if (level) { save.lastLevel = level; persist(); }
   challengeShown = false;
   if (mode === 'level') { toast(`${LEVELS[level].icon} ${lvP?.title || ''}${startAt ? ' · ab Checkpoint 🚩' : ''}`, 2600); }
@@ -676,7 +677,12 @@ $('lock-form').addEventListener('submit', async (e) => {
   } finally { btn.disabled = false; }
 });
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  // Neue Version aktiv -> einmal neu laden (nie mitten im Lauf), damit Updates sofort sichtbar sind
+  const hadCtl = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!hadCtl || reloadPending) return; reloadPending = true; if (screen !== 'play') location.reload(); });
+  navigator.serviceWorker.register('sw.js').then((r) => r.update()).catch(() => {});
+}
 boot();
 
 // ----------------------------------------------------------------- Easter Eggs
@@ -764,6 +770,19 @@ $('btn-album-done').addEventListener('click', () => { $('album-big').classList.a
 
 // ----------------------------------------------------------------- Level-Modus: Auswahl, Intro, Ergebnis
 const escH = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function rollHtml() {
+  const N = assets.config.guestNames || {};
+  const names = [...new Set(Object.values(N))];
+  const head = assets.config.creditsHead || [];
+  return `<h4>🎬 ${escH(assets.config.title)}</h4>${head.map((n) => `<div>${escH(n)}</div>`).join('')}<h4>Mit</h4>${names.map((n) => `<div>${escH(n)}</div>`).join('')}${(assets.config.creditsExtra || []).map((n) => `<div>${escH(n)}</div>`).join('')}<h4>❤️</h4><div>Happy Birthday!</div>`;
+}
+function showCredits() {
+  screen = 'credits';
+  const r = $('cr-roll'); r.innerHTML = rollHtml(); r.style.animation = 'none'; void r.offsetWidth; r.style.animation = '';
+  show('scr-credits'); playMusic('finale');
+}
+$('btn-credits').addEventListener('click', () => { initAudio(); showCredits(); });
+$('btn-credits-done').addEventListener('click', () => { playMusic('menu'); showLevels(); });
 function showLevels() {
   scene = null; game = new Game('attract', { outfit: save.outfit }); setHud(false); $('god-ctl').classList.add('hidden');
   screen = 'levels';
@@ -771,6 +790,7 @@ function showLevels() {
   const total = order.reduce((s, l) => s + (save.levels[l.id]?.stars || 0), 0);
   $('lv-count').textContent = `${order.filter((l) => lvDone(l.id)).length}/${order.length} · ⭐ ${total}/${order.length * 3}`;
   const next = lvNext();
+  $('btn-credits').classList.toggle('hidden', !(DEV || lvDone('L38')));
   const cont = $('btn-lv-continue');
   cont.classList.toggle('hidden', !next);
   if (next) cont.textContent = `▶ Weiter: Level ${lvNum(next.id)} – ${next.title}`;
@@ -862,10 +882,7 @@ function onLevelDone(res) {
   const fin = id === 'L38';
   $('lvd-credits').classList.toggle('hidden', !fin);
   if (fin) {
-    const N = assets.config.guestNames || {};
-    const names = [...new Set(Object.values(N))];
-    const head = assets.config.creditsHead || [];
-    $('lvd-roll').innerHTML = `<h4>🎬 ${escH(assets.config.title)}</h4>${head.map((n) => `<div>${escH(n)}</div>`).join('')}<h4>Mit</h4>${names.map((n) => `<div>${escH(n)}</div>`).join('')}${(assets.config.creditsExtra || []).map((n) => `<div>${escH(n)}</div>`).join('')}<h4>❤️</h4><div>Happy Birthday!</div>`;
+    $('lvd-roll').innerHTML = rollHtml();
   }
   const next = lvOrder()[lvOrder().findIndex((x) => x.id === id) + 1];
   $('btn-lvd-next').classList.toggle('hidden', !next || id === 'G');

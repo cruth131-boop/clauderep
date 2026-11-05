@@ -406,9 +406,10 @@ export class Game {
     // Glitzer-Rausch
     this.rushT = Math.max(0, this.rushT - dt);
     this.strongT = Math.max(0, this.strongT - dt);
-    if (this.lv.superDrink && (this.superT = (this.superT ?? 9) - dt) <= 0 && this.state === 'run') {
-      this.superT = rand(14, 20);
-      this.items.push(this.makeItem(this.lv.superDrink, V.w + 40, pick([30, 70])));
+    if (this.lv.superDrink && this.state === 'run') {
+      this.superN ??= 0;
+      const at = [0.3, 0.65][this.superN];
+      if (at != null && this.progress >= at) { this.superN++; this.items.push(this.makeItem(this.lv.superDrink, V.w + 40, pick([30, 70]))); }
     }
     if (this.rushT > 0) this.p.invuln = Math.max(this.p.invuln, 0.2);
     if (this.checkpointAt != null && !this.cpShown && this.progress >= this.checkpointAt) { this.cpShown = true; this.events.onToast?.('🚩 Checkpoint!'); sfx('memory'); }
@@ -474,7 +475,7 @@ export class Game {
   startGoal() {
     if (this.state !== 'run') return;
     this.state = 'goal'; this.goalT = 0; this.dash = null; this.chase = null; this.ramp = null;
-    this.goalReached = true; this.goalPhase = 'slow'; this.endStarted = true; this.endQueue = (this.lvP.events || []).concat(this.lvP.outroVideo ? [{ ...this.lvP.outroVideo, kind: 'scene', cinema: 1 }] : []);
+    this.goalReached = true; this.goalPhase = 'slow'; this.endStarted = true; this.endQueue = (this.lvP.events || []).concat(this.lvP.outroVideo ? [{ ...this.lvP.outroVideo, kind: 'scene', cinema: 1, outro: 1 }] : []);
     if (this.biome === FIPSLAND) this.leaveFipsland();
     this.fx.text(this.p.x + 40, this.V.groundY - 150, 'ZIEL! 🏁', { color: '#ffd23f', size: 30 });
     const p = this.p; p.duck = false; p.expr = 'party'; p.exprT = 999;
@@ -633,7 +634,7 @@ export class Game {
 
   updateCameos() {
     for (const c of this.cameos) {
-      if (!c.said && c.x < this.V.w - 90) { c.said = true; c.sayT = 0; sfx('cheer'); }
+      if (!c.said && c.x < this.V.w - 90) { c.said = true; c.sayT = 0; if (!c.sleep) sfx('cheer'); }
       if (c.said) c.sayT += 1 / 60;
       if (c.throws && !c.threw && this.state === 'run' && c.x < PLAYER_X + 330) {
         c.threw = true;
@@ -1301,6 +1302,17 @@ export class Game {
 
   drawCameo(g, c) {
     const V = this.V;
+    if (c.sleep) { // liegt hinten auf dem Boden und schläft
+      const s = CAMEO_SCALE * 0.88, y = V.groundY - 18;
+      g.save(); g.translate(c.x, y); g.rotate(-Math.PI / 2 + 0.05); g.translate(-c.x, -y);
+      drawPerson(g, c.x, y + 14, { faceKey: c.face, t: 0, color: c.color, scale: s, wave: false, expr: 'normal' });
+      g.restore();
+      g.fillStyle = 'rgba(0,0,0,0.18)'; g.beginPath(); g.ellipse(c.x - 40, V.groundY - 4, 52, 5, 0, 0, 7); g.fill();
+      if (c.prop) emoji(g, c.prop, c.x + 14, V.groundY - 12, 18, 1.4);
+      for (let k = 0; k < 3; k++) { const u = (c.t * 0.5 + k / 3) % 1; g.globalAlpha = 1 - u; emoji(g, '💤', c.x - 86 + u * 12, V.groundY - 40 - u * 50, 14 + u * 8); }
+      g.globalAlpha = 1;
+      return;
+    }
     if (c.flag) {
       drawFan(g, c.x, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.color, scale: CAMEO_SCALE, flag: c.flag });
       if (Math.floor(c.t * 7 / Math.PI) !== c.lastHop) { c.lastHop = Math.floor(c.t * 7 / Math.PI); if (c.lastHop % 2 === 0) this.fx.burst(c.x, V.groundY - 90, { n: 6, type: 'confetti', speed: 90, size: 3, gravity: 200 }); }

@@ -342,3 +342,9 @@ input[type=password] {
 .wr-grid, .shop-row { grid-auto-rows: max-content; }
 .wr-try { flex-wrap: wrap; justify-content: flex-end; }
 .wr-try span { flex: 1 1 100%; }
+
+.credits-panel { width: min(460px, 100%); }
+.credits.big { height: min(60vh, 340px); }
+.credits.big .roll { animation-duration: 55s; }
+@keyframes rollbig { from { transform: translateY(30px); } to { transform: translateY(-100%); } }
+.credits.big .roll { animation-name: rollbig; }

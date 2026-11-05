@@ -397,8 +397,10 @@ export function storyInput(game, s, type, x, y) {
   else if (s.kind === 'escalator') {
     if (s.phase === 'stuck') { s.help = Math.min(1, s.help + 0.085); sfx('tap', Math.floor(s.help * 10)); pop(s, game.p.x + rand(-10, 30), V.groundY - 160 - rand(0, 30), pick(['MAMAAA!', 'HILFE!', 'MAMA! 😭']), '#fff', 14); }
     else if (s.phase === 'aim') smashEscalator(game, s, true);
-  } else if ((s.kind === 'scene' || s.kind === 'fipsplay') && (s.t > 0.8 || s.skipAny)) { s.done = true; songEnd(s); }
+  } else if ((s.kind === 'scene' || s.kind === 'fipsplay') && s.t > skipAfter(s)) { s.done = true; songEnd(s); }
 }
+// Abschluss-Videos: erst nach 2,5 s (bzw. 1 s bei schon gesehenen) wegtippbar, damit Sprung-Tipps am Ziel sie nicht abbrechen
+const skipAfter = (s) => (s.ev.outro ? (s.skipAny ? 1 : 2.5) : s.skipAny ? 0.3 : 0.8);
 function songEnd(s) { if (s.songOn && s.prevMusic && !s.songOff) { s.songOff = true; playMusic(s.prevMusic); } }
 
 // ---------------------------------------------------------------------------
@@ -662,7 +664,7 @@ export function drawStory(g, game, s) {
     const k = clamp(Math.min(s.t, s.dur - s.t) / 0.35, 0, 1), bh = V.h * 0.09 * k;
     g.fillStyle = '#000'; g.fillRect(0, 0, V.w, bh); g.fillRect(0, V.h - bh, V.w, bh);
   }
-  if ((s.kind === 'scene' || s.kind === 'fipsplay') && (s.t > 0.8 || s.skipAny)) { g.globalAlpha = 0.5 + Math.sin(s.t * 4) * 0.25; g.fillStyle = '#fff'; g.font = '800 11px ui-rounded, system-ui, sans-serif'; g.textAlign = 'right'; g.fillText('⏩ Tippen zum Überspringen', V.w - 12, V.h - 10); g.globalAlpha = 1; }
+  if ((s.kind === 'scene' || s.kind === 'fipsplay') && s.t > skipAfter(s)) { g.globalAlpha = 0.5 + Math.sin(s.t * 4) * 0.25; g.fillStyle = '#fff'; g.font = '800 11px ui-rounded, system-ui, sans-serif'; g.textAlign = 'right'; g.fillText('⏩ Tippen zum Überspringen', V.w - 12, V.h - 10); g.globalAlpha = 1; }
 }
 
 function drawParty(g, game, s) {
