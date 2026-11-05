@@ -48,7 +48,7 @@ const EO = {
   skull: ['💀', 28], fish2: ['🐟', 28, { move: 60 }], bolt: ['⚡', 30, { fly: 1 }],
   snowman: ['☃️', 36], grade6: ['6', 30, { fly: 1, text: '#c0392b' }], chartfly: ['📉', 30, { fly: 1 }], target: ['🎯', 32], clown: ['🤡', 34],
   flyball: ['🎊', 30, { fly: 1 }], hourfly: ['⏳', 28, { fly: 1 }], rocking: ['🐴', 34], dartboard: ['🎯', 30, { fly: 1 }],
-  creuset: ['', 34, { draw: 'creuset' }], stinklaundry: ['', 34, { draw: 'stinklaundry' }], wheelbarrow: ['', 40, { draw: 'wheelbarrow' }], nutcracker: ['', 30, { draw: 'nutcracker', tall: 1 }], penguin: ['🐧', 30, { move: 35, flip: 1 }], parade: ['', 30, { draw: 'parade', move: 25 }], winebarrel: ['', 34, { draw: 'winebarrel' }], grapecrate: ['', 30, { draw: 'grapecrate' }], minibus: ['🚐', 42, { move: 140, flip: 1 }], boulder: ['🪨', 34], baboon: ['🐒', 32, { move: 70, flip: 1 }], surfboard: ['🏄', 36], smoker: ['', 46, { draw: 'smokerObs' }], pepperbox: ['', 30, { draw: 'pepperbox' }],
+  creuset: ['', 34, { draw: 'creuset' }], ice4: ['', 32, { draw: 'ice4' }], stinklaundry: ['', 34, { draw: 'stinklaundry' }], wheelbarrow: ['', 40, { draw: 'wheelbarrow' }], nutcracker: ['', 30, { draw: 'nutcracker', tall: 1 }], penguin: ['🐧', 30, { move: 35, flip: 1 }], parade: ['', 30, { draw: 'parade', move: 25 }], winebarrel: ['', 34, { draw: 'winebarrel' }], grapecrate: ['', 30, { draw: 'grapecrate' }], minibus: ['🚐', 42, { move: 140, flip: 1 }], boulder: ['🪨', 34], baboon: ['🐒', 32, { move: 70, flip: 1 }], surfboard: ['🏄', 36], smoker: ['', 46, { draw: 'smokerObs' }], pepperbox: ['', 30, { draw: 'pepperbox' }],
   pizzatower: ['', 34, { draw: 'pizzatower' }], griess: ['', 34, { draw: 'griess' }], weedleaf: ['', 32, { fly: 1, draw: 'weedleaf' }], lava: ['', 30, { draw: 'lava' }], couchG: ['🛋️', 40],
 };
 // Gusseisen-Bräter (rot, Verlauf nach unten dunkler, Griffe & Knauf) – x = Mitte, y = Boden
@@ -92,6 +92,12 @@ export function drawSmoker(g, x, y, s = 1, t = 0) {
   g.restore();
 }
 const CUSTOM = {
+  ice4(g, x, b, o) { // Eiswürfel mit eingefrorener „4“
+    const cx = x + o.w / 2; const ig = g.createLinearGradient(cx - 15, b - 28, cx + 15, b); ig.addColorStop(0, '#e1f5fe'); ig.addColorStop(1, '#81d4fa');
+    g.fillStyle = ig; roundRect(g, cx - 15, b - 28, 30, 28, 5); g.fill(); g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1.5; g.strokeRect(cx - 13, b - 26, 26, 24);
+    g.fillStyle = 'rgba(198,40,40,0.85)'; g.font = '900 20px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('4', cx, b - 7);
+    g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(cx - 10, b - 24, 5, 2);
+  },
   creuset(g, x, b, o) { drawCocotte(g, x + o.w / 2, b, 0.95, o.t, true); },
   stinklaundry(g, x, b, o) { // Wäschekorb mit stinkender Wäsche, grüne Mief-Wolken & Fliege
     const cx = x + o.w / 2;
@@ -1376,7 +1382,7 @@ export const LEVELS = {
   L7: { icon: '🚗', scene: 'driving', music: 'tell', len: 90, obstacles: { cone: 3, blitzer: 2, bike: 2, car: 2 }, items: ['voucher'], quest: { item: 'voucher', n: 8 }, hero: 'racer' },
   L8: { icon: '🍹', scene: 'bar', music: 'habanera', len: 90, obstacles: { barstool: 3, bottle: 2, trays: 2 }, items: ['cocktail', 'straw', 'cupid'], quest: { item: 'cupid', n: 10 }, hero: 'barkeeper', goalHearts: 1 },
   L9: { icon: '🐱', scene: 'catFlat', music: 'turca', len: 90, obstacles: { log: 3, wool: 3, tp: 2 }, items: ['treat'], quest: { item: 'treat', n: 15 }, hero: 'catears', fipsBox: 1 },
-  L10: { icon: '📚', scene: 'hola', music: 'mountain', len: 150, obstacles: { books: 3, alarm: 2, grade6: 3 }, items: ['coffee', 'cheatnote'], quest: { survive: 1 }, hero: 'tutor', checkpoint: 1 },
+  L10: { icon: '📚', scene: 'hola', music: 'mountain', len: 150, obstacles: { books: 3, alarm: 2, ice4: 3, grade6: 1 }, items: ['coffee', 'cheatnote'], quest: { survive: 1 }, hero: 'tutor', checkpoint: 1 },
   L11: { icon: '🎓', scene: 'uni', music: 'ode', len: 90, obstacles: { bench: 2, tray: 3, books: 2 }, items: ['fries2', 'coffee'], quest: { item: 'fries2', n: 10 }, hero: 'graduate' },
   L12: { icon: '⚖️', scene: 'wiesbaden', music: 'toccata', len: 105, obstacles: { folders: 2, barstool: 2, paragraph: 3, facewalk: 1 }, items: ['redbull', 'koelsch', 'akte'], quest: { item: 'akte', n: 8 }, hero: 'angel' },
   L13: { icon: '👻', scene: 'horror', music: 'horror', len: 90, horror: 1, obstacles: { shirt: 2, flyshirt: 3, ghost: 2, stink: 3, rille: 2, fish: 2, merz: 2 }, items: ['candle'], bad: 0.45, quest: { survive: 1 }, hero: 'zombie' },

@@ -1212,7 +1212,7 @@ export class Game {
       });
       if (this.god) drawLauncher(g, p.x, V.groundY - p.y - (p.duck && p.y < 1 ? 56 : 86), this.t);
       if (flip) g.restore();
-      if (this.hammer > 0 && this.state === 'run') drawTineco(g, p.x + 52, V.groundY - p.y, this.t, this.hammer < 1.5, 1);
+      if (this.hammer > 0 && this.state === 'run') drawTineco(g, p.x + 38, V.groundY - p.y, this.t, this.hammer < 1.5, 0.82, 0.46);
     }
     if (this.state === 'finale' && this.speed <= 5) {
       drawCat(g, p.x - 60, V.groundY, { pose: 'sit', scale: 1.2, t: this.t });
@@ -1589,7 +1589,7 @@ function drawTee(g, cx, cy, w, color, flap, t, angry) {
 
 // Nass-Trocken-Wischsauger (aufrecht, Stil Tineco Floor One S7): Bodendüse mit Walze & LED, schlanker
 // anthrazitfarbener Korpus mit Holzoptik-Blende, Frisch-/Schmutzwassertank, rundes Display mit Farbring (rot → blau)
-function drawTineco(g, x, y, t, blink, s = 1) {
+function drawTineco(g, x, y, t, blink, s = 1, lean = 0.2) {
   if (blink && Math.floor(t * 10) % 2) return;
   g.save(); g.translate(x, y); g.scale(s, s);
   // Wasserspur
@@ -1599,14 +1599,14 @@ function drawTineco(g, x, y, t, blink, s = 1) {
   g.fillStyle = '#5a5e68'; g.beginPath(); g.arc(18, -5, 4.5, 0, 7); g.fill(); g.fillStyle = '#9aa3ad'; g.save(); g.translate(18, -5); g.rotate(t * 25); g.fillRect(-4, -0.8, 8, 1.6); g.restore();
   g.fillStyle = `rgba(80,180,255,${0.6 + Math.sin(t * 8) * 0.3})`; g.fillRect(-6, -3, 20, 1.6); // LED-Leiste
   // Korpus schräg nach hinten zur Hand
-  g.save(); g.translate(4, -10); g.rotate(-0.2);
+  g.save(); g.translate(4, -10); g.rotate(-lean);
   g.fillStyle = '#33363d'; roundRect(g, -6, -58, 13, 58, 5); g.fill();
   g.fillStyle = '#b08458'; g.fillRect(-6, -40, 4, 26); // Holzoptik-Blende
   g.fillStyle = 'rgba(160,215,255,0.75)'; roundRect(g, -2, -26, 9, 20, 3); g.fill(); // Frischwasser
   g.fillStyle = 'rgba(120,120,120,0.55)'; roundRect(g, -2, -48, 9, 14, 3); g.fill(); // Schmutzwasser
   const ring = Math.sin(t * 2) > 0 ? '#ff4d4d' : '#3fa9ff';
   g.fillStyle = '#111'; g.beginPath(); g.arc(1, -62, 6, 0, 7); g.fill(); g.strokeStyle = ring; g.lineWidth = 2; g.beginPath(); g.arc(1, -62, 5, 0, 7); g.stroke();
-  g.fillStyle = '#e0e0e0'; g.fillRect(-0.5, -100, 3, 36); g.fillStyle = '#222'; roundRect(g, -4, -108, 10, 10, 3); g.fill(); // Stiel & Griff
+  g.fillStyle = '#e0e0e0'; g.fillRect(-0.5, -92, 3, 28); g.fillStyle = '#222'; roundRect(g, -4, -100, 10, 10, 3); g.fill(); // Stiel & Griff
   g.restore();
   // Spritzer
   g.fillStyle = 'rgba(190,230,255,0.9)'; for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(30 + Math.random() * 8, -4 - Math.random() * 6, 1.4 + Math.random(), 0, 7); g.fill(); }

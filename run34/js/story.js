@@ -739,6 +739,12 @@ const carShape = (g, body, glass) => {
 };
 // Szenen-Objekte: Update-Hooks (z. B. Münzen werfen)
 const OBJ_UPD = {
+  frozen4(game, s, a, dt) { // Eisblock mit Note: friert ein (Knirschen), zerspringt später
+    const V = game.V, x = ax(a, s, V), y = V.groundY - 6;
+    if (a.freezeAt != null && s.t >= a.freezeAt && !a.froze) { a.froze = true; sfx('smash'); game.flash = 0.35; game.fx.burst(x, y - 60, { n: 26, colors: ['#e0f7ff', '#b3e5fc', '#fff'], speed: 200, size: 3 }); pop(s, x, y - 140, a.freezeText || 'EINGEFROREN! ❄️', '#b3e5fc', 22); }
+    if (a.shatterAt != null && s.t >= a.shatterAt && !a.shattered) { a.shattered = true; sfx('smash'); sfx('boom'); game.shake = 10; game.flash = 0.5; for (let i = 0; i < 3; i++) game.fx.burst(x, y - 60, { n: 24, colors: ['#e0f7ff', '#81d4fa', '#ffffff'], speed: 360, size: 4, type: 'rubble', gravity: 800 }); pop(s, x, y - 140, a.shatterText || 'KLIRR! 💥', '#ffd23f', 26); }
+  },
+  diploma(game, s, a, dt) { if (a.stampAt != null && s.t >= a.stampAt && !a.stamped) { a.stamped = true; sfx('boom'); sfx('fanfare'); game.shake = 8; game.flash = 0.4; } },
   rentalcar(game, s, a, dt) { // Auffahrunfall: Ruck nach vorn, Krach, Glassplitter
     if (a.bumpAt != null && s.t >= a.bumpAt && !a.bumped) {
       a.bumped = true; game.shake = 14; game.flash = 0.5; sfx('smash'); sfx('boom');
@@ -764,6 +770,28 @@ const OBJ_UPD = {
 
 // Szenen-Objekte am Boden
 const OBJ_DRAW = {
+  frozen4(g, game, s, a, x, y) { // großer Eisblock, darin eine rote „4“
+    if (a.shattered && s.t - a.shatterAt > 0.15) { if (s.t - a.shatterAt < 1.2) { g.globalAlpha = 1 - (s.t - a.shatterAt) / 1.2; g.fillStyle = '#c62828'; g.font = '900 54px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(a.grade || '4', x, y - 30 + (s.t - a.shatterAt) * 120); g.globalAlpha = 1; } return; }
+    const k = a.freezeAt == null ? 1 : clamp((s.t - a.freezeAt) / 0.5, 0, 1);
+    g.fillStyle = '#c62828'; g.font = '900 64px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(a.grade || '4', x, y - 34);
+    if (k <= 0) return;
+    g.save(); g.globalAlpha = 0.25 + 0.55 * k;
+    const ig = g.createLinearGradient(x - 46, y - 110, x + 46, y); ig.addColorStop(0, '#e1f5fe'); ig.addColorStop(0.5, '#b3e5fc'); ig.addColorStop(1, '#81d4fa');
+    g.fillStyle = ig; roundRect(g, x - 46, y - 104 * k, 92, 104 * k, 8); g.fill(); g.restore();
+    g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 34, y - 90 * k); g.lineTo(x - 20, y - 70 * k); g.moveTo(x + 22, y - 96 * k); g.lineTo(x + 34, y - 80 * k); g.stroke();
+    if (a.shatterAt != null && s.t > a.shatterAt - 0.6) { g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x - 10, y - 100); g.lineTo(x + 4, y - 70); g.lineTo(x - 6, y - 40); g.lineTo(x + 10, y - 12); g.stroke(); }
+    for (let i = 0; i < 3; i++) { const tw = (Math.sin(s.t * 6 + i * 2) + 1) / 2; g.fillStyle = `rgba(255,255,255,${tw})`; g.beginPath(); g.arc(x - 30 + i * 28, y - 90 + i * 20, 2, 0, 7); g.fill(); }
+  },
+  diploma(g, game, s, a, x, y) { // Abiturzeugnis, Stempel „BESTANDEN“ knallt drauf
+    const k = clamp((s.t - (a.t0 || 0)) / 0.6, 0, 1), cy = lerp(-120, y - 150, 1 - (1 - k) ** 3);
+    g.save(); g.translate(x, cy); g.rotate(-0.06);
+    g.shadowColor = 'rgba(0,0,0,0.35)'; g.shadowBlur = 12; g.fillStyle = '#fffdf3'; g.fillRect(-58, -40, 116, 80); g.shadowColor = 'transparent';
+    g.strokeStyle = '#c9a227'; g.lineWidth = 2; g.strokeRect(-53, -35, 106, 70);
+    g.fillStyle = '#333'; g.font = '900 12px Georgia, serif'; g.textAlign = 'center'; g.fillText(a.title || 'ZEUGNIS DER', 0, -18); g.fillText(a.title2 || 'ALLGEMEINEN HOCHSCHULREIFE', 0, -5, 100);
+    g.fillStyle = '#bbb'; for (let i = 0; i < 3; i++) g.fillRect(-40, 6 + i * 7, 80, 2);
+    if (a.stamped) { const sk = clamp((s.t - a.stampAt) / 0.18, 0, 1), sc = 2.2 - 1.2 * sk; g.save(); g.translate(18, 14); g.rotate(-0.25); g.scale(sc, sc); g.globalAlpha = sk; g.strokeStyle = '#2e7d32'; g.lineWidth = 2.5; g.strokeRect(-34, -11, 68, 22); g.fillStyle = '#2e7d32'; g.font = '900 13px ui-rounded, system-ui, sans-serif'; g.fillText(a.stamp || 'BESTANDEN', 0, 5); g.restore(); }
+    g.restore();
+  },
   rentalcar(g, game, s, a, x, y) {
     const k = a.bumped ? Math.max(0, 1 - (s.t - a.bumpAt) * 3) : 0, jolt = a.bumped ? Math.min(1, (s.t - a.bumpAt) * 6) * 18 : 0;
     g.save(); g.translate(x + jolt + Math.sin(s.t * 60) * 3 * k, y); g.scale(1.3, 1.3); carShape(g, a.color || '#c9ccd3', '#a7d8f0');
