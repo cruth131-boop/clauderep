@@ -195,27 +195,29 @@ function updateSprint(game, s, dt) {
     const rt = s.t - (s.go || s.t);
     // eigene Läuferin: Tippen gibt Schub, Luftwiderstand bremst
     s.v = Math.max(0, s.v - s.v * 0.9 * dt);
-    if (s.myT == null) s.d = Math.min(SPRINT_M, s.d + s.v * VIS * dt);
+    s.d += s.v * VIS * dt; // kein Stopp an der Ziellinie – man darf durchlaufen
     // Rivale: Reaktionszeit, Beschleunigung, gegen Ende leicht müde
-    const rTarget = rt < 0.25 ? 0 : 7.4 - Math.max(0, (s.rd - 150) / 50) * 0.5;
+    const rTarget = rt < 0.25 ? 0 : s.rT != null ? Math.max(0, 7.4 - (rt - s.rT) * 2.2) : 7.4 - Math.max(0, (s.rd - 150) / 50) * 0.5;
     s.rv += (rTarget - s.rv) * Math.min(1, dt * 1.6);
-    if (s.rT == null) s.rd = Math.min(SPRINT_M, s.rd + s.rv * VIS * dt);
-    if (s.d >= SPRINT_M && s.myT == null) { s.myT = rt; sfx(s.rT == null ? 'fanfare' : 'bad'); game.flash = 0.5; }
+    s.rd += s.rv * VIS * dt;
+    if (s.d >= SPRINT_M && s.myT == null) { s.myT = rt; if (s.rT == null) { sfx('fanfare'); game.flash = 0.5; } }
     if (s.rd >= SPRINT_M && s.rT == null) s.rT = rt;
     for (const f of s.tapFx) f.t += dt; s.tapFx = s.tapFx.filter((f) => f.t < 0.5);
-    if (s.phase === 'run' && s.myT != null && (s.rT != null || s.t - s.go - s.myT > 1.2)) {
+    if (s.phase === 'run' && s.rT != null) { // vorbei, sobald der Rivale durchs Ziel läuft
       s.phase = 'end'; s.endT = s.t;
-      const win = s.rT == null || s.myT < s.rT, tm = s.myT.toFixed(2);
-      const bonus = (win ? 60 : 15) + Math.max(0, Math.round((16 - s.myT) * 10));
+      const win = s.myT != null && s.myT < s.rT, tm = s.myT != null ? s.myT.toFixed(2) : `${(s.rT + Math.max(0.2, (SPRINT_M - s.d) / Math.max(4, s.v * VIS))).toFixed(2)}`;
+      if (!win) sfx('bad');
+      const bonus = (win ? 60 : 15) + Math.max(0, Math.round((16 - (s.myT ?? 16)) * 10));
       finish(game, s, s.ev.label || '🏃‍♀️ 200-m-Sprint', `${tm} s · ${win ? 'Sieg! 🥇' : 'knapp verloren 🥈'}`, bonus, win ? Math.min(1, 0.7 + (15 - s.myT) / 15) : 0.35);
+      s.win = win;
       if (win) for (let i = 0; i < 4; i++) game.fx.burst(rand(60, game.V.w - 60), rand(30, game.V.groundY * 0.5), { n: 40, type: 'confetti', speed: 260, size: 4, gravity: 260 });
     }
   }
-  if (s.phase === 'end' && s.t - s.endT > 3.2) s.done = true;
+  if (s.phase === 'end' && s.t - s.endT > 3.6) s.done = true;
 }
 function sprintTap(game, s, x, y) {
   if (s.phase === 'ready') { pop(s, game.V.w * 0.5, game.V.groundY - 140, 'Noch nicht! ✋', '#ff8a80', 18); return; }
-  if (s.phase !== 'run' || s.myT != null) return;
+  if (s.phase !== 'run' && s.phase !== 'end') return;
   s.taps++; s.v = Math.min(11.5, s.v + 1.05);
   sfx('tap', Math.min(12, Math.round(s.v)));
   s.tapFx.push({ x, y, t: 0 });
@@ -233,11 +235,11 @@ function drawSprint(g, game, s) {
   g.fillStyle = '#c4553a'; g.fillRect(0, gy - 64, V.w, V.h - gy + 64);
   g.strokeStyle = '#fff'; g.lineWidth = 2;
   for (const ly of [gy - 64, gy - 34, gy - 4, gy + 26]) { g.beginPath(); g.moveTo(0, ly); g.lineTo(V.w, ly); g.stroke(); }
-  for (let m = 0; m <= SPRINT_M; m += 25) {
+  for (let m = 0; m <= SPRINT_M + 75; m += 25) {
     const x = m * PX - cam + 60;
     if (x < -40 || x > V.w + 40) continue;
     g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(x, gy - 64, 2, 90);
-    g.fillStyle = '#fff'; g.font = '900 12px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(`${m} m`, x, gy + 42);
+    if (m <= SPRINT_M) { g.fillStyle = '#fff'; g.font = '900 12px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(`${m} m`, x, gy + 42); }
   }
   const fx = SPRINT_M * PX - cam + 60; // Ziellinie
   if (fx > -40 && fx < V.w + 40) { for (let i = 0; i < 12; i++) { g.fillStyle = i % 2 ? '#111' : '#fff'; g.fillRect(fx, gy - 64 + i * 7.5, 8, 7.5); g.fillStyle = i % 2 ? '#fff' : '#111'; g.fillRect(fx + 8, gy - 64 + i * 7.5, 8, 7.5); } }
@@ -253,8 +255,8 @@ function drawSprint(g, game, s) {
   // HUD: Fortschritt beider, Tempo, Zeit
   const bar = (y, d, col, name) => { g.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(g, 14, y, 200, 12, 6); g.fill(); g.fillStyle = col; roundRect(g, 14, y, Math.max(6, 200 * d / SPRINT_M), 12, 6); g.fill(); g.fillStyle = '#fff'; g.font = '800 11px ui-rounded, system-ui, sans-serif'; g.textAlign = 'left'; g.fillText(name, 220, y + 10); };
   const names = game.cfg.guestNames || {};
-  bar(100, s.d, '#e53935', names[s.ev.face] || '');
-  bar(118, s.rd, '#1e88e5', names[s.ev.rival] || '');
+  bar(100, Math.min(SPRINT_M, s.d), '#e53935', names[s.ev.face] || '');
+  bar(118, Math.min(SPRINT_M, s.rd), '#1e88e5', names[s.ev.rival] || '');
   const rt = s.go ? (s.myT ?? (s.t - s.go)) : 0;
   g.fillStyle = 'rgba(0,0,0,0.4)'; roundRect(g, V.w - 150, 98, 136, 38, 10); g.fill();
   g.fillStyle = '#fff'; g.font = '900 15px ui-rounded, system-ui, sans-serif'; g.textAlign = 'right';
@@ -263,8 +265,8 @@ function drawSprint(g, game, s) {
   if (s.phase === 'intro') { banner(g, V, '🏃‍♀️ 200-m-Sprint!', s.t); g.fillStyle = '#fff'; g.font = '800 15px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('Tippe so schnell du kannst – je schneller, desto mehr Bonus!', V.w / 2, gy + 64); }
   if (s.phase === 'ready') { const k = Math.floor(s.t - s.readyT); banner(g, V, ['Auf die Plätze…', 'Fertig…', 'Fertig…'][k] || 'Fertig…', s.t - s.readyT - k); }
   if (s.phase === 'run' && s.t - s.go < 0.8) banner(g, V, 'LOS! 💥', s.t - s.go, true);
-  if (s.phase === 'run' && s.myT == null && s.t - s.go > 0.8) { g.globalAlpha = 0.6 + Math.sin(s.t * 14) * 0.4; g.fillStyle = '#ffd23f'; g.font = '900 22px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('TIPP! TIPP! TIPP! 👆', V.w / 2, gy + 70); g.globalAlpha = 1; }
-  if (s.phase === 'end') { const win = s.rT == null || s.myT < s.rT; banner(g, V, win ? `🥇 Gewonnen! ${s.myT.toFixed(2)} s` : `🥈 ${names[s.ev.rival] || 'Rivale'} war schneller!`, s.t - s.endT, true); }
+  if (s.phase === 'run' && s.t - s.go > 0.8) { g.globalAlpha = 0.6 + Math.sin(s.t * 14) * 0.4; g.fillStyle = '#ffd23f'; g.font = '900 22px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('TIPP! TIPP! TIPP! 👆', V.w / 2, gy + 70); g.globalAlpha = 1; }
+  if (s.phase === 'end') { const win = s.win; banner(g, V, win ? `🥇 Gewonnen! ${s.myT.toFixed(2)} s` : `🥈 ${names[s.ev.rival] || 'Rivale'} war schneller!`, s.t - s.endT, true); }
 }
 
 function finish(game, s, label, value, bonus, frac = null) {
@@ -291,6 +293,7 @@ export function updateStory(game, s, dt) {
     if (s.ev.kimiOutfits) { let o = null; for (const [t, out] of s.ev.kimiOutfits) if (s.t >= t) o = out; if (o && o !== s.lastOutfit) { s.lastOutfit = o; game.flash = Math.max(game.flash, 0.4); sfx('tap', 6); } s.outfitNow = o ? { ...game.outfit, ...o } : null; }
     for (const a of s.actors || []) {
       if (a.spray) sprayUpdate(game, s, a, dt);
+      if (a.obj && OBJ_UPD[a.obj] && s.t >= (a.t0 || 0)) OBJ_UPD[a.obj](game, s, a, dt);
       if (a.knockAt && s.t >= a.knockAt && !a.knocked) { a.knocked = true; game.shake = 12; game.flash = 0.6; sfx('smash'); sfx('boom'); pop(s, ax(a, s, V), V.groundY - 110, pick(['POW!', 'KAWUMM!', 'BAM!']), '#ffd23f', 30); game.fx.burst(ax(a, s, V), V.groundY - 70, { n: 30, colors: ['#ffd23f', '#fff', '#ff7b39'], speed: 300, size: 4 }); }
     }
     if (s.ev.song && !s.songOn && s.t >= (s.ev.songAt || 0)) { s.songOn = true; s.prevMusic = currentMusic(); playMusic(hasMp3(s.ev.song) ? s.ev.song : (s.ev.songFallback || 'ballad')); }
@@ -716,8 +719,38 @@ function drawChampagne(g, game, s, a) {
   if (a.cork) { const c = a.cork; g.save(); g.translate(c.x, c.y); g.rotate(c.r); g.fillStyle = '#c8a46a'; g.fillRect(-3, -2.5, 6, 5); g.restore(); }
 }
 
+// Szenen-Objekte: Update-Hooks (z. B. Münzen werfen)
+const OBJ_UPD = {
+  moneybath(game, s, a, dt) {
+    const V = game.V, x = ax(a, s, V), y = V.groundY - 6;
+    if (s.t < (a.throwAt ?? 1.5)) return;
+    a.throwT = (a.throwT ?? 0) - dt;
+    if (a.throwT <= 0) {
+      a.throwT = 0.09 + Math.random() * 0.12;
+      const left = Math.random() < 0.7; // meist Richtung Kimi
+      s.parts.push({ e: Math.random() < 0.75 ? '🪙' : '💶', x: x + (left ? -20 : 20), y: y - 78, vx: (left ? -1 : 1) * rand(80, 260), vy: -rand(260, 460), g: 620, r: 0, vr: rand(-8, 8), s: rand(16, 24) });
+      if (Math.random() < 0.35) sfx('collect');
+    }
+    if (Math.random() < dt * 6) game.fx.burst(x + rand(-40, 40), y - 50, { n: 3, colors: ['#ffd23f', '#fff6b0'], speed: 60, size: 2.5, gravity: -20 });
+  },
+};
+
 // Szenen-Objekte am Boden
 const OBJ_DRAW = {
+  moneybath(g, game, s, a, x, y) { // Badewanne voller Geld, Kopf & Arme schauen raus
+    const t = s.t, lt = t - (a.t0 || 0), tub = 0.95;
+    const throwing = t >= (a.throwAt ?? 1.5);
+    g.save(); g.beginPath(); g.rect(x - 90, 0, 180, y - 44); g.clip();
+    drawPerson(g, x, y + 18 + Math.sin(lt * 3) * 2, { faceKey: a.face, t: throwing ? t * 1.6 : t, color: a.color || '#f5f5f5', scale: SC * 1.05, wave: true, expr: 'happy' });
+    g.restore();
+    for (let i = 0; i < 26; i++) { const px = x - 54 + (i * 37 % 108), py = y - 48 - ((i * 13) % 12) + Math.sin(t * 3 + i) * 1.2; if (i % 3) { g.fillStyle = '#ffcf33'; g.beginPath(); g.ellipse(px, py, 6, 4, 0, 0, 7); g.fill(); g.strokeStyle = '#b8860b'; g.lineWidth = 1; g.stroke(); } else { g.save(); g.translate(px, py); g.rotate((i % 5 - 2) * 0.3); g.fillStyle = '#7cb57a'; g.fillRect(-9, -4, 18, 8); g.strokeStyle = '#3e7a3c'; g.strokeRect(-9, -4, 18, 8); g.fillStyle = '#3e7a3c'; g.font = '900 5px sans-serif'; g.textAlign = 'center'; g.fillText('€', 0, 2); g.restore(); } }
+    const tg = g.createLinearGradient(0, y - 50, 0, y - 10); tg.addColorStop(0, '#ffffff'); tg.addColorStop(1, '#cfd8dc');
+    g.fillStyle = tg; g.beginPath(); g.moveTo(x - 66 * tub, y - 50); g.lineTo(x + 66 * tub, y - 50); g.quadraticCurveTo(x + 64 * tub, y - 12, x + 40 * tub, y - 12); g.lineTo(x - 40 * tub, y - 12); g.quadraticCurveTo(x - 64 * tub, y - 12, x - 66 * tub, y - 50); g.fill();
+    g.strokeStyle = '#90a4ae'; g.lineWidth = 2; g.stroke();
+    g.fillStyle = '#d4af37'; g.fillRect(x - 68 * tub, y - 53, 136 * tub, 5);
+    for (const fx of [-44, 44]) { g.fillStyle = '#d4af37'; g.beginPath(); g.ellipse(x + fx * tub, y - 8, 7, 6, 0, 0, 7); g.fill(); g.fillRect(x + fx * tub - 3, y - 14, 6, 6); }
+    g.fillStyle = '#d4af37'; g.font = '900 12px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('€ € €', x, y - 26);
+  },
   manhole(g, game, s, a, x, y) { // Kanaldeckel; optional fällt zur Zeit a.fallAt etwas hinein (a.drop, Emoji)
     const mx = x + (a.dx || 0);
     g.fillStyle = '#3a3a40'; g.beginPath(); g.ellipse(mx, y + 4, 22, 6, 0, 0, 7); g.fill();
@@ -793,7 +826,7 @@ function actorBubbles(g, game, s, a) {
     for (let k = 0; k < 3; k++) { const u = ((s.t - st) * 0.7 + k / 3) % 1; g.globalAlpha = 1 - u; emoji(g, k % 2 ? '♫' : '♪', x + 18 + Math.sin(u * 6 + k) * 14, y - 100 - u * 70, 16 + k * 2); }
     g.globalAlpha = 1;
   }
-  for (const [st, en, txt] of a.says || []) if (s.t >= st && s.t <= en) bubble(g, x, y - (a.pet ? 66 : a.rollator ? 120 : a.big ? 80 : 158) * (a.scale || 1), txt);
+  for (const [st, en, txt] of a.says || []) if (s.t >= st && s.t <= en) bubble(g, x, y - (a.bubbleY ?? (a.pet ? 66 : a.rollator ? 120 : a.big ? 80 : 158)) * (a.scale || 1), txt);
 }
 // Mikrofon: steht am Ständer, wird zur Zeit mic.t geschnappt und vor den Mund gehalten
 function drawMic(g, game, s, a, x, y) {
