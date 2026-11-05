@@ -60,6 +60,22 @@ const stars = (n, of = 3) => '<i>⭐</i>'.repeat(n) + '<i class="off">⭐</i>'.r
 const mercyLevel = () => (save.won ? 0 : save.fails >= 10 ? 3 : save.fails >= 6 ? 2 : save.fails >= 3 ? 1 : 0);
 setMuted(save.muted);
 
+// ----------------------------------------------------------------- Vollbild & Querformat
+// Android/Chrome & Desktop: echtes Vollbild (Adressleiste weg) + Querformat sperren, ausgelöst durch eine Berührung.
+// iPhone-Safari kennt kein Vollbild für Webseiten → Hinweis „Zum Home-Bildschirm“ (startet dann wie eine App ohne Leiste).
+const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
+async function goFullscreen() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!isStandalone() && req && !(document.fullscreenElement || document.webkitFullscreenElement)) {
+    try { await req.call(el, { navigationUI: 'hide' }); } catch {}
+  }
+  try { await screen.orientation?.lock?.('landscape'); } catch {}
+}
+let fsOnce = false;
+addEventListener('pointerup', () => { if (!fsOnce && !isIOS) { fsOnce = true; goFullscreen(); } }, { passive: true });
+
 // ----------------------------------------------------------------- Ansicht
 const V = { w: 600, h: 320, groundY: 250, scale: 1, dpr: 1 };
 function resize() {
@@ -134,7 +150,8 @@ function toMenu() {
   const ch = todaysChallenge();
   if (fullUI()) lines.push(`🎯 Heute: ${ch.text}${save.challengeDone[todayKey()] ? ' ✓' : ''}`);
   if (save.totalFails && fullUI()) lines.push(`🤕 „Das hab ich mir so nicht vorgestellt!“ ×${save.totalFails} · ${failTitle()}`);
-  if (innerHeight > innerWidth) lines.push('Tipp: Quer halten = mehr Überblick');
+  if (isIOS && !isStandalone()) lines.push('📲 Vollbild ohne Adressleiste: unten auf Teilen ⬆️ → „Zum Home-Bildschirm“ – dann von dort starten.');
+  else if (innerHeight > innerWidth) lines.push('Tipp: Quer halten = mehr Überblick');
   $('menu-hint').textContent = lines.join('\n');
   $('btn-mute').textContent = isMuted() ? '🔇' : '🔊';
   refreshTaler();
@@ -164,6 +181,7 @@ $('btn-mute').addEventListener('click', async () => {
 
 // ----------------------------------------------------------------- Spiel
 function startGame(mode, { level = null, startAt = 0 } = {}) {
+  if (!isIOS) goFullscreen();
   show(null); screen = 'play'; scene = null; paused = false;
   const mercy = mode === 'birthday' ? mercyLevel() : 0;
   const eggHead = save.eggNext; save.eggNext = false; persist();
