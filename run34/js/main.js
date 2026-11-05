@@ -27,6 +27,8 @@ if (new URLSearchParams(location.search).has('reset')) {
 try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch {}
 const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {} };
 save.album ??= []; save.levels ??= {}; save.best.level ??= 0; save.best.roadtrip ??= 0; save.stats ??= { monkeys: 0, mops: 0, chases: 0 }; save.ach ??= {}; save.worlds ??= []; save.challengeDone ??= {};
+// Vor dem Geburtstags-Sieg nur das Nötigste zeigen (kein Shop, Schrank, Erfolge, Challenges …)
+const fullUI = () => DEV || save.won;
 const unlocked = (what) => DEV || (what === 'birthday' ? save.won : what?.startsWith('world:') ? save.worlds.includes(what.slice(6)) : true);
 const ROADTRIP_START = new Date(2026, 11, 4);
 const roadtripOpen = () => DEV || Date.now() >= ROADTRIP_START.getTime();
@@ -37,8 +39,7 @@ function unlockAch(id) {
   if (!ACHIEVEMENTS[id] || save.ach[id]) return;
   save.ach[id] = Date.now(); persist();
   const [title, , emo] = ACHIEVEMENTS[id];
-  setTimeout(() => toast(`🏆 Erfolg: ${emo} ${title}`, 2600), 300);
-  sfx('power');
+  if (fullUI()) { setTimeout(() => toast(`🏆 Erfolg: ${emo} ${title}`, 2600), 300); sfx('power'); }
 }
 // ----------------------------------------------------------------- Level-Fortschritt
 const lvList = () => (assets.config.levels || []).filter((l) => LEVELS[l.id]);
@@ -124,19 +125,20 @@ function toMenu() {
   if (save.best.horror) bests.push(`👻 ${save.best.horror}`);
   if (save.best.roadtrip) bests.push(`🚗 ${save.best.roadtrip}`);
   const lines = [];
-  if (bests.length) lines.push(`Rekorde: ${bests.join('  ·  ')}`);
+  if (bests.length && fullUI()) lines.push(`Rekorde: ${bests.join('  ·  ')}`);
   if (save.won) {
     const days = Math.ceil((ROADTRIP_START.getTime() - Date.now()) / 864e5);
     const end = new Date(2026, 11, 7).getTime();
     lines.push(days > 0 ? `🚗 Noch ${days} ${days === 1 ? 'Tag' : 'Tage'} bis Eindhoven! 🇳🇱` : Date.now() < end ? '🚗 Roadtrip läuft – gute Fahrt! 🇳🇱🇧🇪' : '🚗 Roadtrip-Modus freigeschaltet');
   }
   const ch = todaysChallenge();
-  lines.push(`🎯 Heute: ${ch.text}${save.challengeDone[todayKey()] ? ' ✓' : ''}`);
-  if (save.totalFails) lines.push(`🤕 „Das hab ich mir so nicht vorgestellt!“ ×${save.totalFails} · ${failTitle()}`);
+  if (fullUI()) lines.push(`🎯 Heute: ${ch.text}${save.challengeDone[todayKey()] ? ' ✓' : ''}`);
+  if (save.totalFails && fullUI()) lines.push(`🤕 „Das hab ich mir so nicht vorgestellt!“ ×${save.totalFails} · ${failTitle()}`);
   if (innerHeight > innerWidth) lines.push('Tipp: Quer halten = mehr Überblick');
   $('menu-hint').textContent = lines.join('\n');
   $('btn-mute').textContent = isMuted() ? '🔇' : '🔊';
   refreshTaler();
+  for (const id of ['btn-wardrobe', 'btn-shop', 'btn-ach', 'btn-shake']) $(id).classList.toggle('hidden', !fullUI());
   show('scr-menu');
   playMusic('menu');
 }
@@ -185,7 +187,7 @@ function startGame(mode, { level = null, startAt = 0 } = {}) {
         if (!save.worlds.includes(id)) {
           save.worlds.push(id); persist();
           const unl = Object.entries(OUTFIT_PARTS).flatMap(([, d]) => Object.values(d.options)).filter((o) => o.unlock === `world:${id}`);
-          if (unl.length) setTimeout(() => toast(`👗 Neues Outfit freigeschaltet: ${unl.map((o) => o.label).join(', ')}`, 2800), 2600);
+          if (unl.length && fullUI()) setTimeout(() => toast(`👗 Neues Outfit freigeschaltet: ${unl.map((o) => o.label).join(', ')}`, 2800), 2600);
         }
         if (count >= 7 && mode !== 'level') unlockAch('worlds');
       },
@@ -244,7 +246,7 @@ function challengeMet(st, score, mode) {
   return false;
 }
 function checkChallengeLive() {
-  if (!game || challengeShown || save.challengeDone[todayKey()]) return;
+  if (!game || challengeShown || save.challengeDone[todayKey()] || !fullUI()) return;
   if (challengeMet(game.stats, Math.floor(game.score), game.mode)) {
     challengeShown = true; save.challengeDone[todayKey()] = true; persist();
     toast(`🎯 Tages-Challenge geschafft: ${todaysChallenge().text}!`, 2800); unlockAch('challenge');
@@ -289,7 +291,7 @@ function showGameOver(info, mercyMsg) {
   $('over-score').textContent = info.score;
   $('over-best').textContent = info.mode === 'birthday' ? `von ${cfg.birthdayTarget || 34} Kerzen 🕯️ – noch ${Math.max(0, (cfg.birthdayTarget || 34) - info.score)}!` : `Rekord: ${save.best[info.mode]}`;
   const tal = earnTaler(info.mode === 'birthday' ? info.score / 2 : info.mode === 'level' ? info.score / 15 : info.score / 8);
-  $('over-taler').textContent = tal ? `+${tal} 🪙 Taler${runDouble ? ' (×2)' : ''} · Konto: ${save.taler} 🪙` : '';
+  $('over-taler').textContent = tal && fullUI() ? `+${tal} 🪙 Taler${runDouble ? ' (×2)' : ''} · Konto: ${save.taler} 🪙` : '';
   const lp = assets.images.lose_photo; // trauriges Foto zum Verlieren (nicht in Kinderleveln)
   $('over-photo').classList.toggle('hidden', !lp || !!assets.kidMode);
   if (lp && !assets.kidMode) { $('over-photo').src = lp.src; $('over-photo').style.transform = `rotate(${(Math.random() * 8 - 4).toFixed(1)}deg)`; }
