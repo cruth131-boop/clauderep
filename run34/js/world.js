@@ -1360,6 +1360,18 @@ export class Game {
   drawCameo(g, c) {
     const V = this.V;
     if (c.mini && !this.miniDone) { g.globalAlpha = 0.6 + Math.sin(c.t * 6) * 0.4; emoji(g, '👟', c.x + 22, V.groundY - 150, 18); emoji(g, '✨', c.x - 20, V.groundY - 140, 14); g.globalAlpha = 1; }
+    if (c.chasedBy) { // läuft weg – dahinter rennt jemand verliebt hinterher
+      const b = c.chasedBy, gap = 74 + Math.sin(c.t * 3) * 10;
+      g.save(); g.translate(c.x, 0); g.scale(-1, 1); g.translate(-c.x, 0);
+      drawPerson(g, c.x, V.groundY - 6, { faceKey: c.face, t: c.t * 1.4, color: c.color, scale: CAMEO_SCALE, run: true, expr: 'happy', acc: c.acc });
+      g.restore();
+      g.save(); g.translate(c.x + gap, 0); g.scale(-1, 1); g.translate(-(c.x + gap), 0);
+      drawPerson(g, c.x + gap, V.groundY - 6 - Math.abs(Math.sin(c.t * 9)) * 6, { faceKey: b.face, t: c.t * 1.6, color: b.color || '#ff4f8a', scale: CAMEO_SCALE, run: true, expr: 'happy', acc: b.acc });
+      g.restore();
+      if (Math.random() < 0.08) this.fx.burst(c.x + gap, V.groundY - 120, { n: 2, colors: ['#ff4f8a', '#e91e63'], speed: 50, size: 3, gravity: -60 });
+      if (c.said && c.sayT < 3.4) { speech(g, c.x + gap + 10, V.groundY - 166, b.line || '😍'); if (c.sayT > 1.2 && c.line) speech(g, c.x - 10, V.groundY - 140, c.line); }
+      return;
+    }
     if (c.shout) { // hüpft und brüllt, Flasche in der Hand – ohne Fahne
       const hop = Math.abs(Math.sin(c.t * 7)) * 12;
       drawPerson(g, c.x, V.groundY - 6 - hop, { faceKey: c.face, t: c.t, color: c.color, scale: CAMEO_SCALE, wave: true, expr: 'happy' });

@@ -242,7 +242,7 @@ export const ITEM_EMO = {
   wood: '🪵', clay: '🧱', woolres: '🐑', grain: '🌾', ore: '🪨', card: '🃏', psl: 'draw', brezel: '🥨', candycane: '🍭', sausage: '🌭', gulasch: '🥣',
   steak: '🥩', glitter: '✨', mimisoup: '🌶️', ring: '💍', confetti2: '🎊', weddingcake: '🎂', schnitzel: '🍖', onion: '🧅', gerippter: 'draw', winktuch: '🏳️',
   hotdog: '🌭', beignet: '🍩', cowboyhat: '🤠', boots: '👢', asbach: 'draw', jaegi: 'draw', cherry: '🍒', weck: '🥖', cheese2: '🧀', blossom: '🌸', los: '🎟️', blackring: 'draw',
-  turkey: '🍗', shortbread: '🍪', whisky: '🥃', snack: '🍿', domsign: 'draw', burger2: '🍔', donut: '🍩', apple: '🍎', fries2: '🍟', wine2: '🍷', cocktail2: '🍸', superdrink: 'draw', paprika: 'draw', protea: 'draw', rooibos: '🍵', grapes: '🍇',
+  turkey: '🍗', shortbread: '🍪', whisky: '🥃', snack: '🍿', domsign: 'draw', burger2: '🍔', donut: '🍩', apple: '🍎', fries2: '🍟', wine2: '🍷', cocktail2: '🍸', bluelagoon: 'draw', superdrink: 'draw', paprika: 'draw', protea: 'draw', rooibos: '🍵', grapes: '🍇',
 };
 const ITEM_DRAW = {
   schokokuss(g) { g.fillStyle = '#e9d8b8'; g.beginPath(); g.ellipse(0, 7, 11, 3, 0, 0, TAU); g.fill(); g.fillStyle = '#4a2a17'; g.beginPath(); g.ellipse(0, 6, 10, 15, 0, Math.PI, 0); g.fill(); g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.ellipse(-4, -3, 2, 5, 0.3, 0, TAU); g.fill(); },
@@ -252,6 +252,14 @@ const ITEM_DRAW = {
   blackring(g, t) { const gl = g.createRadialGradient(0, 0, 2, 0, 0, 22); gl.addColorStop(0, 'rgba(255,240,150,0.8)'); gl.addColorStop(1, 'rgba(255,240,150,0)'); g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 22, 0, TAU); g.fill(); g.strokeStyle = '#111'; g.lineWidth = 4; g.beginPath(); g.ellipse(0, 0, 9, 9 * Math.abs(Math.cos(t * 2)) + 2, 0, 0, TAU); g.stroke(); g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1; g.stroke(); },
   saeftchen(g, t) { const c = ['#ff4fa3', '#3ee6b4', '#ffd23f', '#b388ff'][Math.floor(t) % 4]; g.fillStyle = 'rgba(255,255,255,0.65)'; g.beginPath(); g.moveTo(-6, -9); g.lineTo(6, -9); g.lineTo(5, 9); g.lineTo(-5, 9); g.closePath(); g.fill(); g.fillStyle = c; g.beginPath(); g.moveTo(-5.5, -3); g.lineTo(5.5, -3); g.lineTo(4.6, 8); g.lineTo(-4.6, 8); g.fill(); g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(-4, -2, 2, 8); },
   asbach(g) { drawAsbachGlass(g, 0, 12, 1); },
+  bluelagoon(g, t) { // Blue Lagoon: hohes Glas, leuchtend blau, Eis, Zitronenscheibe, Strohhalm, Schirmchen
+    g.fillStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.moveTo(-7, -14); g.lineTo(7, -14); g.lineTo(6, 13); g.lineTo(-6, 13); g.closePath(); g.fill();
+    const lg = g.createLinearGradient(0, -10, 0, 13); lg.addColorStop(0, '#4fc3f7'); lg.addColorStop(1, '#0d47a1'); g.fillStyle = lg; g.beginPath(); g.moveTo(-6.5, -9); g.lineTo(6.5, -9); g.lineTo(5.6, 12); g.lineTo(-5.6, 12); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(-4, -7, 4, 4); g.fillRect(1, -3, 4, 4); g.fillRect(-3, 2, 3.5, 3.5); // Eis
+    g.fillStyle = '#fff176'; g.beginPath(); g.arc(7, -11, 5, 0, TAU); g.fill(); g.fillStyle = '#fbc02d'; g.beginPath(); g.arc(7, -11, 3.6, 0, TAU); g.fill(); // Zitrone
+    g.strokeStyle = '#ff4fa3'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(-2, 10); g.lineTo(-5, -20); g.stroke();
+    g.save(); g.translate(3, -18); g.rotate(-0.4 + Math.sin(t * 3) * 0.08); g.fillStyle = '#ff7043'; g.beginPath(); g.moveTo(-8, 0); g.quadraticCurveTo(0, -8, 8, 0); g.closePath(); g.fill(); g.strokeStyle = '#8d6e63'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, -3); g.lineTo(0, 9); g.stroke(); g.restore();
+  },
   paprika(g, t) { drawPaprika(g, 0, 1, 1.25, '#e0281e', Math.sin(t * 2) * 0.15); },
   protea(g, t) { // Königsprotea: rosa Hochblätter um eine helle Mitte
     g.save(); g.rotate(Math.sin(t * 2) * 0.12);
@@ -1429,7 +1437,7 @@ export const LEVELS = {
   L5: { icon: '🎈', scene: 'garden', music: 'birthday', len: 75, obstacles: { pot: 3, balloon: 3, gift: 2 }, items: ['schokokuss', 'cake'], quest: { item: 'schokokuss', n: 12 }, hero: 'knight', garlands: 1 },
   L6: { icon: '💸', scene: 'bank', music: 'entertainer', len: 75, obstacles: { invoice: 3, piggy: 2, tax: 2, chartfly: 2 }, items: ['coin', 'money'], quest: { item: 'money', n: 20 }, hero: 'banker', goalRain: '💸' },
   L7: { icon: '🚗', scene: 'driving', music: 'tell', len: 90, obstacles: { cone: 3, blitzer: 2, bike: 2, car: 2 }, items: ['voucher'], quest: { item: 'voucher', n: 8 }, hero: 'racer' },
-  L8: { icon: '🍹', scene: 'bar', music: 'habanera', len: 90, obstacles: { barstool: 3, bottle: 2, trays: 2 }, items: ['cocktail', 'straw', 'cupid'], quest: { item: 'cupid', n: 10 }, hero: 'barkeeper', goalHearts: 1 },
+  L8: { icon: '🍹', scene: 'bar', music: 'habanera', len: 90, obstacles: { barstool: 3, bottle: 2, trays: 2 }, items: ['bluelagoon', 'bluelagoon', 'cocktail', 'cupid'], quest: { item: 'cupid', n: 10 }, hero: 'barkeeper', goalHearts: 1 },
   L9: { icon: '🐱', scene: 'catFlat', music: 'turca', len: 90, obstacles: { log: 3, wool: 3, tp: 2 }, items: ['treat'], quest: { item: 'treat', n: 15 }, hero: 'catears', fipsBox: 1 },
   L10: { icon: '📚', scene: 'hola', music: 'mountain', len: 150, obstacles: { books: 3, alarm: 2, ice4: 3, grade6: 1 }, items: ['coffee', 'cheatnote'], quest: { survive: 1 }, hero: 'tutor', checkpoint: 1 },
   L11: { icon: '🎓', scene: 'uni', music: 'ode', len: 90, obstacles: { bench: 2, tray: 3, books: 2 }, items: ['fries2', 'coffee'], quest: { item: 'fries2', n: 10 }, hero: 'graduate' },
