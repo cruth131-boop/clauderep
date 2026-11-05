@@ -1054,6 +1054,44 @@ export const SCENES = {
     grass(g, V, off);
   },
 
+  // Café-Bar: limettengrüne Polster-Lounge mit gewölbter, waagerecht gesteppter Rückwand, geschwungene Holztische mit
+  // Aschenbechern & Karten, Fensterfront mit Milchglas-Schrift und grünen Schirmen draußen, Logo-Schild mit Kaffeebohne
+  chococino(g, V, off, t, lv) {
+    const gy = V.groundY, lime = '#a7c43a', limeD = '#8aa62c', limeL = '#bcd654';
+    g.fillStyle = '#efe6d6'; g.fillRect(0, 0, V.w, gy);
+    rep(V, off, 0.45, 760, (x) => {
+      // Fensterfront mit Blick nach draußen
+      const wx = x + 420; g.fillStyle = '#dfeef7'; g.fillRect(wx, gy - 210, 300, 150);
+      g.fillStyle = '#cfc6b8'; g.fillRect(wx + 10, gy - 150, 280, 50); // Häuser gegenüber
+      for (const [px, pw] of [[wx + 40, 120], [wx + 170, 120]]) { g.fillStyle = '#4e7d3a'; g.fillRect(px + pw / 2 - 2, gy - 170, 4, 110); g.fillStyle = '#3f8f4a'; g.beginPath(); g.moveTo(px, gy - 160); g.quadraticCurveTo(px + pw / 2, gy - 196, px + pw, gy - 160); g.closePath(); g.fill(); g.fillStyle = '#2f7a3a'; for (let i = 0; i < 5; i++) { g.beginPath(); g.moveTo(px + i * pw / 5, gy - 160); g.quadraticCurveTo(px + i * pw / 5 + pw / 10, gy - 154, px + (i + 1) * pw / 5, gy - 160); g.fill(); } }
+      g.fillStyle = 'rgba(255,255,255,0.75)'; g.fillRect(wx, gy - 112, 300, 20); g.fillStyle = '#555'; g.font = '700 10px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.save(); g.translate(wx + 70, gy - 98); g.scale(-1, 1); g.fillText('LUNCH', 0, 0); g.restore(); g.save(); g.translate(wx + 210, gy - 98); g.scale(-1, 1); g.fillText('TEE SPECIALS', 0, 0); g.restore();
+      g.fillStyle = '#e0e0e0'; g.fillRect(wx + 145, gy - 210, 8, 150); g.strokeStyle = '#c8c0b0'; g.lineWidth = 6; g.strokeRect(wx, gy - 210, 300, 150);
+      // Logo-Schild
+      const lx = wx + 55, ly = gy - 200; g.strokeStyle = '#888'; g.lineWidth = 1; g.beginPath(); g.moveTo(lx + 20, gy - 210); g.lineTo(lx + 20, ly); g.moveTo(lx + 170, gy - 210); g.lineTo(lx + 170, ly); g.stroke(); // hängt im Fenster
+      g.fillStyle = '#f3dea0'; roundRect(g, lx, ly, 190, 40, 8); g.fill(); g.strokeStyle = '#7a4a1e'; g.lineWidth = 2; g.stroke();
+      g.fillStyle = '#5a2a14'; g.font = 'italic 700 22px Georgia, serif'; g.textAlign = 'right'; g.fillText(S(lv, 'logoL', 'Choc'), lx + 82, ly + 28); g.textAlign = 'left'; g.fillText(S(lv, 'logoR', 'Cino'), lx + 110, ly + 28);
+      g.fillStyle = '#4a1f0e'; g.beginPath(); g.ellipse(lx + 96, ly + 20, 9, 14, 0.35, 0, TAU); g.fill(); g.strokeStyle = '#c98a4a'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(lx + 92, ly + 8); g.quadraticCurveTo(lx + 99, ly + 20, lx + 94, ly + 32); g.stroke();
+      g.strokeStyle = 'rgba(200,150,80,0.8)'; g.lineWidth = 3; g.beginPath(); g.moveTo(lx + 96, ly - 2); g.bezierCurveTo(lx + 86, ly - 14, lx + 106, ly - 22, lx + 96, ly - 34); g.stroke(); // Dampf
+      // Lounge: gewölbte, gesteppte Rückwand + Sitzbank
+      g.fillStyle = lime; g.beginPath(); g.moveTo(x, gy - 46); g.lineTo(x, gy - 200); g.quadraticCurveTo(x + 10, gy - 226, x + 60, gy - 226); g.lineTo(x + 380, gy - 226); g.quadraticCurveTo(x + 400, gy - 222, x + 404, gy - 200); g.lineTo(x + 404, gy - 46); g.closePath(); g.fill();
+      for (let r = 0; r < 8; r++) { g.fillStyle = r % 2 ? limeL : lime; g.fillRect(x + 2, gy - 214 + r * 20, 400, 18); g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(x + 2, gy - 196 + r * 20, 400, 2); }
+      g.fillStyle = 'rgba(0,0,0,0.1)'; g.fillRect(x + 200, gy - 220, 2, 176);
+      g.fillStyle = limeD; g.fillRect(x - 4, gy - 52, 412, 22); g.fillStyle = lime; g.fillRect(x - 4, gy - 56, 412, 8); g.fillStyle = 'rgba(0,0,0,0.12)'; for (let i = 1; i < 5; i++) g.fillRect(x - 4 + i * 82, gy - 56, 2, 26);
+      // geschwungener Holztisch, Aschenbecher, Karten, Serviette
+      g.fillStyle = '#5a3a24'; g.beginPath(); g.ellipse(x + 160, gy - 66, 70, 10, 0, 0, TAU); g.ellipse(x + 240, gy - 66, 50, 10, 0, 0, TAU); g.fill();
+      g.fillStyle = '#7a5236'; g.fillRect(x + 120, gy - 64, 20, 64); g.fillRect(x + 250, gy - 64, 20, 64);
+      g.fillStyle = '#f4ecc8'; g.fillRect(x + 130, gy - 74, 40, 6);
+      for (const ax of [x + 120, x + 250]) { g.fillStyle = '#c9ccd3'; g.beginPath(); g.ellipse(ax, gy - 72, 10, 4, 0, 0, TAU); g.fill(); g.fillStyle = '#333'; g.beginPath(); g.ellipse(ax, gy - 73, 6, 2, 0, 0, TAU); g.fill(); }
+      g.fillStyle = '#7cb342'; g.fillRect(x + 186, gy - 100, 16, 26); g.fillStyle = '#ffd23f'; g.fillRect(x + 190, gy - 92, 8, 12);
+      // grüne Polsterhocker
+      for (const hx of [x + 300, x + 345]) { g.fillStyle = limeD; roundRect(g, hx, gy - 40, 38, 30, 4); g.fill(); g.fillStyle = lime; g.fillRect(hx, gy - 40, 38, 6); g.fillStyle = '#7a5236'; g.fillRect(hx + 4, gy - 10, 5, 10); g.fillRect(hx + 29, gy - 10, 5, 10); }
+    });
+    // Laminat (Holzoptik)
+    g.fillStyle = '#7a5a40'; g.fillRect(0, gy, V.w, V.h - gy);
+    rep(V, off, 1, 120, (x) => { g.fillStyle = 'rgba(0,0,0,0.15)'; for (let r = 0; r < 5; r++) g.fillRect(x + (r % 2) * 60, gy + r * 14, 2, 14); g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(x, gy + 4, 120, 2); });
+    for (let r = 0; r < 5; r++) { g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, gy + r * 14, V.w, 1); }
+  },
+
   // Gulasch-Küche: Fliesen, Holzschränke, Herd mit rotem Gusseisen-Bräter, Paprikaschnüre & Gemüse
   gulaschKitchen(g, V, off, t) {
     const gy = V.groundY;
@@ -1437,7 +1475,7 @@ export const LEVELS = {
   L5: { icon: '🎈', scene: 'garden', music: 'birthday', len: 75, obstacles: { pot: 3, balloon: 3, gift: 2 }, items: ['schokokuss', 'cake'], quest: { item: 'schokokuss', n: 12 }, hero: 'knight', garlands: 1 },
   L6: { icon: '💸', scene: 'bank', music: 'entertainer', len: 75, obstacles: { invoice: 3, piggy: 2, tax: 2, chartfly: 2 }, items: ['coin', 'money'], quest: { item: 'money', n: 20 }, hero: 'banker', goalRain: '💸' },
   L7: { icon: '🚗', scene: 'driving', music: 'tell', len: 90, obstacles: { cone: 3, blitzer: 2, bike: 2, car: 2 }, items: ['voucher'], quest: { item: 'voucher', n: 8 }, hero: 'racer' },
-  L8: { icon: '🍹', scene: 'bar', music: 'habanera', len: 90, obstacles: { barstool: 3, bottle: 2, trays: 2 }, items: ['bluelagoon', 'bluelagoon', 'cocktail', 'cupid'], quest: { item: 'cupid', n: 10 }, hero: 'barkeeper', goalHearts: 1 },
+  L8: { icon: '🍹', scene: 'chococino', music: 'habanera', len: 90, obstacles: { barstool: 3, bottle: 2, trays: 2 }, items: ['bluelagoon', 'bluelagoon', 'cocktail', 'cupid'], quest: { item: 'cupid', n: 10 }, hero: 'barkeeper', goalHearts: 1 },
   L9: { icon: '🐱', scene: 'catFlat', music: 'turca', len: 90, obstacles: { log: 3, wool: 3, tp: 2 }, items: ['treat'], quest: { item: 'treat', n: 15 }, hero: 'catears', fipsBox: 1 },
   L10: { icon: '📚', scene: 'hola', music: 'mountain', len: 150, obstacles: { books: 3, alarm: 2, ice4: 3, grade6: 1 }, items: ['coffee', 'cheatnote'], quest: { survive: 1 }, hero: 'tutor', checkpoint: 1 },
   L11: { icon: '🎓', scene: 'uni', music: 'ode', len: 90, obstacles: { bench: 2, tray: 3, books: 2 }, items: ['fries2', 'coffee'], quest: { item: 'fries2', n: 10 }, hero: 'graduate' },
