@@ -48,7 +48,7 @@ const EO = {
   skull: ['💀', 28], fish2: ['🐟', 28, { move: 60 }], bolt: ['⚡', 30, { fly: 1 }],
   snowman: ['☃️', 36], grade6: ['6', 30, { fly: 1, text: '#c0392b' }], chartfly: ['📉', 30, { fly: 1 }], target: ['🎯', 32], clown: ['🤡', 34],
   flyball: ['🎊', 30, { fly: 1 }], hourfly: ['⏳', 28, { fly: 1 }], rocking: ['🐴', 34], dartboard: ['🎯', 30, { fly: 1 }],
-  creuset: ['', 34, { draw: 'creuset' }], nutcracker: ['', 30, { draw: 'nutcracker', tall: 1 }], penguin: ['🐧', 30, { move: 35, flip: 1 }], parade: ['', 30, { draw: 'parade', move: 25 }], winebarrel: ['', 34, { draw: 'winebarrel' }], grapecrate: ['', 30, { draw: 'grapecrate' }], minibus: ['🚐', 42, { move: 140, flip: 1 }], boulder: ['🪨', 34], baboon: ['🐒', 32, { move: 70, flip: 1 }], surfboard: ['🏄', 36], smoker: ['', 46, { draw: 'smokerObs' }], pepperbox: ['', 30, { draw: 'pepperbox' }],
+  creuset: ['', 34, { draw: 'creuset' }], stinklaundry: ['', 34, { draw: 'stinklaundry' }], wheelbarrow: ['', 40, { draw: 'wheelbarrow' }], nutcracker: ['', 30, { draw: 'nutcracker', tall: 1 }], penguin: ['🐧', 30, { move: 35, flip: 1 }], parade: ['', 30, { draw: 'parade', move: 25 }], winebarrel: ['', 34, { draw: 'winebarrel' }], grapecrate: ['', 30, { draw: 'grapecrate' }], minibus: ['🚐', 42, { move: 140, flip: 1 }], boulder: ['🪨', 34], baboon: ['🐒', 32, { move: 70, flip: 1 }], surfboard: ['🏄', 36], smoker: ['', 46, { draw: 'smokerObs' }], pepperbox: ['', 30, { draw: 'pepperbox' }],
   pizzatower: ['', 34, { draw: 'pizzatower' }], griess: ['', 34, { draw: 'griess' }], weedleaf: ['', 32, { fly: 1, draw: 'weedleaf' }], lava: ['', 30, { draw: 'lava' }], couchG: ['🛋️', 40],
 };
 // Gusseisen-Bräter (rot, Verlauf nach unten dunkler, Griffe & Knauf) – x = Mitte, y = Boden
@@ -93,6 +93,21 @@ export function drawSmoker(g, x, y, s = 1, t = 0) {
 }
 const CUSTOM = {
   creuset(g, x, b, o) { drawCocotte(g, x + o.w / 2, b, 0.95, o.t, true); },
+  stinklaundry(g, x, b, o) { // Wäschekorb mit stinkender Wäsche, grüne Mief-Wolken & Fliege
+    const cx = x + o.w / 2;
+    g.fillStyle = '#d9c7a3'; g.beginPath(); g.moveTo(cx - 16, b - 24); g.lineTo(cx + 16, b - 24); g.lineTo(cx + 13, b); g.lineTo(cx - 13, b); g.closePath(); g.fill();
+    g.strokeStyle = '#a88b5c'; g.lineWidth = 1; for (let i = -12; i <= 12; i += 4) { g.beginPath(); g.moveTo(cx + i, b - 23); g.lineTo(cx + i * 0.85, b - 1); g.stroke(); } for (const yy of [-17, -9]) { g.beginPath(); g.moveTo(cx - 15, b + yy); g.lineTo(cx + 15, b + yy); g.stroke(); }
+    [['#5c7cfa', -9, -28], ['#e64980', 2, -31], ['#fab005', 10, -27], ['#868e96', -2, -26]].forEach(([c, dx, dy]) => { g.fillStyle = c; g.beginPath(); g.ellipse(cx + dx, b + dy, 7, 4, dx * 0.05, 0, TAU); g.fill(); });
+    g.fillStyle = '#e9ecef'; g.fillRect(cx + 9, b - 34, 4, 10); // Socke hängt raus
+    g.strokeStyle = 'rgba(120,180,60,0.75)'; g.lineWidth = 2; for (let i = 0; i < 3; i++) { const k = (o.t * 0.8 + i / 3) % 1; g.globalAlpha = 1 - k; g.beginPath(); for (let y = 0; y < 14; y++) g.lineTo(cx - 8 + i * 8 + Math.sin(y * 0.8 + o.t * 4) * 2.5, b - 34 - k * 18 - y); g.stroke(); } g.globalAlpha = 1;
+    const fx = cx + Math.sin(o.t * 5) * 12, fy = b - 44 + Math.cos(o.t * 7) * 5; g.fillStyle = '#111'; g.beginPath(); g.arc(fx, fy, 1.6, 0, TAU); g.fill(); g.fillStyle = 'rgba(200,220,255,0.8)'; g.beginPath(); g.ellipse(fx - 1.5, fy - 1.5, 1.6, 1, 0.4, 0, TAU); g.ellipse(fx + 1.5, fy - 1.5, 1.6, 1, -0.4, 0, TAU); g.fill();
+  },
+  wheelbarrow(g, x, b, o) { // Schubkarre mit Erde
+    g.strokeStyle = '#6d4c41'; g.lineWidth = 3; g.beginPath(); g.moveTo(x + 4, b - 22); g.lineTo(x + 34, b - 14); g.stroke(); g.beginPath(); g.moveTo(x + 10, b - 14); g.lineTo(x + 8, b); g.stroke();
+    g.fillStyle = '#2e7d32'; g.beginPath(); g.moveTo(x + 12, b - 28); g.lineTo(x + 40, b - 28); g.lineTo(x + 34, b - 12); g.lineTo(x + 16, b - 12); g.closePath(); g.fill();
+    g.fillStyle = '#5d4037'; g.beginPath(); g.ellipse(x + 26, b - 28, 13, 4, 0, Math.PI, 0); g.fill();
+    g.fillStyle = '#222'; g.beginPath(); g.arc(x + 34, b - 6, 6, 0, TAU); g.fill(); g.fillStyle = '#9e9e9e'; g.beginPath(); g.arc(x + 34, b - 6, 2.2, 0, TAU); g.fill();
+  },
   nutcracker(g, x, b, o) { const cx = x + o.w / 2, s = 0.6; g.save(); g.translate(cx, b); g.scale(s, s); g.fillStyle = '#c62828'; g.fillRect(-9, -46, 18, 30); g.fillStyle = '#1a237e'; g.fillRect(-8, -16, 6, 16); g.fillRect(2, -16, 6, 16); g.fillStyle = '#ffccbc'; g.fillRect(-7, -60, 14, 14); g.fillStyle = '#fff'; g.fillRect(-7, -50, 14, 4); g.fillStyle = '#111'; g.fillRect(-8, -80, 16, 20); g.fillStyle = '#ffd740'; g.fillRect(-8, -64, 16, 3); for (const by of [-42, -34, -26]) { g.beginPath(); g.arc(0, by, 1.4, 0, TAU); g.fill(); } g.restore(); },
   parade(g, x, b, o) { for (let i = 0; i < 5; i++) { const w = Math.sin(o.t * 9 + i) * 0.18, bob = Math.abs(Math.sin(o.t * 9 + i)) * 2; emoji(g, '🐧', x + 12 + i * 26, b - 13 - bob, 26, w, true); } },
   winebarrel(g, x, b, o) { const cx = x + o.w / 2; g.fillStyle = '#8d5a33'; g.beginPath(); g.ellipse(cx, b - 16, 15, 16, 0, 0, TAU); g.fill(); g.fillStyle = '#6d4022'; for (const dy of [-26, -6]) g.fillRect(cx - 14, b + dy, 28, 3); g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 1; for (const dx of [-8, 0, 8]) { g.beginPath(); g.moveTo(cx + dx, b - 31); g.lineTo(cx + dx, b - 1); g.stroke(); } g.fillStyle = '#7b1f3a'; g.beginPath(); g.arc(cx, b - 16, 3, 0, TAU); g.fill(); },
@@ -916,6 +931,66 @@ export const SCENES = {
     floor(g, V, '#f4e6c8', '#e9d6ad', off, () => { g.fillStyle = 'rgba(180,150,100,0.35)'; for (let i = 0; i < 24; i++) g.fillRect(wrap(i * 47 - off, V.w + 40) - 20, gy + 10 + (i % 4) * 8, 3, 2); });
   },
 
+  // Daheim-Küche: L-Küche mit hellen Fronten & Holzknöpfen, schwarze Arbeitsplatte mit Holzkante, schwarze Spüle & Armatur,
+  // offenes Holzregal mit Tassen, Neon-Schriftzug, gerahmtes Poster, Gummibaum, Kaffeevollautomat, Fischgrät-Parkett, Sonnenlicht
+  homeKitchen(g, V, off, t) {
+    const gy = V.groundY;
+    g.fillStyle = '#f2efe9'; g.fillRect(0, 0, V.w, gy);
+    rep(V, off, 0.6, 640, (x) => {
+      g.save(); g.translate(0, 30); // Wand-Deko etwas tiefer, damit sie nicht unter der Anzeige verschwindet
+      // offenes Wandregal (Holz) mit Tassen & Gläsern, rechts schwarzes Regalstück mit Espressokanne
+      g.fillStyle = '#d2a36c'; g.fillRect(x, gy - 212, 330, 5); g.fillStyle = '#9e9e9e'; for (const bx of [40, 160, 280]) g.fillRect(x + bx, gy - 207, 3, 14);
+      for (let i = 0; i < 16; i++) { const cx = x + 10 + i * 19, c = ['#f1e4d0', '#e8b4a0', '#d1c4e9', '#fff', '#ffe0b2', '#b2dfdb'][i % 6]; if (i % 4 === 3) { g.fillStyle = 'rgba(220,235,245,0.8)'; g.fillRect(cx, gy - 230, 10, 18); } else { g.fillStyle = c; roundRect(g, cx, gy - 226, 13, 14, 3); g.fill(); g.strokeStyle = c; g.lineWidth = 2; g.beginPath(); g.arc(cx + 14, gy - 219, 3, -1.2, 1.2); g.stroke(); } }
+      g.fillStyle = '#1b1b1e'; g.fillRect(x + 340, gy - 214, 120, 6); g.fillStyle = '#9e9e9e'; g.beginPath(); g.moveTo(x + 420, gy - 214); g.lineTo(x + 426, gy - 238); g.lineTo(x + 438, gy - 238); g.lineTo(x + 444, gy - 214); g.fill(); g.fillStyle = '#ffd23f'; g.beginPath(); g.ellipse(x + 400, gy - 220, 8, 5, 0.3, 0, TAU); g.fill();
+      // Neon „Cheers!“
+      g.save(); g.shadowColor = '#ff2d8a'; g.shadowBlur = 8 + Math.sin(t * 3) * 3; g.fillStyle = '#ff4f9a'; g.font = 'italic 700 26px Georgia, serif'; g.textAlign = 'left'; g.fillText('Cheers!', x + 60, gy - 238); g.restore();
+      // gerahmtes Poster
+      g.fillStyle = '#111'; g.fillRect(x + 500, gy - 250, 64, 84); g.fillStyle = '#e8c6dd'; g.fillRect(x + 504, gy - 246, 56, 76); g.fillStyle = '#111'; g.font = '900 11px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('BUON', x + 532, gy - 228); g.fillText('GIOR', x + 532, gy - 212); g.fillText('NO', x + 532, gy - 196);
+      g.restore();
+      // Unterschränke: helle Fronten, runde Holzknöpfe; schwarze Platte mit Holzkante
+      g.fillStyle = '#ddd6c8'; g.fillRect(x, gy - 92, 620, 92);
+      g.strokeStyle = 'rgba(0,0,0,0.12)'; g.lineWidth = 1.5; for (let i = 0; i <= 10; i++) { g.beginPath(); g.moveTo(x + i * 62, gy - 92); g.lineTo(x + i * 62, gy); g.stroke(); } g.beginPath(); g.moveTo(x, gy - 48); g.lineTo(x + 620, gy - 48); g.stroke();
+      g.fillStyle = '#d2a36c'; for (let i = 0; i < 10; i++) { g.beginPath(); g.arc(x + 31 + i * 62, gy - 82, 3.2, 0, TAU); g.fill(); g.beginPath(); g.arc(x + 31 + i * 62, gy - 40, 3.2, 0, TAU); g.fill(); }
+      g.fillStyle = '#1a1a1d'; g.fillRect(x - 4, gy - 100, 628, 8); g.fillStyle = '#d2a36c'; g.fillRect(x - 4, gy - 93, 628, 2);
+      // eingebauter Backofen + Kochfeld
+      g.fillStyle = '#111'; g.fillRect(x + 312, gy - 88, 58, 52); g.fillStyle = '#2a2a2e'; g.fillRect(x + 316, gy - 78, 50, 36); g.fillStyle = '#bdbdbd'; g.fillRect(x + 320, gy - 82, 42, 2); g.fillStyle = '#ff7043'; g.fillRect(x + 352, gy - 86, 8, 3);
+      g.fillStyle = '#0d0d0f'; g.fillRect(x + 300, gy - 101, 84, 2);
+      // schwarze Spüle + hohe schwarze Armatur
+      g.fillStyle = '#0d0d0f'; g.fillRect(x + 70, gy - 101, 60, 3); g.strokeStyle = '#111'; g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); g.moveTo(x + 100, gy - 100); g.lineTo(x + 100, gy - 140); g.quadraticCurveTo(x + 100, gy - 156, x + 116, gy - 150); g.lineTo(x + 116, gy - 138); g.stroke(); g.lineCap = 'butt';
+      // Schneidebrett, Kaffeevollautomat, Wasserkocher, Bögen-Brett, Mixer, Gummibaum
+      g.fillStyle = '#b07a45'; g.fillRect(x + 150, gy - 150, 34, 50);
+      g.fillStyle = '#1c1c1f'; g.fillRect(x + 220, gy - 140, 36, 40); g.fillStyle = '#9e9e9e'; g.fillRect(x + 226, gy - 132, 24, 6); g.fillStyle = '#fff'; g.fillRect(x + 232, gy - 112, 10, 9);
+      g.fillStyle = '#e8eecf'; g.beginPath(); g.moveTo(x + 280, gy - 101); g.lineTo(x + 284, gy - 126); g.lineTo(x + 302, gy - 126); g.lineTo(x + 306, gy - 101); g.fill();
+      g.fillStyle = '#f2a490'; g.beginPath(); g.moveTo(x + 400, gy - 101); g.lineTo(x + 400, gy - 150); g.arc(x + 420, gy - 150, 20, Math.PI, 0); g.lineTo(x + 440, gy - 101); g.fill();
+      g.fillStyle = '#ffd23f'; g.beginPath(); g.ellipse(x + 480, gy - 116, 9, 15, 0, 0, TAU); g.fill();
+      g.fillStyle = '#9e9e9e'; g.fillRect(x + 520, gy - 128, 24, 28); g.fillStyle = 'rgba(220,235,245,0.85)'; g.fillRect(x + 524, gy - 160, 16, 32);
+      g.fillStyle = '#f5f5f5'; roundRect(g, x + 572, gy - 124, 26, 24, 5); g.fill(); g.fillStyle = '#2e4d2b'; for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + (i - 2.5) * 0.45; g.beginPath(); g.ellipse(x + 585 + Math.cos(a) * 14, gy - 140 + Math.sin(a) * 12, 7, 13, a + Math.PI / 2, 0, TAU); g.fill(); }
+    });
+    // Sonnenstrahlen
+    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(255,214,140,0.12)'; for (let i = 0; i < 3; i++) { const sx = wrap(i * 260 - off * 0.2, V.w + 200) - 100; g.beginPath(); g.moveTo(sx, 0); g.lineTo(sx + 60, 0); g.lineTo(sx + 220, gy); g.lineTo(sx + 120, gy); g.fill(); } g.restore();
+    // Fischgrät-Parkett (Eiche)
+    g.fillStyle = '#d9b98c'; g.fillRect(0, gy, V.w, V.h - gy);
+    rep(V, off, 1, 36, (x) => { g.strokeStyle = 'rgba(140,100,60,0.35)'; g.lineWidth = 1; for (let r = 0; r < 5; r++) { const yy = gy + r * 14; g.beginPath(); g.moveTo(x, yy); g.lineTo(x + 18, yy + 10); g.lineTo(x + 36, yy); g.stroke(); } });
+  },
+  // Daheim-Garten: Rasen, Beet mit Gladiolen & Tomaten an Stäben, Apfelbaum, Büsche, Zaun
+  homeGarden(g, V, off, t) {
+    const gy = V.groundY;
+    sky(g, V, '#8ecdf5', '#f1faff'); clouds(g, V, off, 0.7);
+    rep(V, off, 0.3, 26, (x) => { g.fillStyle = '#a1887f'; g.fillRect(x, gy - 74, 20, 52); g.beginPath(); g.moveTo(x, gy - 74); g.lineTo(x + 10, gy - 82); g.lineTo(x + 20, gy - 74); g.fill(); }); // Holzzaun
+    rep(V, off, 0.45, 560, (x) => {
+      // Büsche
+      for (const [bx, r] of [[0, 26], [34, 30], [70, 22]]) { g.fillStyle = '#4e8f3a'; g.beginPath(); g.arc(x + bx, gy - 30, r, 0, TAU); g.fill(); g.fillStyle = '#5fa848'; g.beginPath(); g.arc(x + bx - 6, gy - 38, r * 0.5, 0, TAU); g.fill(); }
+      // Apfelbaum
+      g.fillStyle = '#6d4c41'; g.fillRect(x + 140, gy - 110, 12, 90); g.fillStyle = '#4caf50'; for (const [dx, dy, r] of [[146, -130, 42], [118, -110, 28], [176, -112, 30], [146, -160, 26]]) { g.beginPath(); g.arc(x + dx, gy + dy, r, 0, TAU); g.fill(); }
+      g.fillStyle = '#e53935'; for (let i = 0; i < 12; i++) { g.beginPath(); g.arc(x + 116 + (i * 23) % 64, gy - 150 + ((i * 17) % 60), 4, 0, TAU); g.fill(); }
+      // Hochbeet mit Gladiolen & Tomaten
+      const bx = x + 240; g.fillStyle = '#8d6e63'; g.fillRect(bx, gy - 30, 260, 26); g.fillStyle = '#5d4037'; g.fillRect(bx + 4, gy - 34, 252, 6);
+      for (let i = 0; i < 7; i++) { const gx = bx + 14 + i * 16, h = 60 + (i % 3) * 12, c = ['#ff4d6d', '#ff9e00', '#c77dff', '#ffd60a', '#ff5d8f'][i % 5]; g.strokeStyle = '#2e7d32'; g.lineWidth = 2; g.beginPath(); g.moveTo(gx, gy - 32); g.lineTo(gx + Math.sin(t + i) * 1.5, gy - 32 - h); g.stroke(); for (let k = 0; k < 6; k++) { g.fillStyle = c; g.beginPath(); g.ellipse(gx + (k % 2 ? 3 : -3) + Math.sin(t + i) * 1.5, gy - 32 - h + 6 + k * 7, 4, 3, 0, 0, TAU); g.fill(); } g.fillStyle = '#43a047'; g.beginPath(); g.ellipse(gx - 4, gy - 44, 2.5, 12, -0.3, 0, TAU); g.fill(); }
+      for (let i = 0; i < 4; i++) { const tx = bx + 140 + i * 30; g.fillStyle = '#a1887f'; g.fillRect(tx, gy - 100, 3, 68); g.fillStyle = '#388e3c'; for (let k = 0; k < 5; k++) { g.beginPath(); g.ellipse(tx + (k % 2 ? 7 : -5), gy - 40 - k * 12, 8, 5, k % 2 ? 0.5 : -0.5, 0, TAU); g.fill(); } g.fillStyle = '#e53935'; for (const [dx, dy] of [[6, -52], [-4, -66], [7, -80], [-3, -46]]) { g.beginPath(); g.arc(tx + dx, gy + dy, 4, 0, TAU); g.fill(); } }
+    });
+    grass(g, V, off);
+  },
+
   // Gulasch-Küche: Fliesen, Holzschränke, Herd mit rotem Gusseisen-Bräter, Paprikaschnüre & Gemüse
   gulaschKitchen(g, V, off, t) {
     const gy = V.groundY;
@@ -1328,7 +1403,7 @@ export const LEVELS = {
   L33: { icon: '🌸', scene: 'bluetenfest', music: 'spring', len: 120, obstacles: { hayball: 3, bench: 2, flowerpot: 2, carousel: 1, bembel: 2 }, items: ['blossom', 'los'], quest: { item: 'gerippter', n: 10 }, hero: 'flowers', party: 1 },
   L34: { icon: '🦃', scene: 'xmasRustler', music: 'wewish', len: 105, obstacles: { teddy: 2, toytrain: 2, gift: 2, rocking: 2, weizen: 1 }, items: ['turkey', 'cookie2', 'wine'], quest: { face: 1, n: 5 }, hero: 'elf' },
   L35: { icon: '🌵', scene: 'western', music: 'susanna', len: 120, obstacles: { hayball: 2, tumbleweed: 3, cactus: 2, bull: 2, facefly: 2 }, items: ['cowboyhat', 'burger2', 'hotdog'], quest: { survive: 1 }, hero: 'cowboy', party: 1 },
-  L36: { icon: '🏡', scene: ['kitchen', 'garden'], world: 'kitchen', world2: 'garden', music: 'run', len: 150, obstacles: { mop: 4, pot: 2, flour: 2, laundry: 2, tomato: 2, grill: 2 }, items: ['pizza', 'wine'], quest: { survive: 1 }, hero: 'chef', checkpoint: 1 },
+  L36: { icon: '🏡', scene: ['homeKitchen', 'homeGarden'], world: 'kitchen', world2: 'garden', music: 'run', len: 150, obstacles: { mop: 3, pot: 2, flour: 2, stinklaundry: 3 }, obstacles2: { wheelbarrow: 3, flowerpot: 2, gnome: 2 }, items: ['pizza', 'wine'], quest: { survive: 1 }, hero: 'chef', checkpoint: 1 },
   L37: { icon: '🏰', scene: ['edinburgh', 'highlands'], music: 'auldlang', len: 120, obstacles: { sheep: 3, wall: 2, rain: 2, nessie: 1, leftcar: 3 }, items: ['shortbread', 'whisky'], quest: { item: 'shortbread', n: 10 }, hero: 'kilt' },
   L38: { icon: '🎂', scene: 'birthday', music: 'finaleBday', len: 150, obstacles: { wool: 1, bobbycar: 1, schoolbag: 1, shirtrack: 1, invoice: 1, cone: 1, barstool: 1, books: 1, laser: 1, gift: 1, 'maß': 1, gull: 1, dice: 1, discoball: 1, jeep: 1, taxi: 1, kettle: 1, hayball: 1, pan: 1, bembel: 1, slot: 1, cactus: 1, mop: 1, sheep: 1 }, items: ['candle'], quest: { item: 'candle', n: 34 }, hero: 'tux', checkpoint: 1, party: 1, finale: 1 },
   G: { icon: '🌿', scene: 'haze', music: 'cucaracha', len: 90, obstacles: { smoke: 2, weedleaf: 3, lava: 2, couchG: 1 }, items: ['snack', 'donut', 'fries2'], quest: { item: 'snack', n: 15 }, hero: 'hippie', lowGrav: 1, trip: 1, secret: 1 },
