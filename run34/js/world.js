@@ -183,7 +183,8 @@ export class Game {
 
   checkSceneSwitch(silent) {
     if (!this.scenes || this.scenes.length < 2) return;
-    const want = Math.min(this.scenes.length - 1, Math.floor(this.progress * this.scenes.length));
+    if (!this.partBounds) this.partBounds = this.scenes.map((_, i) => this.lvTarget * i / this.scenes.length);
+    let want = 0; for (let i = 0; i < this.scenes.length; i++) if (this.distance >= this.partBounds[i]) want = i;
     if (want === this.sceneIdx) return;
     this.sceneIdx = want;
     if (this.lvP.part2) { this.levelGuests = this.guestList(this.lvP, 1); this.cameoIdx = 0; this.nextCameo = 2; }
@@ -194,6 +195,7 @@ export class Game {
     if (want >= 1 && this.lv.items2) this.biome.items = this.lv.items2;
     if (want >= 2 && this.lv.obstacles3) this.biome.obstacles = this.lv.obstacles3;
     if (want >= 2 && this.lv.items3) this.biome.items = this.lv.items3;
+    const intro = this.lv.partIntro?.[want]; if (intro && !silent) { this.sinceSpawn = 0; this.nextGap = 420; this.forceNext = intro; }
     if (!silent) sfx('memory');
   }
 
@@ -460,8 +462,13 @@ export class Game {
     const qs = this.questStatus();
     if (qs && qs.done && !qs.fail && !this.quest.survive && !this.quest.avoid) {
       this.questDone = true; sfx('fanfare');
-      const rest = this.speed * this.speedFactor * 12;
-      if (this.lvTarget - this.distance > rest) this.lvTarget = this.distance + rest;
+      const sp = this.speed * this.speedFactor, n = this.scenes?.length || 1, left = n - 1 - (this.sceneIdx || 0);
+      const rest = sp * Math.max(12, left * 7 + 5);
+      if (this.lvTarget - this.distance > rest) {
+        this.lvTarget = this.distance + rest;
+        // übrige Abschnitte gleichmäßig auf die Reststrecke verteilen (statt sie zu überspringen)
+        if (this.partBounds && left > 0) for (let j = this.sceneIdx + 1; j < n; j++) this.partBounds[j] = this.distance + (rest - sp * 5) * (j - this.sceneIdx) / (left + 1) + sp * 2;
+      }
       this.events.onToast?.('🎯 Quest geschafft! ⭐');
       this.fx.burst(this.p.x, this.screenY(80), { n: 36, type: 'confetti', speed: 260, size: 4, gravity: 300 });
     }
@@ -586,6 +593,7 @@ export class Game {
       const minGap = sp * 0.95 + 80;
       this.nextGap = (minGap + Math.random() * minGap * 0.9) * (this.mercy ? 1.12 : 1);
       let type = weighted(this.biome ? this.biome.obstacles : this.M.obstacles);
+      if (this.forceNext) { type = this.forceNext; this.forceNext = null; }
       if ((['flyshirt', 'ghost', 'stink'].includes(type) || OBS[type]?.fly) && this.distance < (this.lv ? 1500 : 4000) && !this.horror) {
         if (this.lv) { const ground = Object.keys(obsList).filter((k) => !OBS[k]?.fly && !['flyshirt', 'ghost', 'stink'].includes(k)); if (ground.length) type = pick(ground); }
         else type = this.mode === 'birthday' ? 'tax' : 'candles';
@@ -1071,7 +1079,7 @@ export class Game {
 
   die(cause) {
     const p = this.p;
-    if (this.lv && !this.revived && this.cfg.revive && Math.random() < 0.25) {
+    if (this.lv && !this.revived && this.cfg.revive && !this.lvP?.noRevive && Math.random() < 0.25) {
       this.revived = true; this.state = 'revive'; this.reviveT = 0;
       this.revive = { x: -60, t: 0 };
       p.expr = 'sad'; p.exprT = 0.9; p.duck = false; this.shake = 10; sfx('hurt');

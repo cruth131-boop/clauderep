@@ -872,12 +872,15 @@ export const SCENES = {
     for (let r = 0; r < 7; r++) { g.strokeStyle = r % 2 ? '#558b2f' : '#689f38'; g.lineWidth = 3; g.beginPath(); for (let x = -20; x <= V.w + 20; x += 14) g.lineTo(x, gy - 86 + r * 12 + Math.sin((x + off * 0.3) * 0.08) * 1.5); g.stroke(); }
     // Schienen + Weintram (offener Wagen, fährt gemächlich vorbei)
     g.fillStyle = '#6d6d6d'; g.fillRect(0, gy - 98, V.w, 3);
-    const tx = V.w + 120 - ((t * 45 + off * 0.1) % (V.w + 420));
+    const tram = (tx) => {
     g.fillStyle = '#7b1f3a'; roundRect(g, tx, gy - 140, 150, 12, 4); g.fill(); // Dach
     g.fillStyle = '#f3e9d2'; roundRect(g, tx + 4, gy - 128, 142, 6, 2); g.fill();
     for (let i = 0; i < 6; i++) { g.fillStyle = '#7b1f3a'; g.fillRect(tx + 6 + i * 27, gy - 128, 3, 26); g.fillStyle = ['#ff8a65', '#4fc3f7', '#ffd54f', '#ba68c8', '#81c784'][i % 5]; g.beginPath(); g.arc(tx + 20 + i * 27, gy - 116, 5, 0, TAU); g.fill(); g.fillRect(tx + 15 + i * 27, gy - 111, 10, 8); }
     g.fillStyle = '#7b1f3a'; g.fillRect(tx, gy - 104, 150, 6); g.fillStyle = '#222'; for (const wx of [20, 130]) { g.beginPath(); g.arc(tx + wx, gy - 97, 5, 0, TAU); g.fill(); }
     g.fillStyle = '#fff'; g.font = '900 7px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(S(lv, 'tram', 'WINE TRAM'), tx + 75, gy - 131);
+    };
+    const cyc = V.w * 0.9 + 340, tx0 = V.w + 20 - (((t * 30 + off * 0.32) % cyc) + cyc) % cyc;
+    tram(tx0); tram(tx0 + 158); // Triebwagen + Beiwagen
     // Gutshaus mit geschwungenem Giebel + Eichen + Weinfässer
     rep(V, off, 0.45, 460, (x) => {
       g.fillStyle = '#5d4037'; g.fillRect(x + 8, gy - 70, 8, 40); g.fillStyle = '#33691e'; for (const [dx, dy, r] of [[12, -86, 26], [-6, -76, 18], [30, -76, 18]]) { g.beginPath(); g.arc(x + dx, gy + dy, r, 0, TAU); g.fill(); }
@@ -908,6 +911,7 @@ export const SCENES = {
     rep(V, off, 0.55, 380, (x) => {
       const rock = (cx, cy, rx, ry, c) => { g.fillStyle = c; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, Math.PI, 0); g.fill(); g.fillStyle = 'rgba(255,255,255,0.15)'; g.beginPath(); g.ellipse(cx - rx * 0.3, cy - ry * 0.6, rx * 0.35, ry * 0.18, -0.3, 0, TAU); g.fill(); };
       rock(x + 40, gy - 2, 58, 46, '#a39e98'); rock(x + 100, gy - 2, 36, 28, '#b8b2aa'); rock(x + 6, gy - 2, 30, 22, '#8f8a84');
+      emoji(g, '🐧', x + 30, gy - 56, 22); emoji(g, '🐧', x + 52, gy - 52, 18, 0, true); emoji(g, '🐧', x + 104, gy - 36, 18);
     });
     floor(g, V, '#f4e6c8', '#e9d6ad', off, () => { g.fillStyle = 'rgba(180,150,100,0.35)'; for (let i = 0; i < 24; i++) g.fillRect(wrap(i * 47 - off, V.w + 40) - 20, gy + 10 + (i % 4) * 8, 3, 2); });
   },
@@ -1314,7 +1318,7 @@ export const LEVELS = {
   L24: { icon: '🍲', scene: ['gulaschKitchen', 'bbq'], music: 'hungarian', len: 105, obstacles: { creuset: 3, pepperbox: 2, flour: 2 }, obstacles2: { smoker: 3, logs: 2, smoke: 2 }, items: ['gulasch', 'paprika'], items2: ['gulasch', 'sausage', 'steak'], quest: { item: 'gulasch', n: 10 }, hero: 'grill' },
   L25: { icon: '🍕', scene: 'pizzaGlitter', music: 'bday30', len: 120, obstacles: { pizzatower: 3, speaker: 2, bottle: 3, confetti: 2 }, items: ['pizza', 'glitter'], quest: { item: 'glitter', n: 30 }, hero: 'glitter', party: 1, glitterRush: 1, glitterGuests: 1, outfit: { top: 'glitter', topColor: 'f', bottom: 'tutu', extra: ['party'] } },
   L26: { icon: '💼', scene: 'office', world: 'office', music: 'bumblebee', len: 120, obstacles: { chair: 3, boss: 2, folders: 3, paper: 3 }, items: ['coffee', 'mimisoup'], quest: { survive: 1 }, hero: 'business' },
-  L39: { icon: '🦁', scene: ['capetown', 'franschhoek', 'capebeach'], music: 'kapstadt', len: 130, obstacles: { minibus: 2, baboon: 2, boulder: 2 }, obstacles2: { winebarrel: 3, grapecrate: 2, baboon: 1 }, obstacles3: { parade: 2, boulder: 2, surfboard: 1, penguin: 1 }, items: ['protea', 'rooibos'], items2: ['protea', 'wine2', 'grapes'], items3: ['protea', 'wine2'], quest: { item: 'protea', n: 8 }, hero: 'baywatch', goalHearts: 1, fireworks: 1 },
+  L39: { icon: '🦁', scene: ['capetown', 'franschhoek', 'capebeach'], partIntro: [null, 'winebarrel', 'parade'], music: 'kapstadt', len: 130, obstacles: { minibus: 2, baboon: 2, boulder: 2 }, obstacles2: { winebarrel: 3, grapecrate: 2, baboon: 1 }, obstacles3: { parade: 2, boulder: 2, surfboard: 1, penguin: 1 }, items: ['protea', 'rooibos'], items2: ['protea', 'wine2', 'grapes'], items3: ['protea', 'wine2'], quest: { item: 'protea', n: 8 }, hero: 'baywatch', goalHearts: 1, fireworks: 1 },
   L27: { icon: '💍', scene: 'barn', music: 'punk', len: 150, obstacles: { hayball: 3, bench: 2, dancers: 2, bouquet: 3 }, items: ['ring', 'confetti2', 'weddingcake'], quest: { items: ['ring', 'confetti2'], n: 10 }, hero: 'groom', checkpoint: 1, party: 1, fireworks: 1, goalHearts: 1 },
   L28: { icon: '🧅', scene: 'inn', music: 'polka', len: 105, obstacles: { pan: 3, waiter: 2, bubble: 3, pubtable: 1 }, items: ['schnitzel', 'fries2', 'onion'], quest: { item: 'onion', n: 12 }, hero: 'waiter' },
   L29: { icon: '🎺', scene: 'kerb', music: 'kerbmarsch', len: 120, obstacles: { bembel: 3, trumpet: 2, drum: 2, bench: 2 }, items: ['gerippter', 'winktuch', 'saeftchen'], quest: { item: 'gerippter', n: 10 }, hero: 'kerb', party: 1 },
