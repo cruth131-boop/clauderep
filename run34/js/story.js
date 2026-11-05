@@ -23,7 +23,7 @@ export function startStory(game, ev) {
   const V = game.V;
   const s = { ev, kind: ev.kind, t: 0, phase: 'intro', dur: ev.dur || 5, done: false, parts: [], kimiPose: ev.kimiPose || 'cheer', fw: [], pops: [], skipAny: !!(ev.cinema && game.seenVideos), kimiX: game.p.x };
   if (s.kind === 'party') {
-    const src = (ev.faces ? ev.faces.map((f) => ({ face: f })) : game.levelGuests.filter((c) => c.face)).slice(0, 7);
+    const src = (ev.faces ? ev.faces.map((f) => ({ face: f })) : game.levelGuests.filter((c) => c.face)).slice(0, 8);
     const uniq = []; const seen = new Set(); for (const c of src) if (!seen.has(c.face)) { seen.add(c.face); uniq.push(c); }
     s.actors = uniq.map((c, i, a) => ({ ...c, x: 0.3 + (i + 0.5) * (0.42 / a.length), from: 'right', t0: i * 0.1, color: COLORS[i % COLORS.length] }));
     if (game.lv?.glitterGuests) s.actors.forEach((x, i) => { x.acc = [...(x.acc || []), 'sequins']; x.color = ['#d4af37', '#c0c0c0', '#ff4fa3', '#b388ff'][i % 4]; if (game.lvP?.drunk === x.face) x.ev = 1; });
@@ -505,6 +505,20 @@ function drawChampagne(g, game, s, a) {
   if (a.cork) { const c = a.cork; g.save(); g.translate(c.x, c.y); g.rotate(c.r); g.fillStyle = '#c8a46a'; g.fillRect(-3, -2.5, 6, 5); g.restore(); }
 }
 
+// Szenen-Objekte am Boden
+const OBJ_DRAW = {
+  manhole(g, game, s, a, x, y) { // Kanaldeckel; optional fällt zur Zeit a.fallAt etwas hinein (a.drop, Emoji)
+    const mx = x + (a.dx || 0);
+    g.fillStyle = '#3a3a40'; g.beginPath(); g.ellipse(mx, y + 4, 22, 6, 0, 0, 7); g.fill();
+    g.strokeStyle = '#6b6b74'; g.lineWidth = 1.2; g.beginPath(); g.ellipse(mx, y + 4, 22, 6, 0, 0, 7); g.stroke();
+    g.strokeStyle = 'rgba(0,0,0,0.55)'; for (let k = -2; k <= 2; k++) { g.beginPath(); g.moveTo(mx + k * 7, y + 0.5); g.lineTo(mx + k * 7, y + 7.5); g.stroke(); }
+    if (a.fallAt == null) return;
+    const k = s.t - a.fallAt;
+    if (k >= 0 && k < 0.5) { const yy = y - 58 + (k / 0.5) ** 2 * 62; emoji(g, a.drop || '🌭', mx, yy, 22, k * 12); }
+    if (k >= 0.5 && !a.splashed) { a.splashed = true; sfx('dig'); game.fx.burst(mx, y + 2, { n: 14, colors: ['#5a4a3a', '#8a7a6a', '#c9b89a'], speed: 140, size: 2.5, gravity: 500, spread: 1.4, angle: -Math.PI / 2 }); game.fx.text(mx, y - 30, a.dropText || 'PLUMPS!', { color: '#ffd23f', size: 18 }); }
+  },
+};
+
 // Gezeichnete Requisiten für Szenen
 const PROP_DRAW = {
   waferbox(g, x, y, t) { // sechseckige Waffelröllchen-Schachtel (Sonderedition) mit herausschauenden Röllchen
@@ -539,6 +553,7 @@ function drawActor(g, game, s, a, i, extra = {}) {
   const sc = (a.scale || 1) * SC;
   g.save(); g.translate(x, y - 40); g.rotate(rot); g.translate(-x, -(y - 40));
   if (a.rollator) { drawRollatorOma(g, x, y + 6, { t: s.t, scale: 0.95 * 1.05 }); if (a.moves && s.t > a.moves[a.moves.length - 1][0] - 1) game.fx.list.push({ x: x - 40, y: y - 16, vx: -60, vy: rand(-10, 10), life: 0.6, max: 0.6, color: 'rgba(200,200,200,0.8)', size: 4, gravity: -20, type: 'smoke', rot: 0, vr: 0, drag: 1 }); }
+  else if (a.obj && OBJ_DRAW[a.obj]) OBJ_DRAW[a.obj](g, game, s, a, x, y);
   else if (a.big) emoji(g, a.big, x, y - 34 * (a.scale || 1), 70 * (a.scale || 1), 0, !!a.flip);
   else if (a.cat) {
     const salto = anim === 'salto' ? (lt % 1.6) : 0, jy = anim === 'salto' ? Math.sin(Math.min(1, salto / 0.9) * Math.PI) * 60 : 0;
