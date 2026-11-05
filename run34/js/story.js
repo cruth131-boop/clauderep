@@ -12,7 +12,7 @@ const pick = (a) => a[(Math.random() * a.length) | 0];
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const ease = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
-const SC = 0.88;
+const SC = 0.98;
 const COLORS = ['#5b7bd5', '#d55b8f', '#3ea37a', '#d58a3e', '#8e5aa8', '#e0a030'];
 const INTRO = 1.6;
 
@@ -557,7 +557,7 @@ function drawActor(g, game, s, a, i, extra = {}) {
   if (a.spray) drawChampagne(g, game, s, a);
   if (a.prop && (!a.propT || s.t >= a.propT) && (!a.propEnd || s.t < a.propEnd)) { if (PROP_DRAW[a.prop]) PROP_DRAW[a.prop](g, x + 20, y - 58, s.t); else emoji(g, a.prop, x + 16, y - (a.pet ? 18 : 60), 20); }
   g.restore();
-  for (const [st, en, txt] of a.says || []) if (s.t >= st && s.t <= en) bubble(g, x, y - (a.pet ? 62 : a.rollator ? 120 : a.big ? 80 : 140) * (a.scale || 1), txt);
+  for (const [st, en, txt] of a.says || []) if (s.t >= st && s.t <= en) bubble(g, x, y - (a.pet ? 66 : a.rollator ? 120 : a.big ? 80 : 158) * (a.scale || 1), txt);
 }
 
 export function drawStoryBack(g, game, s) {

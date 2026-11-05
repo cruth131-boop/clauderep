@@ -17,7 +17,7 @@ export const MODES = {
   attract: { start: 230, accel: 0, max: 230, theme: 'birthday', obstacles: {}, items: 0, bad: 0 },
 };
 
-const GRAV0 = 2400, JUMP_V0 = 760, CHAR_SCALE = 0.95, PLAYER_X = 95, CAMEO_SCALE = 1.02, PACE = 0.92;
+const GRAV0 = 2400, JUMP_V0 = 760, CHAR_SCALE = 0.95, PLAYER_X = 95, CAMEO_SCALE = 1.0, PACE = 0.92;
 const STAND_H = 122, DUCK_H = 78;
 const FREQ = { viel: [12, 18], normal: [24, 34], wenig: [45, 65] };
 const freqT = (f) => (FREQ[f] ? rand(...FREQ[f]) : Infinity);
@@ -458,7 +458,7 @@ export class Game {
     const y = V.groundY;
     g.save();
     if (r.dir < 0) { g.translate(r.x, 0); g.scale(-1, 1); g.translate(-r.x, 0); }
-    drawPerson(g, r.x, y, { faceKey: r.face, t: this.t * 1.3, color: '#8d5a33', scale: 0.95, run: true, expr: 'happy', acc: ['cowboyhat'] });
+    drawPerson(g, r.x, y, { faceKey: r.face, t: this.t * 1.3, color: '#8d5a33', scale: CAMEO_SCALE, run: true, expr: 'happy', acc: ['cowboyhat'] });
     // Waffe
     const gx = r.x + 16, gy = y - 66;
     g.fillStyle = '#212121';
@@ -1132,7 +1132,7 @@ export class Game {
       const c = this.chase;
       g.save();
       if (c.knock) { const cy = V.groundY - 50 - (c.ky || 0); g.translate(c.x, cy); g.rotate(c.rot || 0); g.translate(-c.x, -cy); g.translate(0, -(c.ky || 0)); }
-      drawPerson(g, c.x, V.groundY, { faceKey: c.face, t: this.t, color: c.face === this.cfg.chaser?.face ? '#5b7bd5' : '#2b2d42', scale: 0.95, run: !c.knock, expr: c.knock ? 'sad' : 'happy', suit: c.suit });
+      drawPerson(g, c.x, V.groundY, { faceKey: c.face, t: this.t, color: c.face === this.cfg.chaser?.face ? '#5b7bd5' : '#2b2d42', scale: CAMEO_SCALE, run: !c.knock, expr: c.knock ? 'sad' : 'happy', suit: c.suit });
       g.restore();
       if (!c.knock && c.t > 0.6 && (c.t < 4.2 || c.rescue)) speech(g, c.x - 4, V.groundY - 142, c.line || 'Payback!');
     }
@@ -1195,7 +1195,7 @@ export class Game {
     for (const r of this.rockets) emoji(g, '🚀', r.x, this.screenY(r.y), 22, r.vx > 0 ? Math.PI / 4 : -Math.PI * 0.75);
     if (this.revive) {
       const k = this.revive;
-      drawPerson(g, k.x, V.groundY, { faceKey: this.cfg.revive?.face, t: this.t, color: '#3ea37a', scale: 0.95, run: this.state !== 'revive' || this.reviveT < 0.7, expr: 'happy' });
+      drawPerson(g, k.x, V.groundY, { faceKey: this.cfg.revive?.face, t: this.t, color: '#3ea37a', scale: CAMEO_SCALE, run: this.state !== 'revive' || this.reviveT < 0.7, expr: 'happy' });
       if (this.state === 'revive' && this.reviveT > 0.5) speech(g, k.x - 20, V.groundY - 142, this.cfg.revive?.line || 'Kopf hoch!');
     }
     this.fx.draw(g);
@@ -1304,17 +1304,17 @@ export class Game {
     if (c.flag) {
       drawFan(g, c.x, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.color, scale: CAMEO_SCALE, flag: c.flag });
       if (Math.floor(c.t * 7 / Math.PI) !== c.lastHop) { c.lastHop = Math.floor(c.t * 7 / Math.PI); if (c.lastHop % 2 === 0) this.fx.burst(c.x, V.groundY - 90, { n: 6, type: 'confetti', speed: 90, size: 3, gravity: 200 }); }
-      if (c.said && c.sayT < 2.6 && c.line) speech(g, c.x + 30, V.groundY - 200, c.line);
+      if (c.said && c.sayT < 2.6 && c.line) speech(g, c.x + 30, V.groundY - 212, c.line);
       return;
     }
     const jx = c.secret ? Math.sin(c.t * 40) * 2 : c.drunk ? Math.sin(c.t * 2.2) * 10 : 0;
     if (c.drunk) { g.save(); const yy = V.groundY - 40; g.translate(c.x + jx, yy); g.rotate(Math.sin(c.t * 2.2) * 0.22); g.translate(-(c.x + jx), -yy); }
     drawPerson(g, c.x + jx, V.groundY - 6, { faceKey: c.face, t: c.t, color: c.secret ? '#c62828' : c.color, oma: c.oma, scale: CAMEO_SCALE, wave: !c.ice, pet: c.pet, emojiHead: c.emoji, acc: c.acc, twerk: c.twerk });
-    if (c.ice) { g.save(); g.translate(c.x + jx, V.groundY - 6); g.scale(CAMEO_SCALE / 0.88, CAMEO_SCALE / 0.88); drawIceToss(g, 0, 0, c.t); g.restore(); }
-    if (c.prop) emoji(g, c.prop, c.x + jx + 21, V.groundY - 76, 23);
+    if (c.ice) { g.save(); g.translate(c.x + jx, V.groundY - 6); g.scale(CAMEO_SCALE / 0.88 * 1.1, CAMEO_SCALE / 0.88); drawIceToss(g, 0, 0, c.t); g.restore(); }
+    if (c.prop) emoji(g, c.prop, c.x + jx + 24, V.groundY - 82, 24);
     if (c.drunk) g.restore();
     if (c.secret) { g.fillStyle = 'rgba(255,60,60,0.25)'; g.beginPath(); g.arc(c.x, V.groundY - 60, 34 + Math.sin(c.t * 12) * 4, 0, 7); g.fill(); }
-    if (c.said && (c.sayT < 2.6 || c.secret) && c.line) speech(g, c.x + 12, V.groundY - (c.pet ? 70 : 154), c.line);
+    if (c.said && (c.sayT < 2.6 || c.secret) && c.line) speech(g, c.x + 12, V.groundY - (c.pet ? 74 : 166), c.line);
   }
 
   drawObstacle(g, o) {
