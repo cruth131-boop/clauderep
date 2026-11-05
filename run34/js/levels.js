@@ -513,12 +513,61 @@ export const SCENES = {
 
   // Gymnasium: moderner Schulbau, davor ein historisches Sandstein-Tor
   hola(g, V, off, t, lv) {
+    // Gymnasium: 70er-Jahre-Bau (helle Betonbänder, orange Brüstungen, Flachdach mit Begrünung), freistehendes
+    // Renaissance-Sandsteinportal, Inschrift-Stein auf Sockel, Kastanie, Pflasterhof mit Pollern, Teich, Steinkreis
     const gy = V.groundY;
-    sky(g, V, '#a4d4f2', '#eef8ff'); clouds(g, V, off);
-    rep(V, off, 0.25, 360, (x) => { g.fillStyle = '#e8e8e4'; g.fillRect(x, gy - 140, 340, 140); g.fillStyle = '#c0392b'; g.fillRect(x, gy - 146, 340, 8); for (let r = 0; r < 3; r++) { g.fillStyle = '#90caf9'; g.fillRect(x + 8, gy - 132 + r * 44, 324, 26); g.strokeStyle = '#fff'; g.lineWidth = 2; for (let i = 1; i < 9; i++) { g.beginPath(); g.moveTo(x + 8 + i * 36, gy - 132 + r * 44); g.lineTo(x + 8 + i * 36, gy - 106 + r * 44); g.stroke(); } } });
-    once(V, off, 0.45, 1000, 350, (x) => { g.fillStyle = '#c9a27c'; g.fillRect(x, gy - 120, 90, 120); g.fillStyle = '#b08a64'; g.fillRect(x - 6, gy - 128, 102, 12); g.beginPath(); g.moveTo(x - 6, gy - 128); g.lineTo(x + 45, gy - 160); g.lineTo(x + 96, gy - 128); g.fill(); g.fillStyle = '#3e2723'; g.beginPath(); g.moveTo(x + 22, gy); g.lineTo(x + 22, gy - 70); g.arc(x + 45, gy - 70, 23, Math.PI, 0); g.lineTo(x + 68, gy); g.fill(); g.fillStyle = '#fff'; g.font = '900 9px Georgia, serif'; g.textAlign = 'center'; g.fillText(S(lv, 'year', ''), x + 45, gy - 106); sign(g, S(lv, 'school', 'SCHULE'), x + 45, gy - 170, { bg: '#c0392b', fg: '#fff', size: 12 }); });
-    rep(V, off, 0.6, 240, (x) => { g.fillStyle = '#1b5e20'; g.fillRect(x, gy - 74, 90, 54); g.strokeStyle = '#8d6e63'; g.lineWidth = 4; g.strokeRect(x, gy - 74, 90, 54); g.fillStyle = 'rgba(255,255,255,0.8)'; g.font = '700 8px sans-serif'; g.textAlign = 'left'; g.fillText('a² + b² = c²', x + 8, gy - 56); g.fillText('ABI!!!', x + 8, gy - 40); });
-    cobble(g, V, off, '#b0aaa0', '#8d877c');
+    sky(g, V, '#9fcdf0', '#eef7ff'); clouds(g, V, off);
+    // Hauptbau, zwei Geschosse mit zurückgesetztem Obergeschoss
+    rep(V, off, 0.25, 420, (x) => {
+      g.fillStyle = '#dcdcd6'; g.fillRect(x, gy - 150, 400, 26); g.fillStyle = '#c8c8c2'; g.fillRect(x, gy - 152, 400, 3);
+      for (let i = 0; i < 9; i++) { g.fillStyle = '#3d4450'; g.fillRect(x + 8 + i * 44, gy - 144, 36, 14); }
+      g.fillStyle = '#5e8f3a'; for (let i = 0; i < 12; i++) { g.beginPath(); g.arc(x + 10 + i * 34, gy - 154, 5, 0, TAU); g.fill(); } // Dachbegrünung
+      g.fillStyle = '#e8e8e2'; g.fillRect(x - 10, gy - 124, 420, 124);
+      g.fillStyle = '#d6d6cf'; g.fillRect(x - 10, gy - 124, 420, 5); g.fillRect(x - 10, gy - 64, 420, 5); // Betonbänder
+      for (const row of [0, 60]) for (let i = 0; i < 10; i++) {
+        const wx = x + i * 41, wy = gy - 116 + row;
+        g.fillStyle = '#2f3540'; g.fillRect(wx, wy, 36, 30); g.fillStyle = 'rgba(160,200,230,0.35)'; g.fillRect(wx + 2, wy + 2, 15, 26);
+        g.fillStyle = '#ff5a1f'; g.fillRect(wx, wy + 30, 36, 14); g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(wx + 17, wy + 30, 2, 14); // orange Brüstung
+      }
+    });
+    // Sandsteinportal (freistehender Torbogen mit Ziergiebel, Obelisken, Maskarons)
+    once(V, off, 0.42, 1400, 380, (x) => {
+      const sd = '#a5513b', sl = '#b9654c', w = 120, top = gy - 190;
+      g.fillStyle = sd; g.fillRect(x, top + 70, 24, 190 - 70); g.fillRect(x + w - 24, top + 70, 24, 190 - 70);
+      g.fillRect(x - 6, top + 54, w + 12, 20); g.fillRect(x + 4, top + 74, w - 8, 18);
+      // Zwickel über dem offenen Rundbogen (Bogen selbst bleibt durchsichtig)
+      g.fillStyle = sd; g.beginPath(); g.moveTo(x + 24, top + 92); g.lineTo(x + w - 24, top + 92); g.lineTo(x + w - 24, top + 132); g.arc(x + w / 2, top + 132, w / 2 - 24, 0, Math.PI, true); g.closePath(); g.fill();
+      g.strokeStyle = sl; g.lineWidth = 3; g.beginPath(); g.arc(x + w / 2, top + 132, w / 2 - 25, Math.PI, 0); g.stroke();
+      g.fillStyle = sl; g.fillRect(x + 8, top + 8, w - 16, 46); // Aufsatz mit Wappenfeld
+      g.beginPath(); g.moveTo(x + 4, top + 10); g.lineTo(x + w / 2, top - 18); g.lineTo(x + w - 4, top + 10); g.closePath(); g.fill(); g.fillRect(x + w / 2 - 2, top - 30, 4, 14);
+      g.strokeStyle = 'rgba(80,30,20,0.5)'; g.lineWidth = 1.2; g.strokeRect(x + 22, top + 16, 34, 30); g.strokeRect(x + w - 56, top + 16, 34, 30);
+      for (const ox of [x + 39, x + w - 39]) { g.beginPath(); g.arc(ox, top + 31, 9, 0, TAU); g.stroke(); }
+      g.fillStyle = sl; for (const ox of [x + 8, x + w - 14]) { g.beginPath(); g.moveTo(ox, top + 54); g.lineTo(ox + 3, top + 14); g.lineTo(ox + 6, top + 54); g.fill(); } // Obelisken
+      g.fillStyle = 'rgba(80,30,20,0.55)'; for (const ox of [x + 12, x + w - 12]) { g.beginPath(); g.arc(ox, top + 112, 6, 0, TAU); g.fill(); g.beginPath(); g.arc(ox, top + 170, 6, 0, TAU); g.fill(); } // Fratzen
+      g.beginPath(); g.arc(x + w / 2, top + 84, 6, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(60,20,10,0.3)'; for (let r = 0; r < 9; r++) { g.beginPath(); g.moveTo(x, top + 80 + r * 12); g.lineTo(x + 24, top + 80 + r * 12); g.moveTo(x + w - 24, top + 80 + r * 12); g.lineTo(x + w, top + 80 + r * 12); g.stroke(); }
+      g.fillStyle = '#fff'; g.font = '900 8px Georgia, serif'; g.textAlign = 'center'; g.fillText(S(lv, 'year', ''), x + w / 2, top + 67);
+      sign(g, S(lv, 'jubilee', S(lv, 'school', 'SCHULE')), x + w + 110, gy - 128, { bg: '#fafafa', fg: '#c0392b', size: 11 });
+    });
+    // Kastanie mit Inschrift-Stein auf Sockel
+    rep(V, off, 0.5, 620, (x) => {
+      g.fillStyle = '#6d4c41'; g.fillRect(x + 150, gy - 110, 16, 110);
+      for (const [dx, dy, r, c] of [[158, -150, 58, '#4f8a2e'], [118, -128, 40, '#5c9a34'], [200, -128, 42, '#5c9a34'], [158, -190, 36, '#6aa83c'], [130, -168, 30, '#c79a2a']]) { g.fillStyle = c; g.beginPath(); g.arc(x + dx, gy + dy, r, 0, TAU); g.fill(); }
+      g.fillStyle = '#a07a5e'; g.fillRect(x + 30, gy - 40, 46, 40); g.strokeStyle = 'rgba(70,40,20,0.5)'; g.lineWidth = 2; for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(x + 36, gy - 10 - i * 8); g.lineTo(x + 53, gy - 20 - i * 8); g.lineTo(x + 70, gy - 10 - i * 8); g.stroke(); } // Sockel mit Winkelmuster
+      g.fillStyle = '#b38a6a'; roundRect(g, x + 26, gy - 92, 54, 50, 6); g.fill();
+      g.fillStyle = 'rgba(70,40,20,0.75)'; g.font = '900 8px Georgia, serif'; g.textAlign = 'center'; const ins = S(lv, 'motto', '').split('|'); ins.forEach((ln, i) => g.fillText(ln, x + 53, gy - 76 + i * 10, 50));
+      // Poller & Steinsitze
+      g.fillStyle = '#9e9e9e'; for (let i = 0; i < 5; i++) g.fillRect(x + 230 + i * 16, gy - 26, 3, 26); g.fillStyle = '#d32f2f'; for (let i = 0; i < 5; i++) g.fillRect(x + 230 + i * 16, gy - 22, 3, 3);
+      g.fillStyle = '#cfc8bc'; for (let i = 0; i < 3; i++) roundRect(g, x + 330 + i * 26, gy - 14, 20, 14, 3), g.fill();
+    });
+    // Schulteich mit Findlingen & Steinkreis (Freiluft-Klassenzimmer)
+    once(V, off, 0.55, 1500, 1150, (x) => {
+      g.fillStyle = '#6fa83c'; g.beginPath(); g.ellipse(x + 80, gy - 4, 120, 16, 0, Math.PI, 0); g.fill();
+      g.fillStyle = '#2e3d3a'; g.beginPath(); g.ellipse(x + 70, gy - 6, 62, 9, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,90,31,0.4)'; g.fillRect(x + 40, gy - 9, 50, 3);
+      g.fillStyle = '#7b7b7b'; for (const [dx, r] of [[0, 9], [140, 11], [170, 8]]) { g.beginPath(); g.ellipse(x + dx, gy - 6, r * 1.4, r, 0, Math.PI, 0); g.fill(); }
+      for (let i = 0; i < 9; i++) { const a = Math.PI + (i / 8) * Math.PI; g.fillStyle = i % 2 ? '#c8a27a' : '#b98f68'; g.fillRect(x + 300 + Math.cos(a) * 70 - 11, gy - 14 + Math.sin(a) * 6, 22, 14); }
+    });
+    cobble(g, V, off, '#a9a39a', '#8d877c');
   },
 
   // Hochschule: 1950er-Bau mit Rasterfassade, dahinter ein roter Sandstein-Dom
