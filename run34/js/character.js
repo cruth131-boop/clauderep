@@ -959,7 +959,12 @@ export function roundRect(g, x, y, w, h, r) {
 // ---------------------------------------------------------------------------
 // Rot getigerter Kater
 // ---------------------------------------------------------------------------
+// Fips-Outfit je Level (z. B. winzige Winterstiefel in New York)
+const CAT_STYLE = { boots: false };
+export function setCatStyle(o = {}) { CAT_STYLE.boots = !!o.boots; }
+const catBoot = (g, x, y) => { g.fillStyle = '#c62828'; roundRect(g, x - 3.2, y - 3.5, 7.5, 5, 2); g.fill(); g.fillStyle = '#fafafa'; g.fillRect(x - 3.4, y - 5.2, 6.4, 2.2); };
 export function drawCat(g, x, footY, { phase = 0, scale = 1, pose = 'run', flip = false, t = 0, coat = null } = {}) {
+  const boots = CAT_STYLE.boots && !coat;
   const { img } = getFace('fips', 'normal');
   const hasPhoto = !coat && img && !(img instanceof HTMLCanvasElement); // fremde Katzen (coat) bekommen einen gezeichneten Kopf
   g.save();
@@ -973,6 +978,7 @@ export function drawCat(g, x, footY, { phase = 0, scale = 1, pose = 'run', flip 
     g.strokeStyle = dark; g.lineWidth = 2.5;
     for (const yy of [-24, -17, -10]) { g.beginPath(); g.moveTo(-11, yy); g.quadraticCurveTo(-4, yy + 2, -2, yy - 1); g.stroke(); }
     drawCatHead(g, 2, -36, hasPhoto ? img : null, orange, dark, light, true);
+    if (boots) { catBoot(g, -3, 1); catBoot(g, 7, 1); }
   } else {
     const b = Math.sin(phase * 2) * 2;
     const legs = [[10, 0], [6, Math.PI], [-10, Math.PI * 0.5], [-14, Math.PI * 1.5]];
@@ -980,6 +986,7 @@ export function drawCat(g, x, footY, { phase = 0, scale = 1, pose = 'run', flip 
     for (const [lx, off] of legs) {
       const a = Math.sin(phase * 2 + off) * 0.7;
       g.beginPath(); g.moveTo(lx, -14 + b); g.lineTo(lx + Math.sin(a) * 12, -14 + b + Math.cos(a) * 12); g.stroke();
+      if (boots) { catBoot(g, lx + Math.sin(a) * 12, -14 + b + Math.cos(a) * 12 + 1.5); g.strokeStyle = dark; g.lineWidth = 4.5; }
     }
     // Schwanz
     g.strokeStyle = orange; g.lineWidth = 5;
