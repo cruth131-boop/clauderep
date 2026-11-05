@@ -1276,7 +1276,7 @@ export class Game {
   drawGoalArch(g) {
     const V = this.V, rem = this.lvTarget - this.distance;
     if (rem > V.w + 40) return;
-    const x = this.p.x + rem + 30, gy = V.groundY;
+    const x = PLAYER_X + rem + 30, gy = V.groundY; // feste Weltposition, unabhängig von Kimis x (Minispiele bewegen sie)
     g.fillStyle = '#eee'; g.fillRect(x - 4, gy - 150, 8, 150); g.fillRect(x + 116, gy - 150, 8, 150);
     for (let i = 0; i < 12; i++) for (let r = 0; r < 2; r++) { g.fillStyle = (i + r) % 2 ? '#111' : '#fff'; g.fillRect(x - 4 + i * 10.7, gy - 168 + r * 10, 10.7, 10); }
     g.fillStyle = '#ff4fa3'; g.font = '900 13px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('ZIEL 🏁', x + 60, gy - 172);

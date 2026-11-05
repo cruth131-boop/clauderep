@@ -976,14 +976,27 @@ export const SCENES = {
     // Feld
     g.fillStyle = '#a8cf6a'; g.fillRect(0, gy - 70, V.w, 70);
     g.strokeStyle = 'rgba(80,120,40,0.35)'; g.lineWidth = 1; for (let r = 0; r < 6; r++) { g.beginPath(); g.moveTo(0, gy - 66 + r * 11); g.lineTo(V.w, gy - 66 + r * 11); g.stroke(); }
-    // rot-weiß gestreiftes Festzelt
+    // rot-weiß gestreiftes Festzelt (rechteckiges Partyzelt mit Satteldach, von der Längsseite)
     once(V, off, 0.2, 1100, 450, (x) => {
-      const w = 300, h = 90, top = gy - 70 - h;
-      for (let i = 0; i < 15; i++) { g.fillStyle = i % 2 ? '#fff' : '#d32f2f'; g.fillRect(x + i * 20, top, 20, h); }
-      for (let i = 0; i < 15; i++) { g.fillStyle = i % 2 ? '#fff' : '#d32f2f'; g.beginPath(); g.moveTo(x + i * 20, top); g.lineTo(x + w / 2 + (i - 7) * 4, top - 60); g.lineTo(x + w / 2 + (i - 6) * 4, top - 60); g.lineTo(x + i * 20 + 20, top); g.fill(); }
-      for (let i = 0; i < 15; i++) { g.fillStyle = i % 2 ? '#d32f2f' : '#fff'; g.beginPath(); g.moveTo(x + i * 20, top); g.lineTo(x + i * 20 + 20, top); g.lineTo(x + i * 20 + 10, top + 10); g.fill(); }
-      g.fillStyle = 'rgba(60,20,10,0.55)'; g.fillRect(x + 110, top + 30, 80, h - 30);
-      g.strokeStyle = '#8d6e63'; g.lineWidth = 2; g.beginPath(); g.moveTo(x + w / 2, top - 60); g.lineTo(x + w / 2, top - 80); g.stroke(); g.fillStyle = '#d32f2f'; g.beginPath(); g.moveTo(x + w / 2, top - 80); g.lineTo(x + w / 2 + 18, top - 74 + Math.sin(t * 5) * 2); g.lineTo(x + w / 2, top - 68); g.fill();
+      const w = 360, h = 70, top = gy - 70 - h, ridge = top - 34;
+      // Abspannseile & Heringe
+      g.strokeStyle = 'rgba(90,70,50,0.6)'; g.lineWidth = 1; for (const [sx, ex] of [[x, x - 30], [x + w, x + w + 30]]) { g.beginPath(); g.moveTo(sx, top + 4); g.lineTo(ex, gy - 70); g.stroke(); }
+      // Dach: Trapez mit senkrechten Bahnen
+      g.save(); g.beginPath(); g.moveTo(x - 10, top); g.lineTo(x + 30, ridge); g.lineTo(x + w - 30, ridge); g.lineTo(x + w + 10, top); g.closePath(); g.clip();
+      for (let i = -1; i < 19; i++) { g.fillStyle = i % 2 ? '#fff' : '#d32f2f'; g.fillRect(x - 10 + i * 20.5, ridge, 20.5, top - ridge + 2); }
+      g.fillStyle = 'rgba(0,0,0,0.08)'; g.fillRect(x - 10, top - 8, w + 20, 8);
+      g.restore();
+      g.strokeStyle = '#b71c1c'; g.lineWidth = 2; g.beginPath(); g.moveTo(x + 30, ridge); g.lineTo(x + w - 30, ridge); g.stroke();
+      // Wände: senkrechte Streifen
+      for (let i = 0; i < 18; i++) { g.fillStyle = i % 2 ? '#fff' : '#d32f2f'; g.fillRect(x + i * 20, top, 20, h); }
+      // gezackte Bordüre
+      for (let i = 0; i < 18; i++) { g.fillStyle = i % 2 ? '#d32f2f' : '#fff'; g.beginPath(); g.moveTo(x + i * 20, top); g.lineTo(x + i * 20 + 20, top); g.lineTo(x + i * 20 + 10, top + 9); g.fill(); }
+      // offener Eingang mit gerafften Seitenteilen, Pfosten
+      g.fillStyle = 'rgba(60,25,15,0.6)'; g.fillRect(x + 140, top + 12, 80, h - 12);
+      g.fillStyle = '#fff'; g.beginPath(); g.moveTo(x + 140, top + 10); g.quadraticCurveTo(x + 150, top + 40, x + 142, gy - 70); g.lineTo(x + 140, gy - 70); g.fill(); g.beginPath(); g.moveTo(x + 220, top + 10); g.quadraticCurveTo(x + 210, top + 40, x + 218, gy - 70); g.lineTo(x + 220, gy - 70); g.fill();
+      g.fillStyle = '#9e9e9e'; for (const px of [x, x + w - 3]) g.fillRect(px, top, 3, h);
+      // Wimpel am First
+      for (let i = 0; i < 12; i++) { g.fillStyle = ['#ffd23f', '#3ee6b4', '#ff4fa3', '#7cc6ff'][i % 4]; const fx = x + 36 + i * 25; g.beginPath(); g.moveTo(fx, ridge - 1); g.lineTo(fx + 12, ridge - 1); g.lineTo(fx + 6, ridge - 10 + Math.sin(t * 4 + i) * 1.5); g.fill(); }
     });
     // junge Apfelbäume mit Blüten + große grüne Sonnenschirme + Bierbänke
     rep(V, off, 0.42, 230, (x, k) => {
@@ -1151,7 +1164,7 @@ export const LEVELS = {
   L30: { icon: '🤠', scene: ['nycDay', 'nola', 'nashville'], music: 'saints', len: 105, obstacles: { taxi: 2, hydrant: 2, sax: 3, guitar: 2 }, items: ['hotdog', 'beignet', 'cowboyhat', 'boots'], quest: { item: 'boots', n: 6 }, hero: 'stars' },
   L31: { icon: '🏴‍☠️', scene: 'pirateBar', music: 'sailor', len: 105, obstacles: { barstool: 3, slot: 2, bottle: 2, dartboard: 2 }, items: ['asbach', 'jaegi', 'cherry'], quest: { item: 'cherry', n: 3 }, hero: 'pirate', party: 1 },
   L32: { icon: '🍷', scene: ['mainzMarkt', 'rheinufer'], music: 'minuet', len: 120, obstacles: { pigeon: 3, flowerpot: 2, umbrella: 2, bike: 2 }, items: ['wine2', 'cheese2', 'weck'], quest: { items: ['wine2', 'cheese2', 'weck'], n: 10 }, hero: 'winzer' },
-  L33: { icon: '🌸', scene: 'bluetenfest', music: 'spring', len: 120, obstacles: { hayball: 3, bench: 2, flowerpot: 2, carousel: 1, bembel: 2 }, items: ['blossom', 'los', 'gerippter'], quest: { item: 'blackring', n: 1, hidden: 1 }, hero: 'flowers', party: 1 },
+  L33: { icon: '🌸', scene: 'bluetenfest', music: 'spring', len: 120, obstacles: { hayball: 3, bench: 2, flowerpot: 2, carousel: 1, bembel: 2 }, items: ['blossom', 'los'], quest: { item: 'gerippter', n: 10 }, hero: 'flowers', party: 1 },
   L34: { icon: '🦃', scene: 'xmasRustler', music: 'wewish', len: 105, obstacles: { teddy: 2, toytrain: 2, gift: 2, rocking: 2, weizen: 1 }, items: ['turkey', 'cookie2', 'wine'], quest: { face: 1, n: 5 }, hero: 'elf' },
   L35: { icon: '🌵', scene: 'western', music: 'susanna', len: 120, obstacles: { hayball: 2, tumbleweed: 3, cactus: 2, bull: 2, facefly: 2 }, items: ['cowboyhat', 'burger2', 'hotdog'], quest: { survive: 1 }, hero: 'cowboy', party: 1 },
   L36: { icon: '🏡', scene: ['kitchen', 'garden'], world: 'kitchen', world2: 'garden', music: 'run', len: 150, obstacles: { mop: 4, pot: 2, flour: 2, laundry: 2, tomato: 2, grill: 2 }, items: ['pizza', 'wine'], quest: { survive: 1 }, hero: 'chef', checkpoint: 1 },

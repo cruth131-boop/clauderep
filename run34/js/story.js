@@ -52,6 +52,7 @@ export function startStory(game, ev) {
     const junk = ev.junk || [['🔩', 'Nur ein Kronkorken 🙄'], ['🪙', 'Eine alte Münze! +20 🤑'], ['🥫', 'Eine Dose… 🙄']];
     s.items = [{ x: xs[0], e: junk[0][0], line: junk[0][1] }, { x: xs[1], e: junk[1][0], line: junk[1][1], coin: junk[1][0] === '🪙' }, { x: xs[2], e: '💍', ring: true }];
     s.items.forEach((it) => { it.dug = false; });
+    s.need = 4 + Math.floor(Math.random() * 4); s.digN = 0; // Ring frühestens beim 4.–7. Graben
     s.kimiPose = 'cheer';
   } else if (s.kind === 'sprint') {
     s.d = 0; s.v = 0; s.rd = 0; s.rv = 0; s.taps = 0; s.go = null; s.myT = null; s.rT = null; s.lastBeep = -1; s.tapFx = [];
@@ -434,7 +435,6 @@ function updDetector(game, s, dt) {
     s.prox = clamp(1 - dist / (V.w * 0.5), 0, 1);
     s.beepT -= dt;
     if (s.beepT <= 0) { s.beepT = 0.07 + (1 - s.prox) * 0.7; sfx('beep', s.prox); }
-    if (s.st > 22) { const ring = s.items.find((it) => it.ring); ring.x = lerp(ring.x, s.dx, dt * 0.4); }
   } else if (s.phase === 'found') {
     s.ft += dt; s.kimiPose = 'cheer'; p.expr = 'happy'; p.exprT = 2;
     if (s.ft > 3.4) s.done = true;
@@ -442,13 +442,22 @@ function updDetector(game, s, dt) {
 }
 function dig(game, s) {
   const V = game.V;
-  const it = s.items.find((o) => !o.dug && Math.abs(o.x - s.dx) < 24);
+  let it = s.items.find((o) => !o.dug && Math.abs(o.x - s.dx) < 24);
+  s.digN++;
+  if (it?.ring && s.digN < s.need) {
+    // Zu früh: hier piept nur Kleinkram, der Ring liegt woanders
+    const junk = s.ev.junk || [['🔩', 'Nur ein Kronkorken 🙄'], ['🪙', 'Eine alte Münze! +20 🤑']];
+    const [e, line] = junk[s.digN % junk.length];
+    it = { x: it.x, e, line, coin: e === '🪙', dug: true };
+    let nx, guard = 0; do { nx = rand(V.w * 0.1, V.w * 0.92); } while ((Math.abs(nx - s.dx) < V.w * 0.25 || s.items.some((o) => !o.dug && !o.ring && Math.abs(o.x - nx) < 40)) && guard++ < 60);
+    s.items.find((o) => o.ring).x = nx;
+  }
   s.digs.push({ x: s.dx, t: 0, e: it ? it.e : null });
   game.fx.burst(s.dx, V.groundY - 4, { n: 18, colors: ['#6d4c41', '#8d6e63', '#4e342e'], speed: 180, size: 3, gravity: 500, spread: Math.PI * 0.8, angle: -Math.PI / 2 });
   sfx('dig');
   if (!it) { pop(s, s.dx, V.groundY - 70, pick(['Nur Erde 🪱', 'Nix! 🤷‍♀️', 'Ein Regenwurm 🪱']), '#fff', 15); return; }
   it.dug = true;
-  if (it.ring) {
+  if (it.ring && s.digN >= s.need) {
     s.phase = 'found'; s.ft = 0; s.rx = it.x; sfx('power'); sfx('fanfare'); game.flash = 0.7;
     try { navigator.vibrate?.([90, 50, 260]); } catch {}
     game.fx.burst(it.x, V.groundY - 10, { n: 50, colors: ['#ffd23f', '#fff', '#111'], speed: 260, size: 3 });
