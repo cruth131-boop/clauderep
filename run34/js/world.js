@@ -192,6 +192,8 @@ export class Game {
     this.prevBiome = this.biome; this.biome = { ...this.biome, id: this.scenes[want] }; this.biomeFade = silent ? 1 : 0;
     if (want >= 1 && this.lv.obstacles2) this.biome.obstacles = this.lv.obstacles2; // zweiter Teil: eigene Hindernisse & Items
     if (want >= 1 && this.lv.items2) this.biome.items = this.lv.items2;
+    if (want >= 2 && this.lv.obstacles3) this.biome.obstacles = this.lv.obstacles3;
+    if (want >= 2 && this.lv.items3) this.biome.items = this.lv.items3;
     if (!silent) sfx('memory');
   }
 

@@ -4,6 +4,7 @@
 // Die Ereignisse selbst (wer, was, Texte) stehen in der privaten Config: config.levels[i].events.
 import { drawPerson, drawCat, drawHero, drawRollatorOma, roundRect } from './character.js';
 import { emoji } from './emoji.js';
+import { assets } from './assets.js';
 import { COSTUMES, drawIceToss } from './levels.js';
 import { sfx, duckMusic, playMusic, hasMp3, currentMusic } from './audio.js';
 
@@ -719,8 +720,34 @@ function drawChampagne(g, game, s, a) {
   if (a.cork) { const c = a.cork; g.save(); g.translate(c.x, c.y); g.rotate(c.r); g.fillStyle = '#c8a46a'; g.fillRect(-3, -2.5, 6, 5); g.restore(); }
 }
 
+// Autobahn-Kulisse (Kap-Halbinsel): ferner Tafelberg, Fynbos, Leitplanke, Fahrbahn
+function drawHighway(g, V, t) {
+  const gy = V.groundY;
+  const sk = g.createLinearGradient(0, 0, 0, gy); sk.addColorStop(0, '#79c3f2'); sk.addColorStop(1, '#e8f6ff'); g.fillStyle = sk; g.fillRect(0, 0, V.w, V.h);
+  g.fillStyle = '#9aa58a'; g.beginPath(); g.moveTo(V.w * 0.15, gy - 70); g.lineTo(V.w * 0.25, gy - 120); g.lineTo(V.w * 0.6, gy - 122); g.lineTo(V.w * 0.7, gy - 80); g.lineTo(V.w * 0.78, gy - 112); g.lineTo(V.w * 0.86, gy - 70); g.closePath(); g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.9)'; g.fillRect(V.w * 0.25, gy - 127, V.w * 0.35, 7);
+  g.fillStyle = '#8a9a5b'; g.fillRect(0, gy - 70, V.w, 36); for (let i = 0; i < 30; i++) { g.fillStyle = ['#b5c26b', '#6f8b3a', '#d4a24c'][i % 3]; g.beginPath(); g.arc((i * 37) % V.w, gy - 52 + (i % 3) * 6, 6, 0, 7); g.fill(); }
+  g.fillStyle = '#c0c0c8'; g.fillRect(0, gy - 38, V.w, 4); for (let x = 10; x < V.w; x += 40) g.fillRect(x, gy - 38, 3, 12);
+  g.fillStyle = '#4a4a50'; g.fillRect(0, gy - 26, V.w, V.h - gy + 26);
+  g.fillStyle = '#fff'; for (let x = -((t * 40) % 60); x < V.w; x += 60) g.fillRect(x, gy + 14, 30, 3);
+  g.fillStyle = '#e8d44d'; g.fillRect(0, gy - 22, V.w, 2);
+}
+const carShape = (g, body, glass) => {
+  g.fillStyle = body; g.beginPath(); g.moveTo(-34, -8); g.lineTo(-34, -20); g.lineTo(-20, -22); g.lineTo(-12, -34); g.lineTo(14, -34); g.lineTo(24, -22); g.lineTo(34, -20); g.lineTo(34, -8); g.closePath(); g.fill();
+  g.fillStyle = glass; g.beginPath(); g.moveTo(-9, -31); g.lineTo(-1, -31); g.lineTo(-1, -22); g.lineTo(-15, -22); g.closePath(); g.fill(); g.beginPath(); g.moveTo(2, -31); g.lineTo(12, -31); g.lineTo(19, -22); g.lineTo(2, -22); g.closePath(); g.fill();
+  g.fillStyle = '#222'; for (const wx of [-20, 20]) { g.beginPath(); g.arc(wx, -8, 7, 0, 7); g.fill(); g.fillStyle = '#999'; g.beginPath(); g.arc(wx, -8, 3, 0, 7); g.fill(); g.fillStyle = '#222'; }
+};
 // Szenen-Objekte: Update-Hooks (z. B. Münzen werfen)
 const OBJ_UPD = {
+  rentalcar(game, s, a, dt) { // Auffahrunfall: Ruck nach vorn, Krach, Glassplitter
+    if (a.bumpAt != null && s.t >= a.bumpAt && !a.bumped) {
+      a.bumped = true; game.shake = 14; game.flash = 0.5; sfx('smash'); sfx('boom');
+      const V = game.V, x = ax(a, s, V);
+      pop(s, x - 30, V.groundY - 90, a.bumpText || 'KRACH! 💥', '#ffd23f', 30);
+      game.fx.burst(x - 34, V.groundY - 24, { n: 26, colors: ['#e0f7fa', '#fff', '#b0bec5', '#ffd23f'], speed: 260, size: 3 });
+    }
+  },
+  puppy(game, s, a, dt) { if (s.t > (a.t0 || 0) && Math.random() < dt * 2) game.fx.burst(ax(a, s, game.V), game.V.groundY - 40, { n: 3, colors: ['#ff6fae', '#fff'], speed: 60, size: 2.5, gravity: -30 }); },
   moneybath(game, s, a, dt) {
     const V = game.V, x = ax(a, s, V), y = V.groundY - 6;
     if (s.t < (a.throwAt ?? 1.5)) return;
@@ -737,6 +764,57 @@ const OBJ_UPD = {
 
 // Szenen-Objekte am Boden
 const OBJ_DRAW = {
+  rentalcar(g, game, s, a, x, y) {
+    const k = a.bumped ? Math.max(0, 1 - (s.t - a.bumpAt) * 3) : 0, jolt = a.bumped ? Math.min(1, (s.t - a.bumpAt) * 6) * 18 : 0;
+    g.save(); g.translate(x + jolt + Math.sin(s.t * 60) * 3 * k, y); g.scale(1.3, 1.3); carShape(g, a.color || '#c9ccd3', '#a7d8f0');
+    if (a.bumped) { g.strokeStyle = '#555'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(-34, -18); g.lineTo(-30, -14); g.lineTo(-34, -11); g.stroke(); g.fillStyle = '#ffb300'; g.fillRect(-35, -18, 3, 4); }
+    g.restore();
+  },
+  pickup(g, game, s, a, x, y) { // weißer Pickup (fährt von links auf)
+    g.save(); g.translate(x, y); g.scale(1.35, 1.35);
+    g.fillStyle = '#f5f5f5'; g.fillRect(-40, -22, 46, 14); g.fillRect(-40, -26, 4, 6); // Ladefläche
+    g.beginPath(); g.moveTo(6, -8); g.lineTo(6, -34); g.lineTo(24, -34); g.lineTo(34, -22); g.lineTo(42, -20); g.lineTo(42, -8); g.closePath(); g.fill();
+    g.strokeStyle = '#bdbdbd'; g.lineWidth = 1; g.strokeRect(-40, -22, 46, 14);
+    g.fillStyle = '#90caf9'; g.beginPath(); g.moveTo(10, -31); g.lineTo(22, -31); g.lineTo(30, -22); g.lineTo(10, -22); g.closePath(); g.fill();
+    g.fillStyle = '#333'; g.fillRect(40, -16, 4, 6); // Stoßstange
+    g.fillStyle = '#222'; for (const wx of [-26, 28]) { g.beginPath(); g.arc(wx, -8, 7.5, 0, 7); g.fill(); g.fillStyle = '#aaa'; g.beginPath(); g.arc(wx, -8, 3, 0, 7); g.fill(); g.fillStyle = '#222'; }
+    g.restore();
+  },
+  towtruck(g, game, s, a, x, y) { // Abschleppwagen mit Kran, Haken und Rundumleuchte (fährt nach links)
+    g.save(); g.translate(x, y); g.scale(1.4, 1.4);
+    g.fillStyle = '#f9a825'; g.beginPath(); g.moveTo(10, -8); g.lineTo(10, -36); g.lineTo(28, -36); g.lineTo(38, -24); g.lineTo(44, -22); g.lineTo(44, -8); g.closePath(); g.fill();
+    g.fillStyle = '#90caf9'; g.beginPath(); g.moveTo(14, -33); g.lineTo(26, -33); g.lineTo(33, -24); g.lineTo(14, -24); g.closePath(); g.fill();
+    g.fillStyle = '#424242'; g.fillRect(-44, -18, 56, 10); // Plattform
+    g.strokeStyle = '#424242'; g.lineWidth = 3; g.beginPath(); g.moveTo(-6, -18); g.lineTo(-38, -44); g.stroke(); g.lineWidth = 1.2; g.beginPath(); g.moveTo(-38, -44); g.lineTo(-38, -24); g.stroke();
+    g.strokeStyle = '#777'; g.lineWidth = 2; g.beginPath(); g.arc(-38, -21, 3, 0, Math.PI); g.stroke();
+    const on = Math.floor(s.t * 6) % 2; g.fillStyle = on ? '#ff8f00' : '#ffd54f'; g.fillRect(16, -40, 8, 4); if (on) { g.fillStyle = 'rgba(255,170,0,0.35)'; g.beginPath(); g.arc(20, -38, 10, 0, 7); g.fill(); }
+    g.fillStyle = '#222'; for (const wx of [-30, -14, 30]) { g.beginPath(); g.arc(wx, -8, 7.5, 0, 7); g.fill(); g.fillStyle = '#aaa'; g.beginPath(); g.arc(wx, -8, 3, 0, 7); g.fill(); g.fillStyle = '#222'; }
+    g.restore();
+  },
+  puppy(g, game, s, a, x, y) { // Golden-Retriever-Welpe: springt, wedelt
+    const lt = s.t - (a.t0 || 0), hop = Math.abs(Math.sin(lt * 7)) * 16, dir = Math.cos(lt * 1.3) >= 0 ? 1 : -1;
+    g.save(); g.translate(x + Math.sin(lt * 1.3) * 26, y - hop); g.scale(dir * 1.15, 1.15);
+    const fur = '#e2a84a', dark = '#c98a2e';
+    g.strokeStyle = fur; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath(); g.moveTo(-14, -18); g.quadraticCurveTo(-24, -26 + Math.sin(lt * 25) * 6, -22, -34); g.stroke(); // Schwanz wedelt
+    g.fillStyle = fur; g.beginPath(); g.ellipse(-2, -16, 15, 9, 0, 0, 7); g.fill();
+    g.strokeStyle = dark; g.lineWidth = 4; for (const [lx, o] of [[-10, 0], [-4, 2], [6, 1], [11, 3]]) { const sw = Math.sin(lt * 14 + o) * 3; g.beginPath(); g.moveTo(lx, -10); g.lineTo(lx + sw, -1); g.stroke(); }
+    g.fillStyle = fur; g.beginPath(); g.arc(14, -26, 9, 0, 7); g.fill(); g.beginPath(); g.ellipse(21, -23, 6, 4.5, 0, 0, 7); g.fill();
+    g.fillStyle = dark; g.beginPath(); g.ellipse(10, -22, 4, 8, 0.4, 0, 7); g.fill(); // Schlappohr
+    g.fillStyle = '#2b1d14'; g.beginPath(); g.arc(17, -28, 1.6, 0, 7); g.fill(); g.beginPath(); g.arc(26, -24, 2, 0, 7); g.fill();
+    g.fillStyle = '#ff8a9a'; g.beginPath(); g.ellipse(23, -18, 2.4, 3.2, 0, 0, 7); g.fill(); // Zunge
+    g.restore();
+  },
+  photo(g, game, s, a, x, y) { // Polaroid fliegt herein und bleibt leicht schräg liegen
+    const img = assets.images[a.img]; if (!img) return;
+    const k = clamp((s.t - (a.t0 || 0)) / 0.8, 0, 1), e = 1 - (1 - k) ** 3;
+    const W = Math.min(150, game.V.w * 0.3), Hh = W * 1.25, cx = x, cy = lerp(-Hh, game.V.groundY * 0.42, e);
+    g.save(); g.translate(cx, cy); g.rotate((a.rot ?? -0.08) + (1 - e) * 0.6);
+    g.shadowColor = 'rgba(0,0,0,0.4)'; g.shadowBlur = 14; g.fillStyle = '#fffdf7'; g.fillRect(-W / 2, -Hh / 2, W, Hh); g.shadowColor = 'transparent';
+    const iw = W - 14, ih = iw * 1.05, sc = Math.max(iw / img.width, ih / img.height);
+    g.save(); g.beginPath(); g.rect(-iw / 2, -Hh / 2 + 7, iw, ih); g.clip(); g.drawImage(img, -img.width * sc / 2, -Hh / 2 + 7 + ih / 2 - img.height * sc / 2, img.width * sc, img.height * sc); g.restore();
+    g.fillStyle = '#333'; g.font = '800 12px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(a.caption || '', 0, Hh / 2 - 10, W - 10);
+    g.restore();
+  },
   rhinoRider(g, game, s, a, x, y) { // Nashorn im Galopp (läuft nach links), Reiter obendrauf
     const t = s.t, ph = t * 11, bob = Math.abs(Math.sin(ph)) * 4, dir = a.dir ?? -1;
     if (Math.random() < 0.5) game.fx.list.push({ x: x - dir * 50, y: y - 4, vx: -dir * rand(20, 60), vy: rand(-30, -10), life: 0.6, max: 0.6, color: 'rgba(200,170,110,0.55)', size: 6, gravity: -10, type: 'smoke', rot: 0, vr: 0, drag: 1 });
@@ -900,6 +978,7 @@ function drawSpots(g, game, s) {
 
 export function drawStoryBack(g, game, s) {
   const V = game.V;
+  if (s.fx?.highway) drawHighway(g, V, s.t);
   if (s.kind === 'party') disco(g, V, s.t, s.phase === 'end' ? 1 : clamp(0.3 + (s.combo || 0) * 0.08, 0, 1));
   else if (s.fx?.disco) disco(g, V, s.t);
   if (s.fx?.dim && (s.fx.dimUntil == null || s.t < s.fx.dimUntil)) { g.fillStyle = `rgba(0,0,0,${s.fx.dim})`; g.fillRect(0, 0, V.w, V.h); }
