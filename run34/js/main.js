@@ -290,6 +290,9 @@ function showGameOver(info, mercyMsg) {
   $('over-best').textContent = info.mode === 'birthday' ? `von ${cfg.birthdayTarget || 34} Kerzen 🕯️ – noch ${Math.max(0, (cfg.birthdayTarget || 34) - info.score)}!` : `Rekord: ${save.best[info.mode]}`;
   const tal = earnTaler(info.mode === 'birthday' ? info.score / 2 : info.mode === 'level' ? info.score / 15 : info.score / 8);
   $('over-taler').textContent = tal ? `+${tal} 🪙 Taler${runDouble ? ' (×2)' : ''} · Konto: ${save.taler} 🪙` : '';
+  const lp = assets.images.lose_photo; // trauriges Foto zum Verlieren (nicht in Kinderleveln)
+  $('over-photo').classList.toggle('hidden', !lp || !!assets.kidMode);
+  if (lp && !assets.kidMode) { $('over-photo').src = lp.src; $('over-photo').style.transform = `rotate(${(Math.random() * 8 - 4).toFixed(1)}deg)`; }
   $('over-mercy').textContent = mercyMsg;
   $('over-mercy').classList.toggle('hidden', !mercyMsg);
   const cp = info.mode === 'level' && LEVELS[info.level]?.checkpoint && info.progress >= 0.5;

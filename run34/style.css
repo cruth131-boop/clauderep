@@ -351,3 +351,7 @@ input[type=password] {
 
 .wr-card.refuse { border-color: rgba(62,230,180,0.6); }
 .wr-card.refuse .wr-badge { background: #1f7a3a; color: #fff; }
+
+.over-photo { width: min(46vw, 220px); border: 8px solid #fffdf7; border-bottom-width: 26px; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin: 0 18px; animation: pop 0.45s cubic-bezier(.2,1.6,.4,1); flex: 0 0 auto; }
+@media (max-width: 600px) { #scr-over { flex-direction: column; gap: 10px; } .over-photo { width: min(44vw, 170px); margin: 0; } }
+@media (max-height: 500px) { .over-photo { width: min(28vw, 190px); } }
