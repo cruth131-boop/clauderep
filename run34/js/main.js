@@ -208,7 +208,7 @@ function startGame(mode, { level = null, startAt = 0 } = {}) {
   if (save.boosts?.double > 0) { save.boosts.double--; runDouble = true; used.push('🪙×2'); }
   if (used.length) { persist(); setTimeout(() => toast(`⚡ Booster aktiv: ${used.join(' ')}`, 2400), 2700); }
   if (mode === 'roadtrip') unlockAch('roadtrip');
-  if (save.outfit.top === 'green') unlockAch('green');
+  if (save.outfit.top === 'track') unlockAch('green');
   if (eggHead) setTimeout(() => toast('🥚 Eierkopf-Modus! 30 Sekunden Riesenkopf'), 200);
   const hr = new Date().getHours();
   if (hr >= 23 || hr < 4) { setTimeout(() => toast('Kimi, geh ins Bett! 😴', 2600), 900); unlockAch('nightowl'); }
@@ -415,9 +415,12 @@ save.taler ??= 0; save.owned ??= []; save.boosts ??= {};
 if (DEV && save.taler < 500) save.taler = 999;
 const ikey = (cat, key) => `${cat}:${key}`;
 const optOf = (cat, key) => OUTFIT_PARTS[cat]?.options[key];
-function itemState(cat, key) { // own | shop | lock
+save.refuseTaps ??= {}; save.refuseOpen ??= {};
+if (save.outfit.top === 'green') save.outfit.top = 'matrose'; // grünes Shirt gibt's nur noch im Horror-Modus
+function itemState(cat, key) { // own | shop | lock | refuse
   const o = optOf(cat, key);
   if (!o) return 'lock';
+  if (o.refuse) return save.refuseOpen[o.refuse] ? 'own' : 'refuse';
   if (o.shop) return save.owned.includes(ikey(cat, key)) ? 'own' : 'shop'; // auch im Test-Link kaufen (dort mit 999 🪙)
   if (o.unlock && !unlocked(o.unlock)) return 'lock';
   return 'own';
@@ -433,7 +436,8 @@ function lookInfo(id) {
   const missing = items.filter(([c, k]) => itemState(c, k) === 'shop');
   const sum = missing.reduce((a, [c, k]) => a + optOf(c, k).shop, 0);
   const lock = (L.unlock && !unlocked(L.unlock)) || items.some(([c, k]) => itemState(c, k) === 'lock');
-  return { missing, price: Math.round((sum * (L.discount || 1)) / 5) * 5, lock };
+  const refuse = L.refuse && !save.refuseOpen[L.refuse] ? L.refuse : null;
+  return { missing, price: Math.round((sum * (L.discount || 1)) / 5) * 5, lock, refuse };
 }
 function earnTaler(n) { n = Math.max(0, Math.round(n * (runDouble ? 2 : 1))); save.taler += n; persist(); return n; }
 const talerTxt = () => `🪙 ${save.taler}`;
@@ -467,7 +471,7 @@ function setTry(t) {
   const bar = $('wr-try'); bar.classList.toggle('hidden', !t);
   if (!t) return;
   let label, price = 0, state;
-  if (t.look) { const li = lookInfo(t.look); label = `${LOOKS[t.look].icon} ${LOOKS[t.look].label}`; price = li.price; state = li.lock ? 'lock' : li.missing.length ? 'shop' : 'own'; }
+  if (t.look) { const li = lookInfo(t.look); label = `${LOOKS[t.look].icon} ${lookLbl(t.look)}`; price = li.price; state = li.lock ? 'lock' : li.missing.length ? 'shop' : 'own'; }
   else { const o = optOf(t.cat, t.key); label = o.label; price = o.shop || 0; state = itemState(t.cat, t.key); }
   $('wr-try-text').textContent = state === 'lock' ? `Anprobe: ${label}` : `Anprobe: ${label}`;
   const b = $('wr-buy');
@@ -490,6 +494,22 @@ function buyTry() {
 $('wr-buy').addEventListener('click', buyTry);
 $('wr-cancel').addEventListener('click', () => { setTry(null); $('wardrobe-msg').textContent = ''; buildWardrobe(); });
 
+// „Unbezahlbar“: 10× antippen, dann gibt der Besitzer nach (Texte aus der privaten Config)
+const RL = () => assets.config.refuseLines || {};
+// Anzeigenamen: private Config darf Beschriftungen überschreiben
+const lbl = (cat, key) => assets.config.outfitLabels?.[`${cat}:${key}`] || OUTFIT_PARTS[cat].options[key].label;
+const lookLbl = (id) => assets.config.outfitLabels?.[`look:${id}`] || LOOKS[id].label;
+function refuseTap(group, b, equip) {
+  const msg = $('wardrobe-msg');
+  const n = save.refuseTaps[group] = (save.refuseTaps[group] || 0) + 1; persist();
+  if (n >= 10) {
+    save.refuseOpen[group] = true; equip(); persist();
+    msg.textContent = RL().ok || 'Na gut… du darfst ihn haben. PAYBACK! 💳💚'; sfx('power'); unlockAch('green'); setTry(null); buildWardrobe(); return;
+  }
+  setTry(null);
+  msg.textContent = n >= 6 ? `${RL().almost || 'Da guckt schon jemand misstrauisch… 🤨'} (noch ${10 - n}×)` : (RL().no || 'Unbezahlbar! 💳');
+  sfx('no'); b.animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], { duration: 250, iterations: 2 });
+}
 function card({ region, outfit, name, badge, cls = '', onClick }) {
   const b = document.createElement('button'); b.className = `wr-card ${cls}${region === 'look' ? ' look' : ''}`;
   const cv = document.createElement('canvas'); cv.width = 132; cv.height = region === 'look' ? 200 : 132; drawThumb(cv, outfit, region);
@@ -515,8 +535,9 @@ function buildWardrobe() {
   if (wrTab === 'looks') {
     for (const [id, L] of Object.entries(LOOKS)) {
       const li = lookInfo(id), on = JSON.stringify(PRESETS[id]) === JSON.stringify(save.outfit);
-      const badge = li.lock ? '🔒' : li.missing.length ? `🪙 ${li.price}` : on ? '✓' : '';
-      grid.appendChild(card({ region: 'look', outfit: PRESETS[id], name: `${L.icon} ${L.label}`, badge, cls: `${on ? 'on' : ''} ${li.lock ? 'lock' : li.missing.length ? 'shop' : ''}`, onClick: () => {
+      const badge = li.refuse ? '∞ unbezahlbar' : li.lock ? '🔒' : li.missing.length ? `🪙 ${li.price}` : on ? '✓' : '';
+      grid.appendChild(card({ region: 'look', outfit: PRESETS[id], name: `${L.icon} ${lookLbl(id)}`, badge, cls: `${on ? 'on' : ''} ${li.refuse ? 'refuse' : li.lock ? 'lock' : li.missing.length ? 'shop' : ''}`, onClick: (b) => {
+        if (li.refuse) { refuseTap(li.refuse, b, () => { save.outfit = structuredClone(PRESETS[id]); }); return; }
         if (li.lock) { setTry({ look: id }); $('wardrobe-msg').textContent = '🔒 Die Krone muss man sich verdienen! (Geburtstags-Modus)'; sfx('bad'); return; }
         if (li.missing.length) { setTry({ look: id }); $('wardrobe-msg').textContent = `Fehlt noch: ${li.missing.map(([c, k]) => optOf(c, k).label).join(', ')}`; sfx('tap', 2); buildWardrobe(); return; }
         save.outfit = structuredClone(PRESETS[id]); persist(); setTry(null); sfx('power'); $('wardrobe-msg').textContent = ''; buildWardrobe();
@@ -526,26 +547,21 @@ function buildWardrobe() {
     const def = OUTFIT_PARTS[wrTab];
     const entries = Object.entries(def.options).sort((a, b) => (itemState(wrTab, a[0]) === 'shop') - (itemState(wrTab, b[0]) === 'shop'));
     for (const [key, opt] of entries) {
+      if (opt.hidden) continue;
       const st = itemState(wrTab, key);
       const on = def.multi ? (save.outfit.extra || []).includes(key) : save.outfit[wrTab] === key;
       const outfit = def.multi ? withItem({ ...save.outfit, extra: [] }, wrTab, key) : withItem(save.outfit, wrTab, key);
-      const badge = st === 'lock' ? '🔒' : st === 'shop' ? `🪙 ${opt.shop}` : on ? '✓' : '';
-      grid.appendChild(card({ region: regionOf(wrTab, key), outfit, name: opt.label, badge, cls: `${on ? 'on' : ''} ${st === 'lock' ? 'lock' : st === 'shop' ? 'shop' : ''}`, onClick: (b) => tapItem(wrTab, key, opt, st, def, b) }));
+      const badge = st === 'refuse' ? '∞' : st === 'lock' ? '🔒' : st === 'shop' ? `🪙 ${opt.shop}` : on ? '✓' : '';
+      grid.appendChild(card({ region: regionOf(wrTab, key), outfit, name: lbl(wrTab, key), badge, cls: `${on ? 'on' : ''} ${st === 'refuse' ? 'refuse' : st === 'lock' ? 'lock' : st === 'shop' ? 'shop' : ''}`, onClick: (b) => tapItem(wrTab, key, opt, st, def, b) }));
     }
   }
   setTry(tryOn);
 }
 function tapItem(cat, key, opt, st, def, b) {
   const msg = $('wardrobe-msg');
+  if (st === 'refuse') { refuseTap(opt.refuse, b, () => { const L = PRESETS.hagen; save.outfit = { ...save.outfit, top: L.top, bottom: L.bottom }; }); return; }
   if (st === 'lock') { setTry({ cat, key }); msg.textContent = lockHint(opt); sfx('bad'); return; }
   if (st === 'shop') { setTry({ cat, key }); msg.textContent = `${opt.label} – ${opt.shop} 🪙. Gefällt’s? Dann kaufen!`; sfx('tap', 2); return; }
-  if (opt.refuse && !save.greenUnlocked) {
-    save.greenTaps = (save.greenTaps || 0) + 1; persist();
-    if (save.greenTaps >= 10) { save.greenUnlocked = true; persist(); msg.textContent = 'Na gut… 🤢 Du hast es so gewollt. Grün ist jetzt erlaubt.'; sfx('power'); buildWardrobe(); return; }
-    msg.textContent = save.greenTaps >= 6 ? `Du bist ganz schön hartnäckig… (${10 - save.greenTaps})` : `„${assets.config.loseLines?.[0] || 'Nein.'}" Grün kommt hier nicht rein. (Außer im Horror-Modus… 👻)`;
-    sfx('no'); b.animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], { duration: 250, iterations: 2 });
-    return;
-  }
   if (def.multi) {
     if ((save.outfit.extra || []).includes(key)) save.outfit.extra = save.outfit.extra.filter((k) => k !== key);
     else save.outfit = withItem(save.outfit, cat, key);
@@ -553,7 +569,7 @@ function tapItem(cat, key, opt, st, def, b) {
   setTry(null); msg.textContent = ''; sfx('collect'); persist(); buildWardrobe();
 }
 $('wr-random').addEventListener('click', () => {
-  const own = (cat) => Object.keys(OUTFIT_PARTS[cat].options).filter((k) => itemState(cat, k) === 'own' && !(OUTFIT_PARTS[cat].options[k].refuse && !save.greenUnlocked));
+  const own = (cat) => Object.keys(OUTFIT_PARTS[cat].options).filter((k) => itemState(cat, k) === 'own' && !OUTFIT_PARTS[cat].options[k].hidden);
   const r = (a) => a[(Math.random() * a.length) | 0];
   const o = { top: r(own('top')), topColor: r(own('topColor')), bottom: r(own('bottom')), socks: r(own('socks')), shoes: r(own('shoes')), extra: [] };
   const ex = own('extra').sort(() => Math.random() - 0.5).slice(0, (Math.random() * 3) | 0);
@@ -587,13 +603,13 @@ function openShop() {
   for (const [id, L] of Object.entries(LOOKS)) {
     if (!L.discount) continue;
     const li = lookInfo(id);
-    looks.appendChild(card({ region: 'look', outfit: PRESETS[id], name: `${L.icon} ${L.label}`, badge: li.missing.length ? `🪙 ${li.price}` : '✓', cls: li.missing.length ? 'shop' : 'on', onClick: () => openWardrobe(li.missing.length ? { look: id } : null) }));
+    looks.appendChild(card({ region: 'look', outfit: PRESETS[id], name: `${L.icon} ${lookLbl(id)}`, badge: li.missing.length ? `🪙 ${li.price}` : '✓', cls: li.missing.length ? 'shop' : 'on', onClick: () => openWardrobe(li.missing.length ? { look: id } : null) }));
   }
   const items = $('shop-items'); items.innerHTML = '';
   for (const [cat, def] of Object.entries(OUTFIT_PARTS)) for (const [key, opt] of Object.entries(def.options)) {
     if (!opt.shop) continue;
     const st = itemState(cat, key);
-    items.appendChild(card({ region: regionOf(cat, key), outfit: def.multi ? withItem({ ...save.outfit, extra: [] }, cat, key) : withItem(save.outfit, cat, key), name: opt.label, badge: st === 'shop' ? `🪙 ${opt.shop}` : '✓', cls: st === 'shop' ? 'shop' : 'on', onClick: () => openWardrobe({ cat, key }) }));
+    items.appendChild(card({ region: regionOf(cat, key), outfit: def.multi ? withItem({ ...save.outfit, extra: [] }, cat, key) : withItem(save.outfit, cat, key), name: lbl(wrTab, key), badge: st === 'shop' ? `🪙 ${opt.shop}` : '✓', cls: st === 'shop' ? 'shop' : 'on', onClick: () => openWardrobe({ cat, key }) }));
   }
   const boosts = $('shop-boosts'); boosts.innerHTML = '';
   for (const [id, B] of Object.entries(BOOSTS)) {
@@ -729,7 +745,7 @@ function showAchievements() {
   $('ach-count').textContent = `${ids.filter((i) => save.ach[i]).length}/${ids.length}`;
   $('ach-list').innerHTML = ids.map((id) => {
     const [t, d, e] = ACHIEVEMENTS[id], on = !!save.ach[id];
-    const secret = !on && ['egghead', 'green', 'shake', 'fipsbox', 'nightowl', 'secret', 'god'].includes(id);
+    const secret = !on && ['egghead', 'green', 'shake', 'fipsbox', 'nightowl', 'secret', 'god', 'heidi'].includes(id);
     return `<div class="ach-item ${on ? 'on' : ''}"><div class="e">${secret ? '❓' : e}</div><div><b>${secret ? 'Geheim' : t}</b><span>${secret ? 'Ein Easter Egg wartet…' : d}${!on && prog[id] ? ` · ${prog[id]}` : ''}</span></div></div>`;
   }).join('');
   show('scr-ach');

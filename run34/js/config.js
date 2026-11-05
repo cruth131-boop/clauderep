@@ -114,7 +114,8 @@ export const OUTFIT_PARTS = {
       princess: { label: 'Prinzessin', unlock: 'birthday' },
       blazer: { label: 'Blazer', unlock: 'world:office' },
       glitter: { label: 'Glitzer-Top', unlock: 'world:party' },
-      green: { label: 'Grünes T-Shirt', refuse: true },
+      green: { label: 'Grünes T-Shirt', hidden: true }, // nur noch im Horror-Modus
+      track: { label: 'Trainingsjacke', refuse: 'track' },
       pyjama: { label: 'Schlafanzug-Shirt', shop: 80 },
       vans: { label: 'Vans Checkerboard-Shirt', shop: 90 },
       carhartt: { label: 'Carhartt Detroit-Jacke', shop: 160 },
@@ -141,6 +142,7 @@ export const OUTFIT_PARTS = {
       tutu: { label: 'Tüll-Rock', unlock: 'birthday' },
       pyshorts: { label: 'Schlafanzug-Shorts', shop: 60 },
       doubleknee: { label: 'Carhartt Double Knee', shop: 120 },
+      trackpants: { label: 'Trainingshose', refuse: 'track' },
     },
   },
   socks: {
@@ -189,6 +191,7 @@ export const PRESETS = {
   carhartt: { top: 'carhartt', topColor: 'c', bottom: 'doubleknee', socks: 'none', shoes: 'docs', extra: ['beanie'] },
   pyjama: { top: 'pyjama', topColor: 'a', bottom: 'pyshorts', socks: 'plain', shoes: 'checker', extra: [] },
   cowgirl: { top: 'ripp', topColor: 'e', bottom: 'jeans', socks: 'none', shoes: 'cowboy', extra: ['cowboyhat'] },
+  hagen: { top: 'track', topColor: 'a', bottom: 'trackpants', socks: 'plain', shoes: 'sneaker', extra: [] },
 };
 
 // Komplett-Looks im Kleiderschrank/Shop (Bundle-Preis = Rabatt auf fehlende Teile)
@@ -200,6 +203,7 @@ export const LOOKS = {
   carhartt: { label: 'Carhartt-Workwear', icon: '🧱', discount: 0.8 },
   pyjama: { label: 'Kurzer Schlafanzug', icon: '😴', discount: 0.8 },
   cowgirl: { label: 'Cowgirl', icon: '🤠', discount: 0.8 },
+  hagen: { label: 'Trainingsanzug', icon: '💳', refuse: 'track' },
 };
 
 // Booster für den nächsten Lauf
@@ -221,12 +225,12 @@ export const ACHIEVEMENTS = {
   allergy: ['Allergikerin', '45 Sekunden ohne Feige oder Garnele', '🦐'],
   monkeys: ['Affenliebe', '10 Affen gesammelt', '🐒'],
   worlds: ['Weltenbummlerin', 'Alle 7 Welten in einem Lauf', '🌍'],
-  payback: ['Payback-Profi', '3× vor Hagen geflüchtet', '💳'],
+  payback: ['Payback-Profi', '3× vor dem Payback-Verfolger geflüchtet', '💳'],
   mop: ['Wischsauger-Bezwingerin', '10 Wischsaugern ausgewichen', '🧹'],
   hearts: ['Volles Herz', 'Mit 3 Herzen gleichzeitig unterwegs', '❤️'],
   score500: ['Marathon-Bish', '500 Punkte im Endlos-Modus', '🏃‍♀️'],
   egghead: ['Eierkopf', 'Den geheimen Eierkopf-Modus gefunden', '🥚'],
-  green: ['Grün ist das neue Schwarz', 'Das grüne T-Shirt angezogen', '👕'],
+  green: ['Payback-Style', 'Den unbezahlbaren Trainingsanzug ergattert', '💳'],
   nightowl: ['Nachteule', 'Nach 23 Uhr gespielt', '🦉'],
   shake: ['Erdbeben', 'Fips per Schütteln gerufen', '📳'],
   fipsbox: ['Katzen-Klappe', 'Fips’ Geheimgang gefunden', '📦'],
@@ -240,6 +244,7 @@ export const ACHIEVEMENTS = {
   allstars: ['Sternenhimmel', 'Alle Level mit 3 Sternen', '🌟'],
   secret: ['Psst…', 'Das geheime Level gefunden', '🌿'],
   god: ['Cheaterin!', 'Den Godmode entdeckt', '⚡'],
+  heidi: ['Pilzsammlerin', 'Den geheimen Pilzwald gefunden', '🍄'],
 };
 
 // Tages-Challenges (je Tag eine, abhängig vom Datum)

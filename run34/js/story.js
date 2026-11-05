@@ -53,6 +53,10 @@ export function startStory(game, ev) {
     s.items = [{ x: xs[0], e: junk[0][0], line: junk[0][1] }, { x: xs[1], e: junk[1][0], line: junk[1][1], coin: junk[1][0] === '🪙' }, { x: xs[2], e: '💍', ring: true }];
     s.items.forEach((it) => { it.dug = false; });
     s.kimiPose = 'cheer';
+  } else if (s.kind === 'mushrooms') {
+    s.time = ev.time || 30; s.pt = 0; s.hx = V.w * 0.3; s.hy = 0; s.hvy = 0; s.target = s.hx; s.caught = 0; s.golds = 0; s.mush = []; s.dir = 1;
+    for (let i = 0; i < 5; i++) s.mush.push(newMush(V, s));
+    s.trees = Array.from({ length: 9 }, (_, i) => ({ x: (i + rand(0, 0.6)) * V.w / 8, s: rand(0.7, 1.25), d: i % 2 }));
   } else if (s.kind === 'tapgame') {
     s.n = 0; s.need = ev.n || 15; s.time = ev.time || 6; s.shake = 0;
   } else if (s.kind === 'throw') {
@@ -70,6 +74,108 @@ export function startStory(game, ev) {
   game.obstacles = [];
   game.items = game.items.filter((i) => !i.bad);
   return s;
+}
+
+// ---------------------------------------------------------------------------
+// Pilzwald: Heidi (per Finger gesteuert) fängt Pilze, die vor ihr weghüpfen
+function newMush(V, s, far = true) {
+  let x; do { x = rand(40, V.w - 40); } while (far && Math.abs(x - s.hx) < 160);
+  return { x, y: 0, vx: 0, vy: 0, hop: rand(0.3, 1.2), gold: Math.random() < 0.15, born: s.t, squash: 0 };
+}
+function updateMushrooms(game, s, dt) {
+  const V = game.V;
+  if (s.phase === 'intro' && s.t > 1.6) s.phase = 'play';
+  if (s.phase === 'play') {
+    s.pt += dt;
+    const d = s.target - s.hx; s.hx += Math.sign(d) * Math.min(Math.abs(d), 360 * dt); if (Math.abs(d) > 3) s.dir = Math.sign(d);
+    s.hvy -= 1500 * dt; s.hy = Math.max(0, s.hy + s.hvy * dt); if (s.hy === 0) s.hvy = 0;
+    for (const m of s.mush) {
+      m.vy -= 1250 * dt; m.x += m.vx * dt; m.y = Math.max(0, m.y + m.vy * dt);
+      if (m.y === 0) { m.vy = 0; m.vx *= 0.8; }
+      if (m.x < 24 || m.x > V.w - 24) { m.x = clamp(m.x, 24, V.w - 24); m.vx = -m.vx; }
+      m.squash = Math.max(0, m.squash - dt * 4);
+      m.hop -= dt;
+      const dist = m.x - s.hx;
+      if (m.y === 0 && m.hop <= 0) {
+        const near = Math.abs(dist) < 150;
+        const corner = (m.x < 70 && dist < 0) || (m.x > V.w - 70 && dist > 0);
+        const away = corner ? -Math.sign(dist || 1) : Math.sign(dist || rand(-1, 1));
+        m.vx = near ? away * rand(170, 270) * (m.gold ? 1.3 : 1) : rand(-60, 60);
+        m.vy = near ? rand(420, 560) : rand(160, 260);
+        m.hop = near ? rand(0.35, 0.6) : rand(0.6, 1.4); m.squash = 1;
+        if (near && Math.random() < 0.3) sfx('tap', 8);
+      }
+      if (Math.abs(dist) < 36 && Math.abs(m.y - s.hy) < 50) {
+        m.got = true; s.caught += m.gold ? 3 : 1; if (m.gold) s.golds++;
+        sfx(m.gold ? 'power' : 'collect'); pop(s, m.x, V.groundY - 80 - m.y, m.gold ? '+3 ✨' : '+1 🍄', m.gold ? '#ffd23f' : '#fff', m.gold ? 22 : 18);
+        game.fx.burst(m.x, V.groundY - 20 - m.y, { n: 14, colors: m.gold ? ['#ffd23f', '#fff'] : ['#e53935', '#fff', '#8bc34a'], speed: 180, size: 3 });
+      }
+    }
+    s.mush = s.mush.filter((m) => !m.got);
+    while (s.mush.length < 5) s.mush.push(newMush(V, s));
+    if (s.pt >= s.time) {
+      s.phase = 'end'; s.endT = s.t; sfx('fanfare'); game.flash = 0.6;
+      const bday = game.mode === 'birthday';
+      const bonus = bday ? Math.min(3, Math.floor(s.caught / 6)) : s.caught * 4;
+      finish(game, s, s.ev.label || '🍄 Pilzwald', `${s.caught} Pilze${bday && bonus ? ` · +${bonus} 🕯️` : ''}`, bonus, s.caught / 24);
+      for (let i = 0; i < 3; i++) game.fx.burst(rand(60, V.w - 60), rand(30, V.groundY * 0.5), { n: 40, type: 'confetti', speed: 260, size: 4, gravity: 260 });
+    }
+  }
+  if (s.phase === 'end' && s.t - s.endT > 2.8) s.done = true;
+}
+function mushInput(game, s, type, x) {
+  if (s.phase !== 'play') return;
+  if (type === 'down') { s.target = x; s.downT = s.t; s.downX = x; }
+  else if (type === 'move') s.target = x;
+  else if (type === 'up' && s.downT != null && s.t - s.downT < 0.22 && Math.abs(x - s.downX) < 18 && s.hy === 0) { s.hvy = 640; sfx('jump'); }
+}
+function drawMushroom(g, x, y, m, t) {
+  const sq = m.squash * Math.sin(t * 30) * 0.15, legs = m.y > 0 || m.vx !== 0;
+  g.save(); g.translate(x, y); g.scale((1 + sq) * 1.45, (1 - sq) * 1.45);
+  g.fillStyle = 'rgba(0,0,0,0.2)'; g.beginPath(); g.ellipse(0, 2 + m.y, 12, 3, 0, 0, 7); g.fill();
+  g.strokeStyle = '#6d4c41'; g.lineWidth = 2.2; g.lineCap = 'round';
+  for (const s2 of [-1, 1]) { const k = legs ? Math.sin(t * 22 + s2) * 3 : 0; g.beginPath(); g.moveTo(s2 * 4, -4); g.lineTo(s2 * 5 + k, 1); g.stroke(); }
+  g.fillStyle = '#f5ecd8'; roundRect(g, -6, -16, 12, 14, 5); g.fill();
+  g.fillStyle = '#3a2a1a'; for (const ex of [-2.5, 2.5]) { g.beginPath(); g.arc(ex, -10, 1.3, 0, 7); g.fill(); }
+  g.strokeStyle = '#3a2a1a'; g.lineWidth = 0.9; g.beginPath(); g.arc(0, -8, 2.2, 0.2, Math.PI - 0.2); g.stroke();
+  const cap = m.gold ? '#ffcf33' : '#d83a2e';
+  const cg = g.createRadialGradient(-4, -24, 2, 0, -18, 16); cg.addColorStop(0, m.gold ? '#fff3b0' : '#ff6b5e'); cg.addColorStop(1, cap);
+  g.fillStyle = cg; g.beginPath(); g.ellipse(0, -16, 15, 11, 0, Math.PI, 0); g.closePath(); g.fill();
+  g.fillStyle = '#fff'; for (const [dx2, dy2, r] of [[-7, -21, 2.4], [2, -24, 2], [8, -19, 2.2], [-1, -18, 1.6]]) { g.beginPath(); g.arc(dx2, dy2, r, 0, 7); g.fill(); }
+  if (m.gold) { g.globalAlpha = (Math.sin(t * 8) + 1) / 2; emoji(g, '✨', 12, -28, 12); g.globalAlpha = 1; }
+  g.restore();
+}
+function drawMushrooms(g, game, s) {
+  const V = game.V, gy = V.groundY;
+  const sky = g.createLinearGradient(0, 0, 0, gy); sky.addColorStop(0, '#9fd8a8'); sky.addColorStop(1, '#2f6b3a');
+  g.fillStyle = sky; g.fillRect(0, 0, V.w, V.h);
+  g.save(); g.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 4; i++) { const x = V.w * (0.15 + i * 0.25); g.fillStyle = 'rgba(255,250,200,0.08)'; g.beginPath(); g.moveTo(x - 10, 0); g.lineTo(x + 20, 0); g.lineTo(x + 90, gy); g.lineTo(x + 30, gy); g.fill(); }
+  g.restore();
+  for (const tr of s.trees) { // Tannen hinten
+    const h = 190 * tr.s, x = tr.x, y = gy - 4;
+    g.fillStyle = tr.d ? '#1f4d2a' : '#245c31';
+    for (let k = 0; k < 4; k++) { const w = (60 - k * 11) * tr.s, yy = y - 26 * tr.s - k * h * 0.2; g.beginPath(); g.moveTo(x - w, yy); g.lineTo(x + w, yy); g.lineTo(x, yy - h * 0.34); g.closePath(); g.fill(); }
+    g.fillStyle = '#4e342e'; g.fillRect(x - 5 * tr.s, y - 28 * tr.s, 10 * tr.s, 28 * tr.s);
+  }
+  const grd = g.createLinearGradient(0, gy, 0, V.h); grd.addColorStop(0, '#5d8a3a'); grd.addColorStop(1, '#3e5f27');
+  g.fillStyle = grd; g.fillRect(0, gy - 2, V.w, V.h - gy + 2);
+  for (let i = 0; i < 26; i++) { const x = (i * 71.3) % V.w, y = gy + 6 + ((i * 37) % 30); g.fillStyle = ['#c46a2b', '#e0a43a', '#8d5524'][i % 3]; g.beginPath(); g.ellipse(x, y, 5, 2.4, i, 0, 7); g.fill(); }
+  for (let i = 0; i < 7; i++) emoji(g, '🌿', (i * 131 + 40) % V.w, gy - 8, 22);
+  // Pilze & Heidi
+  for (const m of s.mush) drawMushroom(g, m.x, gy - m.y, m, s.t + m.born);
+  const moving = Math.abs(s.target - s.hx) > 4 && s.phase === 'play';
+  g.save(); if (s.dir < 0) { g.translate(s.hx, 0); g.scale(-1, 1); g.translate(-s.hx, 0); }
+  drawPerson(g, s.hx, gy - s.hy, { faceKey: s.ev.face, t: s.t, color: '#d55b8f', scale: SC * 1.05, run: moving || s.hy > 0, wave: false });
+  emoji(g, '🧺', s.hx + 20, gy - s.hy - 46, 22);
+  g.restore();
+  // HUD
+  const left = Math.max(0, s.time - s.pt);
+  g.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(g, V.w / 2 - 110, 54, 220, 30, 15); g.fill();
+  g.fillStyle = '#fff'; g.font = '900 17px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center';
+  g.fillText(`🍄 ${s.caught}   ⏱ ${Math.ceil(left)} s`, V.w / 2, 75);
+  if (s.phase === 'intro') { banner(g, V, '🍄 Fang die Pilze!', s.t); g.fillStyle = '#fff'; g.font = '800 14px ui-rounded, system-ui, sans-serif'; g.fillText('Finger ziehen = laufen · kurz tippen = springen', V.w / 2, gy + 36); }
+  if (s.phase === 'end') banner(g, V, `${s.caught} Pilze im Korb! 🧺`, s.t - s.endT, true);
 }
 
 function finish(game, s, label, value, bonus, frac = null) {
@@ -104,6 +210,7 @@ export function updateStory(game, s, dt) {
   else if (s.kind === 'escalator') updEscalator(game, s, dt);
   else if (s.kind === 'detector') updDetector(game, s, dt);
   else if (s.kind === 'tapgame') updTap(game, s, dt);
+  else if (s.kind === 'mushrooms') updateMushrooms(game, s, dt);
   else if (s.kind === 'throw') updThrow(game, s, dt);
   else if (s.kind === 'slot') updSlot(game, s, dt);
   else if (s.kind === 'candles') {
@@ -375,6 +482,7 @@ function evalSpin(game, s) {
 // ---------------------------------------------------------------------------
 export function storyInput(game, s, type, x, y) {
   const V = game.V;
+  if (s.kind === 'mushrooms') { mushInput(game, s, type, x); return; }
   if (s.kind === 'candles' && s.phase === 'play' && (type === 'move' || type === 'down')) {
     for (const c of s.candles) if (c.lit && Math.abs(c.x - x) < 16 && Math.abs(c.y - 12 - y) < 26) { c.lit = false; s.out++; sfx('tap', s.out % 12); game.fx.burst(c.x, c.y - 14, { n: 6, type: 'smoke', colors: ['#ddd', '#fff'], speed: 40, size: 4, gravity: -60 }); }
     return;
@@ -641,6 +749,7 @@ export function drawStory(g, game, s) {
   else if (s.kind === 'escalator') drawEsc(g, game, s);
   else if (s.kind === 'detector') drawDetector(g, game, s);
   else if (s.kind === 'tapgame') drawTap(g, game, s);
+  else if (s.kind === 'mushrooms') drawMushrooms(g, game, s);
   else if (s.kind === 'throw') drawThrow(g, game, s);
   else if (s.kind === 'slot') drawSlot(g, game, s);
   else if (s.kind === 'candles') drawCandles(g, game, s);

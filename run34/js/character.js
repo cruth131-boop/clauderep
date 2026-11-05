@@ -182,7 +182,8 @@ export function drawCharacter(g, x, footY, opt) {
 // ---------------------------------------------------------------------------
 const DENIM = { jeans: '#42649e', latz: '#6a8fc8' };
 // Oberteile mit fester Farbe (Farbwahl ausgeblendet)
-export const FIXED_TOP = { princess: '#f58dc2', green: '#3fae3a', pyjama: '#7fcf8e', vans: '#1d1d24', carhartt: '#a86e34' };
+export const FIXED_TOP = { princess: '#f58dc2', green: '#3fae3a', pyjama: '#7fcf8e', vans: '#1d1d24', carhartt: '#a86e34', track: '#1f7a3a' };
+const TRACK = '#1f7a3a';
 const PJ = '#7fcf8e', DK_BROWN = '#5b4630', BOOT = '#8a5a30';
 /** Drei feine Streifen längs eines Segments (Trainingsanzug). */
 function stripes3(g, a, b, side, color = '#ffffff') { for (const off of [2.2, 3.6, 5]) lineAlong(g, a, b, side * off, color, 0.8); }
@@ -192,6 +193,7 @@ function legPieces(H, L, o, f) {
   const P = [];
   const b = o.bottom;
   const bare = b === 'culotte' || b === 'tutu' || b === 'pyshorts';
+  const trackL = b === 'trackpants';
   P.push(cap(H, K, 11, 9.6, SKIN, f, (g) => {
     g.fillStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.arc(K[0] + 1, K[1] - 1, 2.2, 0, 7); g.fill();
   }));
@@ -252,6 +254,12 @@ function legPieces(H, L, o, f) {
         for (const off of [-5, 0.5, 6]) lineAlong(g, lerpP(K, hem, 0.15), lerpP(K, hem, 0.8), off, 'rgba(0,0,0,0.22)', 0.7);
       },
     });
+  } else if (trackL) { // Trainingshose mit drei weißen Streifen außen
+    const hem = lerpP(K, A, 0.9);
+    P.push(cap(H, K, 13.8, 12, TRACK, f, (g) => stripes3(g, H, K, -1)));
+    P.push(cap(K, hem, 12, 11, TRACK, f, (g) => stripes3(g, K, hem, -1)));
+    const c0 = lerpP(K, A, 0.84);
+    P.push(cap(c0, hem, 11.2, 10.6, shade(TRACK, 0.8), f));
   } else if (b === 'pyshorts') { // kurze Schlafanzughose mit weißer Paspel
     const hem = lerpP(H, K, 0.62);
     P.push(cap(H, hem, 15.5, 15, PJ, f, (g) => {
@@ -366,15 +374,19 @@ function armPieces(S, [up, fo], top, topCol, f) {
   const E = pt(S[0], S[1], up, L_UPPER);
   const Hn = pt(E[0], E[1], fo, L_FORE);
   const P = [cap(S, E, 9.2, 7.6, SKIN, f), cap(E, Hn, 7.6, 6.4, SKIN, f)];
-  if (top === 'matrose' || top === 'ripp' || top === 'blazer' || top === 'carhartt') {
+  if (top === 'matrose' || top === 'ripp' || top === 'blazer' || top === 'carhartt' || top === 'track') {
     const c1 = lerpP(E, Hn, 0.7), c2 = lerpP(E, Hn, 0.84);
-    const tex = top === 'ripp'
+    const tex = top === 'track'
+      ? (a, b) => (g) => stripes3(g, a, b, 1)
+      : top === 'ripp'
       ? (a, b) => (g) => { for (const off of [-3, -1.5, 0, 1.5, 3]) lineAlong(g, a, b, off, 'rgba(0,0,0,0.13)', 0.55); }
       : (a, b) => (g) => lineAlong(g, a, b, -2.5, 'rgba(255,255,255,0.10)', 1.2);
     P.push(cap(S, E, 11.2, 9.6, topCol, f, tex(S, E)));
     P.push(cap(E, c1, 9.6, 9, topCol, f, tex(E, c1)));
     if (top === 'blazer') {
       P.push(cap(c1, c2, 8.6, 8.2, '#ffffff', f));
+    } else if (top === 'track') { // Bündchen
+      P.push(cap(c1, c2, 9.2, 8.8, shade(TRACK, 0.8), f));
     } else if (top === 'carhartt') { // Druckknopf-Bündchen
       P.push(cap(c1, c2, 9.4, 9.2, shade(topCol, 0.82), f, (g) => { const m = lerpP(c1, c2, 0.5); g.fillStyle = '#d8c9a0'; g.beginPath(); g.arc(m[0], m[1], 1, 0, 7); g.fill(); }));
     } else if (top === 'matrose') {
@@ -465,7 +477,9 @@ function torsoPieces(o, topCol, extras) {
   // Hautbasis (sichtbar bei Ausschnitten)
   P.push({ path: (g) => bodyPath(g, -36, -20), fill: (g) => hGrad(g, SKIN), noOutline: true });
 
-  if (top === 'carhartt') {
+  if (top === 'track') {
+    // Trainingsjacke über der Hose – siehe unten
+  } else if (top === 'carhartt') {
     // Workwear-Jacke (Canvas, Cordkragen, Reißverschluss, Brusttasche) – siehe unten, über der Hose
   } else if (top === 'blazer') {
     P.push({
@@ -629,6 +643,20 @@ function torsoPieces(o, topCol, extras) {
     P.push({ path: (g) => bodyPath(g, -8, -3.5), fill: '#e0458f', detail: (g) => { g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(-12, -7.5, 25, 1); } });
   }
 
+  if (b === 'trackpants') P.push({ path: (g) => bodyPath(g, -8, 5, { botCurve: 1.5 }), fill: (g) => hGrad(g, TRACK), detail: (g) => { g.fillStyle = shade(TRACK, 0.75); g.fillRect(-12, -8, 25, 2.5); } });
+  if (top === 'track') { // Trainingsjacke: weißer Reißverschluss, Kragen, Schulterstreifen
+    P.push({
+      path: (g) => bodyPath(g, -37, 2, { botCurve: 1 }),
+      fill: (g) => hGrad(g, TRACK),
+      detail: (g) => {
+        g.fillStyle = '#ffffff'; g.fillRect(5.2, -35, 1.3, 37);
+        g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(-10, -37.5); g.quadraticCurveTo(0, -40, 12, -37); g.lineTo(11, -34.5); g.quadraticCurveTo(0, -37, -9.5, -35); g.closePath(); g.fill();
+        g.strokeStyle = '#ffffff'; g.lineWidth = 0.9; for (const off of [0, 1.5, 3]) { g.beginPath(); g.moveTo(-11 + off * 0.3, -33 + off); g.lineTo(-11 + off * 0.3, -6); g.stroke(); }
+        g.fillStyle = shade(TRACK, 0.78); g.fillRect(-12, -1, 25, 3);
+        g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(-1, -26); g.lineTo(1, -30); g.lineTo(3, -26); g.closePath(); g.fill();
+      },
+    });
+  }
   if (top === 'carhartt') {
     P.push({
       path: (g) => bodyPath(g, -37, 3, { botCurve: 1 }),

@@ -4,7 +4,7 @@ import { assets, getFace } from './assets.js';
 import { Particles } from './fx.js';
 import { sfx } from './audio.js';
 import { BIOMES, BIOMES_RT, FIPSLAND, OBS, ITEM_ICONS, drawMonkey, biomeName } from './biomes.js';
-import { LEVELS, COSTUMES, ITEM_EMO, drawScene, faceItem, drawIceToss } from './levels.js';
+import { LEVELS, COSTUMES, ITEM_EMO, drawScene, faceItem, drawIceToss, drawJaegerBottle } from './levels.js';
 import { emoji } from './emoji.js';
 import { startStory, updateStory, drawStory, drawStoryBack, storyInput } from './story.js';
 
@@ -88,6 +88,8 @@ export class Game {
     this.green = this.outfit.top === 'green' && mode !== 'horror';
     this.hour = new Date().getHours();
     this.boxSpawned = false; this.fipsT = 0; this.savedBiome = null;
+    // Heidi versteckt sich im Geburtstags-Modus (und im Finale) hinter einem Busch -> Antippen = Pilzwald
+    this.heidiOn = mode === 'birthday' || level === 'L38'; this.heidiPeek = null; this.nextHeidi = rand(14, 22); this.heidiDone = false;
     this.omaRide = null; this.nextOma = ['birthday', 'endless', 'roadtrip'].includes(mode) ? rand(26, 34) : Infinity;
     this.hero = null; this.nextHero = ['birthday', 'endless', 'roadtrip', 'horror'].includes(mode) ? rand(16, 24) : Infinity;
     this.prevBiome = null; this.biomeFade = 1; this.nextBiomeAt = 60;
@@ -204,6 +206,16 @@ export class Game {
 
   tryTap(x, y) {
     const V = this.V;
+    const h = this.heidiPeek;
+    if (h && this.state === 'run' && Math.abs(x - h.x) < 48 && y > V.groundY - 150 && y < V.groundY + 10) {
+      this.heidiPeek = null; this.heidiDone = true;
+      this.flash = 0.8; sfx('power');
+      this.fx.burst(h.x, V.groundY - 70, { n: 34, colors: ['#4caf50', '#ff4f6d', '#fff', '#ffd23f'], speed: 240 });
+      this.events.onToast?.(this.cfg.forestToast || '🍄 Geheimer Pilzwald! Fang die Pilze!');
+      this.events.onAchieve?.('heidi');
+      this.beginStory({ kind: 'mushrooms', time: 30, face: this.cfg.family?.fan?.face, label: this.cfg.forestLabel || '🍄 Pilzwald' });
+      return true;
+    }
     for (const c of this.cameos) {
       if (!c.secret) continue;
       if (Math.abs(x - c.x) < 36 && y > V.groundY - 165 && y < V.groundY + 10) {
@@ -259,7 +271,7 @@ export class Game {
       p.vy -= GRAV0 * dt; p.y = Math.max(0, p.y + p.vy * dt); if (p.y === 0) p.vy = this.story.kimiPose === 'jump' ? 300 : 0;
       p.phase += dt * (this.story.kimiPose === 'run' ? 12 : 0);
       if (this.story.done) {
-        if (this.story.result) { this.miniResults.push(this.story.result); this.score += this.story.result.bonus; }
+        if (this.story.result) { (this.miniResults ||= []).push(this.story.result); this.score += this.story.result.bonus; }
         const wasCinema = !!this.story.ev.cinema;
         this.story = null;
         if (this.endQueue?.length) this.beginStory(this.endQueue.shift());
@@ -356,6 +368,10 @@ export class Game {
     this.items = this.items.filter((it) => it.x > -60 && !it.taken);
     for (const c of this.cameos) { c.x -= dx; c.t += dt; }
     this.cameos = this.cameos.filter((c) => c.x > -80);
+    if (this.heidiOn && !this.heidiDone && this.state === 'run' && !this.horror) {
+      if (this.heidiPeek) { const h = this.heidiPeek; h.x -= dx * 0.55; h.t += dt; if (h.x < -70) { this.heidiPeek = null; this.nextHeidi = rand(22, 32); } }
+      else if ((this.nextHeidi -= dt) <= 0) this.heidiPeek = { x: this.V.w + 60, t: 0 };
+    }
     if (this.rockets.length) this.updateRockets(dt, dx);
     for (const b of this.booms) { b.t += dt; b.x -= dx; }
     this.booms = this.booms.filter((b) => b.t < 0.6);
@@ -595,7 +611,8 @@ export class Game {
       if (this.hero || this.dash || this.fips > 0 || this.chase) this.nextPower = 2.5;
       else {
         this.nextPower = this.mercy >= 1 ? rand(12, 18) : rand(22, 34);
-        const type = this.horror ? 'fips' : (Math.random() < 0.55 ? 'fips' : 'hammer');
+        let type = this.horror ? 'fips' : (Math.random() < 0.55 ? 'fips' : 'hammer');
+        if (type === 'hammer' && this.lv) { if (this.hammerSpawned) type = 'fips'; else this.hammerSpawned = true; } // Abrisshammer höchstens 1× pro Level
         this.items.push(this.makeItem(type, V.w + 40 + this.nextGap * 0.5, 60));
       }
     }
@@ -650,7 +667,7 @@ export class Game {
     this.updateHero(dt);
     this.updateOma(dt);
     const active = this.state === 'run' || this.state === 'idle';
-    // Hagen läuft Kimi hinterher ("Payback!") – holt sie aber nie ein
+    // Verfolger läuft hinterher ("Payback!") – holt aber nie ein
     if (this.chase) {
       const c = this.chase; c.t += dt;
       if (c.knock) {
@@ -1118,6 +1135,7 @@ export class Game {
         g.restore();
       }
     } else drawBackground(g, V, this.M.theme, this.bgOffset, this.t, night);
+    if (this.heidiPeek) this.drawHeidiPeek(g);
     for (const c of this.cameos) this.drawCameo(g, c);
     if (this.lv) this.drawGoalArch(g);
     if (this.story) drawStoryBack(g, this, this.story);
@@ -1300,8 +1318,33 @@ export class Game {
     if (Math.floor(t / 2.8) !== this.fipsSayN) { this.fipsSayN = Math.floor(t / 2.8); if (this.fipsSayN % 2 === 0) this.fx.text(p.x + 60, V.groundY - 90, pick(this.cfg.catLines || ['Miau!']), { color: '#ffb36b', size: 16 }); }
   }
 
+  // Heidi lugt hinter einem Busch hervor und winkt
+  drawHeidiPeek(g) {
+    const V = this.V, h = this.heidiPeek, by = V.groundY - 4;
+    const up = Math.max(0, Math.sin(h.t * 1.6)) ** 0.6, peek = 18 + up * 34;
+    g.save(); g.beginPath(); g.rect(h.x - 70, 0, 140, by - 6); g.clip();
+    drawPerson(g, h.x, by + 60 - peek, { faceKey: this.cfg.family?.fan?.face, t: this.t, color: '#d55b8f', scale: CAMEO_SCALE * 0.9 });
+    g.restore();
+    const bush = (x, y, r, c) => { g.fillStyle = c; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); };
+    for (const [ox, oy, r, c] of [[-34, -10, 22, '#2f7d3a'], [34, -12, 24, '#2f7d3a'], [-14, -22, 26, '#3c9a48'], [16, -24, 26, '#3c9a48'], [0, -8, 28, '#348c40']]) bush(h.x + ox, by + oy, r, c);
+    for (const [ox, oy] of [[-20, -30], [12, -36], [26, -16], [-30, -14]]) bush(h.x + ox, by + oy, 3, '#ff4f6d');
+    if (up > 0.6) { g.globalAlpha = (up - 0.6) * 2.5; emoji(g, '✨', h.x + 30, by - 70, 16); g.globalAlpha = 1; }
+  }
+
   drawCameo(g, c) {
     const V = this.V;
+    if (c.shout) { // hüpft und brüllt, Flasche in der Hand – ohne Fahne
+      const hop = Math.abs(Math.sin(c.t * 7)) * 12;
+      drawPerson(g, c.x, V.groundY - 6 - hop, { faceKey: c.face, t: c.t, color: c.color, scale: CAMEO_SCALE, wave: true, expr: 'happy' });
+      drawJaegerBottle(g, c.x - 22, V.groundY - 54 - hop, 1.3);
+      const k = (c.t * 1.4) % 1.6;
+      if (c.said && k < 1.1) {
+        const sz = 22 + Math.sin(Math.min(1, k * 4) * Math.PI / 2) * 6;
+        g.save(); g.font = `900 ${sz}px ui-rounded, system-ui, sans-serif`; g.textAlign = 'center'; g.lineWidth = 5; g.strokeStyle = 'rgba(0,0,0,0.75)';
+        g.strokeText(c.shout, c.x, V.groundY - 150 - hop); g.fillStyle = '#ff9a1f'; g.fillText(c.shout, c.x, V.groundY - 150 - hop); g.restore();
+      }
+      return;
+    }
     if (c.sleep) { // liegt hinten auf dem Boden und schläft
       const s = CAMEO_SCALE * 0.88, y = V.groundY - 18;
       g.save(); g.translate(c.x, y); g.rotate(-Math.PI / 2 + 0.05); g.translate(-c.x, -y);

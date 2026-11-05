@@ -19,7 +19,7 @@ const STEP = 2.2;          // Sekunden zwischen zwei neuen Gästen
 const COLORS = ['#d55b8f', '#5b7bd5', '#3ea37a', '#e0a030', '#8e5aa8', '#d0503c', '#2a9d8f', '#c06aa0'];
 
 function randomOutfit(i) {
-  const keys = (part) => Object.keys(OUTFIT_PARTS[part].options).filter((k) => k !== 'green');
+  const keys = (part) => Object.keys(OUTFIT_PARTS[part].options).filter((k) => k !== 'green' && k !== 'track' && k !== 'trackpants');
   const pick = (a, n) => a[(n * 7 + i * 3) % a.length];
   const ex = keys('extra');
   return {

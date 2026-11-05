@@ -348,3 +348,6 @@ input[type=password] {
 .credits.big .roll { animation-duration: 55s; }
 @keyframes rollbig { from { transform: translateY(30px); } to { transform: translateY(-100%); } }
 .credits.big .roll { animation-name: rollbig; }
+
+.wr-card.refuse { border-color: rgba(62,230,180,0.6); }
+.wr-card.refuse .wr-badge { background: #1f7a3a; color: #fff; }

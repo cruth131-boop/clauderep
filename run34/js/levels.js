@@ -626,7 +626,7 @@ export const SCENES = {
     drawAnyBiomeBg(g, V, 'party', off, t);
     const gy = V.groundY;
     rep(V, off, 0.25, 300, (x, k) => { const dec = ['70s', '80s', '90s', '2000er'][((k % 4) + 4) % 4]; neon(g, dec, x + 60, 70, ['#ff4fa3', '#3ee6b4', '#ffd23f', '#7cc6ff'][((k % 4) + 4) % 4], 22, t, 1); emoji(g, '⏳', x + 150, 64, 24, Math.sin(t + k)); });
-    sign(g, S(lv, 'party', 'TIMECLASH'), V.w / 2, Math.max(28, gy - 236), { bg: '#ff4fa3', fg: '#fff', size: 16 });
+    once(V, off, 0.45, 2600, 200, (x) => sign(g, S(lv, 'party', 'TIMECLASH'), x + 120, Math.max(28, gy - 236), { bg: '#ff4fa3', fg: '#fff', size: 16 })); // Schild zieht nur ab und zu vorbei
   },
 
   // Serengeti-Park Hodenhagen: Savanne mit Akazien, Zebras, Giraffen, Safari-Jeeps und freilaufenden Affen
