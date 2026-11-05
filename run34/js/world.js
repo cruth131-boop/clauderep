@@ -88,7 +88,7 @@ export class Game {
     this.green = this.outfit.top === 'green' && mode !== 'horror';
     this.hour = new Date().getHours();
     this.boxSpawned = false; this.fipsT = 0; this.savedBiome = null;
-    if (mode !== 'attract') { setKidFaces(this.lvP?.kids); assets.kidMode = !!this.lvP?.kid; setCatStyle({ boots: this.lv?.catBoots }); } else { assets.kidMode = false; setCatStyle({}); }
+    if (mode !== 'attract') { setKidFaces(this.lvP?.kids); assets.kidMode = !!this.lvP?.kid; assets.kidFace = this.lvP?.kidFace || null; setCatStyle({ boots: this.lv?.catBoots }); } else { assets.kidMode = false; setCatStyle({}); }
     // Heidi versteckt sich im Geburtstags-Modus (und im Finale) hinter einem Busch -> Antippen = Pilzwald
     this.heidiOn = mode === 'birthday' || level === 'L38'; this.heidiPeek = null; this.nextHeidi = rand(12, 55); this.heidiDone = false; // nur ein einziger Auftritt pro Lauf, Zeitpunkt zufällig
     this.miniDone = false;

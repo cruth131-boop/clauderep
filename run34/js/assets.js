@@ -113,7 +113,7 @@ export function getFace(key, expr = 'normal') {
   const im = assets.images;
   // Kindheits-Level: Kimi immer mit Kinderfoto – auch beim Verlieren (skeptisches Kinderfoto)
   if (key === 'her' && assets.kidMode) {
-    const k = ['sad', 'shock', 'skeptic', 'meh', 'hammer', 'childSad'].includes(expr) ? 'her_child_skeptic' : 'her_child';
+    const k = ['sad', 'shock', 'skeptic', 'meh', 'hammer', 'childSad'].includes(expr) ? 'her_child_skeptic' : (assets.kidFace && im[assets.kidFace] ? assets.kidFace : 'her_child');
     if (im[k]) return { img: im[k], exact: true, name: k };
   }
   // Zuordnung Ausdruck -> Bild (z.B. config.faceMap.her.happy = 'her_poser')
