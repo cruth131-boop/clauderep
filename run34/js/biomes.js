@@ -365,17 +365,17 @@ export function drawMonkey(g, x, y, t, scale = 1, flip = false) {
 // ---------------------------------------------------------------------------
 // Hintergründe
 // ---------------------------------------------------------------------------
-function sky(g, V, top, bot) {
+export function sky(g, V, top, bot) {
   const gr = g.createLinearGradient(0, 0, 0, V.groundY);
   gr.addColorStop(0, top); gr.addColorStop(1, bot);
   g.fillStyle = gr; g.fillRect(0, 0, V.w, V.groundY + 1);
 }
-function ground(g, V, c1, c2, off, deco) {
+export function ground(g, V, c1, c2, off, deco) {
   g.fillStyle = c1; g.fillRect(0, V.groundY, V.w, V.h - V.groundY);
   g.fillStyle = c2; g.fillRect(0, V.groundY - 2, V.w, 5);
   if (deco) deco();
 }
-function clouds(g, V, off, a = 0.9) {
+export function clouds(g, V, off, a = 0.9) {
   g.fillStyle = `rgba(255,255,255,${a})`;
   for (let i = 0; i < 5; i++) {
     const cx = wrap(i * 220 - off * 0.12, V.w + 220) - 110, cy = V.groundY * 0.18 + (i % 3) * 26;
@@ -745,7 +745,7 @@ export const ITEM_ICONS = {
   },
 };
 
-const bgRT = {
+export const bgRT = {
   autobahn(g, V, off, t) {
     sky(g, V, '#8ecdf2', '#eaf6ff'); clouds(g, V, off, 0.85);
     const gy = V.groundY;

@@ -7,6 +7,7 @@ import { drawCharacter, FIXED_TOP } from './character.js';
 import { MOTIFS } from './motifs.js';
 import { initAudio, sfx, playMusic, stopMusic, setMuted, isMuted, suspendAudio, resumeAudio, hasMp3 } from './audio.js';
 import { LEVELS, PHASE_ICONS } from './levels.js';
+import { RT_STAGES, RT_TRUNK, rtStageName } from './roadtrip.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -127,7 +128,7 @@ function toMenu() {
   const rb = $('btn-roadtrip');
   rb.classList.toggle('locked', !roadtripOpen());
   rb.textContent = roadtripOpen() ? '🚗 Roadtrip' : '🔒 Roadtrip (ab 4.12.)';
-  rb.classList.toggle('hidden', !save.won);
+  rb.classList.toggle('hidden', !save.won && !DEV);
   $('btn-gift').classList.toggle('hidden', !save.won);
   const hb = $('btn-horror');
   hb.classList.toggle('hidden', !horrorOpen());
@@ -181,6 +182,7 @@ $('btn-mute').addEventListener('click', async () => {
 
 // ----------------------------------------------------------------- Spiel
 function startGame(mode, { level = null, startAt = 0 } = {}) {
+  if (mode === 'roadtrip') lastRtStart = startAt;
   if (!isIOS) goFullscreen();
   show(null); screen = 'play'; scene = null; paused = false;
   const mercy = mode === 'birthday' ? mercyLevel() : 0;
@@ -235,8 +237,8 @@ function startGame(mode, { level = null, startAt = 0 } = {}) {
   if (hr === 6) setTimeout(() => toast('⏰ 6 Uhr! Die Wecker sind los…', 2600), 900);
   setHud(true);
   if (DEV) window.__game = game;
-  $('progress').classList.toggle('hidden', mode !== 'birthday' && mode !== 'level');
-  $('progress-cake').textContent = mode === 'level' ? '🏁' : '🎂';
+  $('progress').classList.toggle('hidden', mode !== 'birthday' && mode !== 'level' && mode !== 'roadtrip');
+  $('progress-cake').textContent = mode === 'level' ? '🏁' : mode === 'roadtrip' ? '🏡' : '🎂';
   $('quest').classList.toggle('hidden', mode !== 'level');
   $('god-ctl').classList.add('hidden');
   const lvP = level && lvList().find((l) => l.id === level);
@@ -316,7 +318,10 @@ function showGameOver(info, mercyMsg) {
   $('over-mercy').textContent = mercyMsg;
   $('over-mercy').classList.toggle('hidden', !mercyMsg);
   const cp = info.mode === 'level' && LEVELS[info.level]?.checkpoint && info.progress >= 0.5;
-  $('btn-checkpoint').classList.toggle('hidden', !cp);
+  const rtCp = info.mode === 'roadtrip' ? rtDayStart(info.rtIdx || 0) : 0;
+  $('btn-checkpoint').classList.toggle('hidden', !cp && !rtCp);
+  $('btn-checkpoint').textContent = rtCp ? `🚩 Ab ${RT_STAGES[rtCp].day} weiterfahren` : '🚩 Ab Checkpoint';
+  if (info.mode === 'roadtrip') $('over-best').textContent = `${Math.round((info.progress || 0) * 100)}% der Strecke · Rekord: ${save.best.roadtrip}`;
   $('btn-over-menu').textContent = info.mode === 'level' ? '🗺️ Levels' : 'Menü';
   if (info.mode === 'level') $('over-best').textContent = `${Math.round(info.progress * 100)}% geschafft – fast!`;
   lastDeath = info;
@@ -324,10 +329,41 @@ function showGameOver(info, mercyMsg) {
 }
 let lastDeath = null;
 $('btn-again').addEventListener('click', () => (lastDeath?.mode === 'level' ? startGame('level', { level: lastDeath.level }) : startGame(game?.mode || 'birthday')));
-$('btn-checkpoint').addEventListener('click', () => startGame('level', { level: lastDeath.level, startAt: 0.5 }));
+$('btn-checkpoint').addEventListener('click', () => (lastDeath?.mode === 'roadtrip' ? startGame('roadtrip', { startAt: rtDayStart(lastDeath.rtIdx || 0) }) : startGame('level', { level: lastDeath.level, startAt: 0.5 })));
+let lastRtStart = 0;
+// letzter Tagesbeginn (Tag 2 / Tag 3) bis zur erreichten Etappe
+function rtDayStart(idx) { let d = 0; for (let i = 1; i <= idx; i++) if (RT_STAGES[i]?.day) d = i; return d; }
+
+function showRoadtripDone() {
+  const st = game.stats, cfg = assets.config, rt = cfg.roadtrip || {};
+  const score = Math.floor(game.score);
+  runEnded(st, score, 'roadtrip', game.t);
+  const fullTrip = !lastRtStart;
+  if (fullTrip && score > (save.best.roadtrip || 0)) save.best.roadtrip = score;
+  if (fullTrip) save.roadtripDone = (save.roadtripDone || 0) + 1;
+  persist();
+  setHud(false); screen = 'over'; scene = null;
+  const n = (k) => st.items[k] || 0;
+  const trunk = RT_TRUNK.reduce((a, k) => a + n(k), 0);
+  $('over-title').textContent = rt.doneTitle || '🏁 Roadtrip geschafft!';
+  const parts = [`🥖 ${n('salami')} Salamisticks`, `🥫 ${n('redbull')} Red Bull`, `🥞 ${n('poffertjes')} Poffertjes`, `🍟 ${n('fries')} Pommes`, `🧇 ${n('waffle')} Waffeln`, `🧳 ${trunk} Sachen im Kofferraum`];
+  $('over-line').textContent = `${rt.doneLine || '3 Tage, 2 Länder, 1 volles Auto.'}\n${parts.join(' · ')}`;
+  $('over-score').textContent = score;
+  $('over-best').textContent = fullTrip ? `Rekord: ${save.best.roadtrip}` : 'ab Checkpoint – für den Rekord die ganze Strecke fahren';
+  const tal = earnTaler(score / 8 + 20);
+  $('over-taler').textContent = tal && fullUI() ? `+${tal} 🪙 Taler${runDouble ? ' (×2)' : ''} · Konto: ${save.taler} 🪙` : '';
+  $('over-photo').classList.add('hidden');
+  $('over-mercy').classList.add('hidden');
+  $('btn-checkpoint').classList.add('hidden');
+  $('btn-over-menu').textContent = 'Menü';
+  lastDeath = { mode: 'roadtrip', rtIdx: 0 };
+  sfx('fanfare');
+  show('scr-over');
+}
 $('btn-over-menu').addEventListener('click', () => (lastDeath?.mode === 'level' ? showLevels() : toMenu()));
 
 function onFinale() {
+  if (game?.mode === 'roadtrip') { showRoadtripDone(); return; }
   stopMusic();
   setHud(false); screen = 'finale';
   scene = new FinaleScene(game, { outfit: save.outfit, onReveal: showReveal });
@@ -672,6 +708,7 @@ function frame(now) {
   if (screen === 'play' && game && game.state !== 'idle') {
     const s = Math.floor(game.score);
     $('score').textContent = s;
+    if (game.mode === 'roadtrip') $('progress-bar').style.width = `${(game.progress || 0) * 100}%`;
     if (game.mode === 'birthday') $('progress-bar').style.width = `${Math.min(100, (game.score / game.target) * 100)}%`;
     if (game.lv) {
       $('progress-bar').style.width = `${game.progress * 100}%`;

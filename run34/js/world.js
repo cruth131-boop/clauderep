@@ -6,13 +6,14 @@ import { sfx } from './audio.js';
 import { BIOMES, BIOMES_RT, FIPSLAND, OBS, ITEM_ICONS, drawMonkey, biomeName } from './biomes.js';
 import { LEVELS, COSTUMES, ITEM_EMO, drawScene, faceItem, drawIceToss, drawJaegerBottle } from './levels.js';
 import { emoji } from './emoji.js';
+import { RT_STAGES, RT_TOTAL, rtStageName } from './roadtrip.js';
 import { startStory, updateStory, drawStory, drawStoryBack, storyInput } from './story.js';
 
 export const MODES = {
   birthday: { start: 330, accel: 5, max: 540, theme: 'birthday', obstacles: { shirt: 3, height: 2, alarm: 2, tax: 2, flyshirt: 3 }, items: 0.1, bad: 0.16, collect: 'candle' },
   endless: { start: 340, accel: 6, max: 900, theme: 'day', obstacles: { candles: 2, shirt: 2, height: 2, alarm: 2, tax: 2, flyshirt: 2 }, items: 0.28, bad: 0.2 },
   horror: { start: 380, accel: 7, max: 920, theme: 'horror', obstacles: { shirt: 2, flyshirt: 3, ghost: 2, stink: 3, rille: 2, fish: 2, merz: 2, height: 1 }, items: 0.22, bad: 0.5 },
-  roadtrip: { start: 360, accel: 6, max: 900, theme: 'day', obstacles: { cone: 1 }, items: 0.35, bad: 0.15 },
+  roadtrip: { start: 340, accel: 2.4, max: 680, theme: 'day', obstacles: { cone: 1 }, items: 0.42, bad: 0.1 },
   level: { start: 300, accel: 2.5, max: 480, theme: 'day', obstacles: {}, items: 0.32, bad: 0.06 },
   attract: { start: 230, accel: 0, max: 230, theme: 'birthday', obstacles: {}, items: 0, bad: 0 },
 };
@@ -81,7 +82,7 @@ export class Game {
     this.lightning = 0;
     this.album = new Set(album);
     this.nextPolaroid = rand(16, 24);
-    this.worldList = mode === 'roadtrip' ? BIOMES_RT : mode === 'endless' ? shuffle(BIOMES.slice()) : BIOMES;
+    this.worldList = mode === 'roadtrip' ? RT_STAGES : mode === 'endless' ? shuffle(BIOMES.slice()) : BIOMES;
     this.biomeIdx = 0; this.biome = mode === 'endless' || mode === 'roadtrip' ? this.worldList[0] : null;
     this.stats = { items: {}, passed: {}, bad: false, worlds: new Set(this.biome ? [this.biome.id] : []), chases: 0 };
     this.eggT = eggHead ? 30 : 0;
@@ -95,6 +96,15 @@ export class Game {
     this.omaRide = null; this.nextOma = ['birthday', 'endless', 'roadtrip'].includes(mode) ? rand(26, 34) : Infinity;
     this.hero = null; this.nextHero = ['birthday', 'endless', 'roadtrip', 'horror'].includes(mode) ? rand(16, 24) : Infinity;
     this.prevBiome = null; this.biomeFade = 1; this.nextBiomeAt = 60;
+    this.wingsT = 0; this.dayBanner = null;
+    if (mode === 'roadtrip') { // feste Etappen nach dem Geschenk-Ablauf; startAt = Etappen-Index (Tages-Checkpoint)
+      this.rtIdx = Math.max(0, Math.min(RT_STAGES.length - 1, startAt | 0));
+      this.rtT = RT_STAGES.slice(0, this.rtIdx).reduce((a, x) => a + x.dur, 0);
+      this.biome = RT_STAGES[this.rtIdx]; this.biomeIdx = this.rtIdx;
+      this.stats.worlds = new Set([this.biome.id]);
+      const st = this.biome; this.dayBanner = { text: st.day || 'Roadtrip!', sub: rtStageName(st), t: 0 };
+      this.nextHero = rand(40, 60); this.nextOma = Infinity; this.nextChase = Infinity; // nur Kimi, Christoph & Fips
+    }
     this.rockets = []; this.booms = []; this.god = false; this.cheat = []; this.facing = 1; this.fireCd = 0; this.prevDuck = false;
     this.hitCount = 0; this.revived = false; this.questDone = false; this.goalT = 0;
     if (endlessLevels?.length) {
@@ -169,7 +179,7 @@ export class Game {
     if (L.world) this.events.onWorld?.(L.world, 0);
   }
 
-  get progress() { return this.lv ? Math.min(1, this.distance / this.lvTarget) : 0; }
+  get progress() { return this.lv ? Math.min(1, this.distance / this.lvTarget) : this.mode === 'roadtrip' ? Math.min(1, (this.rtT || 0) / RT_TOTAL) : 0; }
 
   questStatus() {
     const q = this.quest; if (!q) return null;
@@ -320,7 +330,7 @@ export class Game {
       if (!input.jumpHeld && p.vy > 280) p.vy = 280; // kurzer Tipp = kleiner Sprung
       p.duck = input.duck;
       const gMul = p.duck && p.y > 0 ? 3.2 : 1;
-      p.vy -= this.GRAV * gMul * dt;
+      p.vy -= this.GRAV * gMul * (this.wingsT > 0 ? 0.42 : 1) * dt;
       p.y += p.vy * dt;
       if (p.y <= 0) { p.y = 0; p.vy = 0; }
       p.phase += (this.god ? this.walking || 0 : dx) / 34;
@@ -344,13 +354,16 @@ export class Game {
     p.swell = Math.max(0, p.swell - dt / 4);
     this.fips = Math.max(0, this.fips - dt);
     this.hammer = Math.max(0, this.hammer - dt);
+    this.wingsT = Math.max(0, this.wingsT - dt);
+    if (this.dayBanner && (this.dayBanner.t += dt) > 3.2) this.dayBanner = null;
 
     if (this.state === 'run') {
       this.spawn(dx, dt);
       this.collide();
       this.checkMilestones();
       
-      if (this.biome && this.biome !== FIPSLAND && !this.lv && this.score >= this.nextBiomeAt) this.nextBiome();
+      if (this.biome && this.biome !== FIPSLAND && !this.lv && this.mode !== 'roadtrip' && this.score >= this.nextBiomeAt) this.nextBiome();
+      if (this.mode === 'roadtrip') this.updateRoadtrip(dt);
       if (this.lv) this.updateLevel(dt);
       if (this.fipsT > 0) { this.fipsT -= dt; if (this.fipsT <= 0) this.leaveFipsland(); }
       this.eggT = Math.max(0, this.eggT - dt);
@@ -658,7 +671,7 @@ export class Game {
 
   spawnCameos(dt) {
     const list = this.lv ? this.levelGuests : this.biome?.guests || (this.biome && this.cfg.biomeCameos?.[this.biome.id]) || this.cfg.cameos || [];
-    if (!list.length || this.state === 'goal') return;
+    if (!list.length || this.state === 'goal' || this.mode === 'roadtrip') return;
     if (this.lv && this.lvTarget - this.distance < this.V.w * 1.6) return; // letzter Bildschirm vor dem Ziel: keine neuen Gäste (sonst doppelt im Ziel)
     this.nextCameo -= dt;
     if (this.nextCameo <= 0) {
@@ -719,6 +732,22 @@ export class Game {
       this.nextDash -= dt;
       if (this.nextDash <= 0) { this.nextDash = this.state === 'idle' ? rand(7, 10) : this.lv ? freqT(this.lvP.freq?.cat || 'normal') : rand(18, 28); this.dash = { x: -50, y: 0, t: 0 }; }
     }
+  }
+
+  updateRoadtrip(dt) {
+    if (this.biome === FIPSLAND || this.story) return;
+    this.rtT += dt;
+    const end = RT_STAGES.slice(0, this.rtIdx + 1).reduce((a, x) => a + x.dur, 0);
+    if (this.rtT < end) return;
+    if (this.rtIdx >= RT_STAGES.length - 1) { this.rtArrived = true; this.startFinale(); return; }
+    this.rtIdx++; this.biomeIdx = this.rtIdx;
+    const st = RT_STAGES[this.rtIdx];
+    this.prevBiome = this.biome; this.biome = st; this.biomeFade = 0;
+    this.stats.worlds.add(st.id); this.events.onWorld?.(st.id, this.stats.worlds.size, st);
+    this.cameos = this.cameos.filter((c) => c.x < this.V.w);
+    if (st.day) { this.dayBanner = { text: st.day, sub: rtStageName(st), t: 0 }; sfx('fanfare'); }
+    else { this.events.onToast?.(`📍 ${rtStageName(st)}`); sfx('memory'); }
+    if (st.finish) { this.obstacles = this.obstacles.filter((o) => o.x < this.V.w * 0.6); }
   }
 
   nextBiome() {
@@ -1071,9 +1100,15 @@ export class Game {
       sfx('bad');
       return;
     }
+    if (it.type === 'redbull') { // verleiht Flügel 🪽
+      this.wingsT = 6; this.score += def.points; p.expr = 'happy'; p.exprT = 1.2;
+      this.fx.text(it.x, this.screenY(iy) - 22, (this.cfg.roadtrip?.redbullLine) || 'Verleiht Flüüügel! 🪽', { color: '#7cc6ff', size: 20 });
+      this.fx.burst(it.x, this.screenY(iy), { n: 18, colors: ['#1a3c8f', '#ffd23f', '#e53935', '#fff'], speed: 200, size: 2.6 });
+      sfx('power'); return;
+    }
     this.score += def.points;
     p.expr = 'happy'; p.exprT = 0.7;
-    const label = it.type === 'egg' ? 'EIERKOPF!' : `+${def.points}`;
+    const label = it.type === 'egg' ? 'EIERKOPF!' : def.say ? `${def.say} +${def.points}` : `+${def.points}`;
     this.fx.text(it.x, this.screenY(iy) - 18, label, { color: '#ffd23f', size: it.type === 'egg' ? 22 : 18 });
     this.fx.burst(it.x, this.screenY(iy), { n: 12, speed: 160, size: 2.5 });
     sfx(it.type === 'wine' ? 'wine' : 'collect');
@@ -1091,7 +1126,7 @@ export class Game {
     this.state = 'dying';
     p.expr = 'shock'; p.exprT = 0.45; p.vy = 520; p.duck = false;
     this.shake = 14; this.flash = 0.5;
-    this.deathInfo = { cause, score: Math.floor(this.score), mode: this.mode, stats: this.stats, time: this.t, level: this.lvId, progress: this.progress };
+    this.deathInfo = { cause, score: Math.floor(this.score), mode: this.mode, stats: this.stats, time: this.t, level: this.lvId, progress: this.progress, rtIdx: this.rtIdx };
     this.polaroids = [];
     sfx('hit'); sfx('no');
   }
@@ -1152,7 +1187,7 @@ export class Game {
       if (this.prevBiome && this.biomeFade < 1) { bg(this.prevBiome); g.save(); g.globalAlpha = this.biomeFade; bg(this.biome); g.restore(); }
       else bg(this.biome);
       if (this.lv?.garlands) drawBunting(g, V, this.bgOffset);
-      const bname = this.lv ? null : this.biome.title || biomeName(this.biome);
+      const bname = this.lv || this.dayBanner ? null : this.biome.title || biomeName(this.biome);
       if (this.biomeFade < 1 && bname) {
         const a = Math.sin(this.biomeFade * Math.PI);
         g.save(); g.globalAlpha = a; g.textAlign = 'center'; g.font = `900 ${Math.min(34, V.w / 14)}px ui-rounded, system-ui, sans-serif`;
@@ -1206,6 +1241,7 @@ export class Game {
         au.addColorStop(0, `rgba(62,230,180,${0.25 + Math.sin(this.t * 14) * 0.08})`); au.addColorStop(1, 'rgba(62,230,180,0)');
         g.fillStyle = au; g.beginPath(); g.arc(p.x, V.groundY - p.y - 60, 95, 0, 7); g.fill();
       }
+      if (this.wingsT > 0 && !(this.wingsT < 1.5 && Math.floor(this.t * 8) % 2)) drawWings(g, p.x, V.groundY - p.y, this.t, p.y > 1);
       drawCharacter(g, p.x, V.groundY - p.y, {
         pose, phase: p.phase, outfit: this.story?.outfitNow || this.outfit, expr: this.lvP?.kid && p.expr !== 'sad' ? 'child' : p.expr, scale: CHAR_SCALE * (this.strongT > 0 ? 1 + 0.22 * Math.min(1, this.strongT * 3) : 1) * (this.lvP?.kid ? 0.86 : 1), t: this.t, swell: p.swell, headScale: this.eggT > 0 ? 1.9 : this.lvP?.kid ? 1.15 : 0,
         rot: this.state === 'dying' ? -Math.min(1.2, this.deadT * 4) : 0,
@@ -1245,6 +1281,18 @@ export class Game {
     }
     this.fx.draw(g);
     for (const pl of this.polaroids) this.drawPolaroid(g, pl);
+    if (this.dayBanner) { // Tages-Banner im Roadtrip
+      const k = this.dayBanner.t / 3.2, a = Math.min(1, k * 6, (1 - k) * 5);
+      g.save(); g.globalAlpha = Math.max(0, a); g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = 'rgba(20,10,40,0.55)'; g.fillRect(0, V.groundY * 0.18, V.w, V.groundY * 0.42);
+      const size = Math.min(56, V.w / 9);
+      g.font = `900 ${size}px ui-rounded, system-ui, sans-serif`;
+      g.lineWidth = 7; g.strokeStyle = 'rgba(120,20,70,0.85)'; g.strokeText(`🚗 ${this.dayBanner.text}`, V.w / 2, V.groundY * 0.33, V.w - 30);
+      g.fillStyle = '#ffd23f'; g.fillText(`🚗 ${this.dayBanner.text}`, V.w / 2, V.groundY * 0.33, V.w - 30);
+      g.font = `800 ${size * 0.42}px ui-rounded, system-ui, sans-serif`; g.fillStyle = '#fff';
+      g.fillText(this.dayBanner.sub, V.w / 2, V.groundY * 0.5, V.w - 30);
+      g.restore();
+    }
     if (this.bigNum) {
       const k = this.bigNum.t / 1.1, a = Math.sin(Math.min(1, k) * Math.PI);
       const size = Math.min(V.h * 0.42, V.w * 0.3) * (0.85 + k * 0.25);
@@ -1644,6 +1692,16 @@ function drawJackhammer(g, x, y, t, blink) {
   g.restore();
   g.fillStyle = 'rgba(200,190,170,0.8)';
   for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(x + 34 + Math.random() * 6, y + 10 + Math.random() * 6, 2 + Math.random() * 2, 0, 7); g.fill(); }
+}
+
+function drawWings(g, x, footY, t, flying) {
+  const flap = Math.sin(t * (flying ? 22 : 8)) * (flying ? 0.5 : 0.2);
+  for (const s of [-1, 1]) {
+    g.save(); g.translate(x - 8, footY - 84); g.scale(s === 1 ? 1 : 0.8, 1); g.rotate(-0.5 - flap + (s === 1 ? 0 : 0.3));
+    g.fillStyle = s === 1 ? 'rgba(255,255,255,0.95)' : 'rgba(225,235,255,0.9)'; g.strokeStyle = 'rgba(120,150,200,0.9)'; g.lineWidth = 1.2;
+    g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(-34, -30, -46, -6); g.quadraticCurveTo(-36, -4, -40, 6); g.quadraticCurveTo(-28, 4, -30, 14); g.quadraticCurveTo(-16, 10, 0, 6); g.closePath(); g.fill(); g.stroke();
+    g.restore();
+  }
 }
 
 export function drawItemIcon(g, type, t = 0) {
