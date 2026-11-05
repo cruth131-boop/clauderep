@@ -1092,6 +1092,56 @@ export const SCENES = {
     for (let r = 0; r < 5; r++) { g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, gy + r * 14, V.w, 1); }
   },
 
+  // Wohnzimmer der Eltern: Fensterbank voller Pflanzen (Weihnachtsstern), Heizkörper, graubraunes Ecksofa mit Kopfstütze
+  // & Recamiere, dunkle Holztruhe als Couchtisch, Vitrinenschrank, Schwingsessel, Laminat & Fliesen – plus Katzensachen
+  parentsFlat(g, V, off, t) {
+    const gy = V.groundY;
+    g.fillStyle = '#f4f1ea'; g.fillRect(0, 0, V.w, gy);
+    rep(V, off, 0.45, 720, (x) => {
+      // Fenster mit Fensterbank & Pflanzen
+      const wx = x + 120; g.fillStyle = '#dff0fb'; g.fillRect(wx, gy - 230, 240, 100); g.strokeStyle = '#fafafa'; g.lineWidth = 7; g.strokeRect(wx, gy - 230, 240, 100); g.beginPath(); g.moveTo(wx + 80, gy - 230); g.lineTo(wx + 80, gy - 130); g.moveTo(wx + 160, gy - 230); g.lineTo(wx + 160, gy - 130); g.stroke();
+      g.fillStyle = '#e8dcc8'; g.fillRect(wx - 14, gy - 132, 268, 8);
+      const pot = (px, h, c) => { g.fillStyle = c; g.beginPath(); g.moveTo(px - 9, gy - 132); g.lineTo(px - 11, gy - 132 - h); g.lineTo(px + 11, gy - 132 - h); g.lineTo(px + 9, gy - 132); g.fill(); };
+      const leaves = (px, py, n, r, c) => { g.fillStyle = c; for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (i - (n - 1) / 2) * 0.5; g.beginPath(); g.ellipse(px + Math.cos(a) * r, py + Math.sin(a) * r, r * 0.5, r * 0.28, a, 0, TAU); g.fill(); } };
+      pot(wx + 20, 22, '#fafafa'); leaves(wx + 20, gy - 170, 7, 22, '#4e8f3a');
+      pot(wx + 70, 16, '#fafafa'); leaves(wx + 70, gy - 160, 6, 14, '#2e7d32'); g.fillStyle = '#d32f2f'; for (let i = 0; i < 5; i++) { const a = i * 1.26; g.beginPath(); g.ellipse(wx + 70 + Math.cos(a) * 7, gy - 160 + Math.sin(a) * 5, 6, 3, a, 0, TAU); g.fill(); } g.fillStyle = '#ffd23f'; g.beginPath(); g.arc(wx + 70, gy - 160, 2, 0, TAU); g.fill(); // Weihnachtsstern
+      pot(wx + 112, 10, '#b0bec5'); leaves(wx + 112, gy - 148, 5, 8, '#66bb6a');
+      pot(wx + 140, 10, '#cfd8dc'); leaves(wx + 140, gy - 148, 5, 8, '#81c784');
+      pot(wx + 185, 22, '#e0e0e0'); leaves(wx + 185, gy - 172, 8, 24, '#43a047');
+      pot(wx + 222, 14, '#f5f5f5'); leaves(wx + 222, gy - 156, 5, 12, '#558b2f');
+      // Heizkörper links
+      g.fillStyle = '#f7f7f2'; g.fillRect(x + 20, gy - 120, 60, 70); g.strokeStyle = '#dcdcd4'; g.lineWidth = 1.5; for (let i = 0; i < 9; i++) { g.beginPath(); g.moveTo(x + 24 + i * 6.5, gy - 118); g.lineTo(x + 24 + i * 6.5, gy - 52); g.stroke(); }
+      // Ecksofa (graubraun) mit Kopfstütze & Recamiere
+      const sc = '#6e655f', scL = '#7f766f', scD = '#5a524d';
+      g.fillStyle = scD; g.fillRect(x + 110, gy - 120, 230, 50); // Rückenlehne
+      g.fillStyle = scL; for (let i = 0; i < 3; i++) roundRect(g, x + 114 + i * 76, gy - 126, 70, 54, 8), g.fill();
+      g.fillStyle = sc; roundRect(g, x + 124, gy - 156, 54, 30, 6); g.fill(); // Kopfstütze
+      g.fillStyle = sc; g.fillRect(x + 100, gy - 72, 340, 34); g.fillStyle = scL; g.fillRect(x + 108, gy - 78, 230, 10); g.fillRect(x + 340, gy - 84, 110, 16); // Sitz + Recamiere
+      g.fillStyle = scD; roundRect(g, x + 84, gy - 98, 36, 60, 8); g.fill(); // Armlehne
+      g.fillStyle = '#d7b98a'; for (const fx of [x + 104, x + 300, x + 432]) g.fillRect(fx, gy - 38, 10, 10);
+      g.fillStyle = '#222'; g.beginPath(); g.ellipse(x + 320, gy - 88, 16, 7, 0.2, 0, TAU); g.fill(); // Kissen
+      // dunkle Holztruhe (Couchtisch) mit Schubladen & Körben, Kerzen, Wasserflasche
+      const tx = x + 230; g.fillStyle = '#3e2a20'; g.fillRect(tx, gy - 58, 120, 54); g.fillStyle = '#4a3328'; g.fillRect(tx - 6, gy - 64, 132, 8);
+      g.fillStyle = '#2c1d16'; g.fillRect(tx + 8, gy - 48, 46, 22); g.fillStyle = '#6d5a4d'; for (let i = 0; i < 4; i++) g.fillRect(tx + 64 + i * 12, gy - 48, 9, 40);
+      g.fillStyle = '#c9a66b'; g.beginPath(); g.arc(tx + 31, gy - 37, 2, 0, TAU); g.fill();
+      g.fillStyle = '#7b1f3a'; g.fillRect(tx + 30, gy - 76, 10, 12); g.fillStyle = '#fff3c4'; g.fillRect(tx + 48, gy - 74, 10, 10); g.fillStyle = 'rgba(160,210,240,0.85)'; g.fillRect(tx + 80, gy - 90, 8, 26); g.fillStyle = '#1976d2'; g.fillRect(tx + 80, gy - 80, 8, 6);
+      // Vitrinenschrank (dunkles Holz, Glas)
+      g.fillStyle = '#3b2a22'; g.fillRect(x + 470, gy - 230, 70, 230); g.fillStyle = 'rgba(160,190,210,0.35)'; g.fillRect(x + 476, gy - 222, 27, 150); g.fillRect(x + 507, gy - 222, 27, 150);
+      g.fillStyle = 'rgba(255,255,255,0.4)'; for (let r = 0; r < 4; r++) g.fillRect(x + 476, gy - 190 + r * 36, 58, 2);
+      // Schwingsessel mit hellem Polster
+      g.strokeStyle = '#2b1d16'; g.lineWidth = 4; g.beginPath(); g.moveTo(x + 560, gy); g.quadraticCurveTo(x + 600, gy - 6, x + 610, gy - 40); g.moveTo(x + 560, gy - 40); g.lineTo(x + 640, gy - 40); g.stroke();
+      g.fillStyle = '#e8dfcc'; g.beginPath(); g.moveTo(x + 570, gy - 40); g.quadraticCurveTo(x + 566, gy - 110, x + 590, gy - 140); g.lineTo(x + 612, gy - 136); g.quadraticCurveTo(x + 600, gy - 80, x + 640, gy - 44); g.closePath(); g.fill();
+      // Katzensachen: Kratzbaum, Futternapf, Umzugskarton mit Luftlöchern
+      g.fillStyle = '#d7c4a3'; g.fillRect(x + 660, gy - 120, 12, 120); g.fillStyle = '#8d6e63'; roundRect(g, x + 640, gy - 126, 52, 10, 4); g.fill(); roundRect(g, x + 646, gy - 70, 40, 9, 4); g.fill();
+      g.fillStyle = '#ef9a9a'; g.beginPath(); g.ellipse(x + 30, gy - 6, 14, 5, 0, 0, TAU); g.fill(); g.fillStyle = '#8d6e63'; g.beginPath(); g.ellipse(x + 30, gy - 8, 9, 2.5, 0, 0, TAU); g.fill();
+    });
+    // Boden: Laminat (Holz) mit Fliesenstreifen
+    g.fillStyle = '#c99a5b'; g.fillRect(0, gy, V.w, V.h - gy);
+    rep(V, off, 1, 90, (x) => { g.fillStyle = 'rgba(0,0,0,0.12)'; for (let r = 0; r < 5; r++) g.fillRect(x + (r % 2) * 45, gy + r * 14, 2, 14); });
+    for (let r = 0; r < 5; r++) { g.fillStyle = 'rgba(0,0,0,0.1)'; g.fillRect(0, gy + r * 14, V.w, 1); }
+    rep(V, off, 1, 900, (x) => { g.fillStyle = '#e9dcc8'; g.fillRect(x, gy, 160, V.h - gy); g.strokeStyle = 'rgba(150,130,100,0.4)'; g.lineWidth = 1; for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(x + i * 40, gy); g.lineTo(x + i * 40, V.h); g.stroke(); } for (let r = 0; r < 3; r++) { g.beginPath(); g.moveTo(x, gy + 10 + r * 24); g.lineTo(x + 160, gy + 10 + r * 24); g.stroke(); } g.fillStyle = '#d4af37'; g.fillRect(x + 160, gy, 3, V.h - gy); });
+  },
+
   // Gulasch-Küche: Fliesen, Holzschränke, Herd mit rotem Gusseisen-Bräter, Paprikaschnüre & Gemüse
   gulaschKitchen(g, V, off, t) {
     const gy = V.groundY;
@@ -1476,7 +1526,7 @@ export const LEVELS = {
   L6: { icon: '💸', scene: 'bank', music: 'entertainer', len: 75, obstacles: { invoice: 3, piggy: 2, tax: 2, chartfly: 2 }, items: ['coin', 'money'], quest: { item: 'money', n: 20 }, hero: 'banker', goalRain: '💸' },
   L7: { icon: '🚗', scene: 'driving', music: 'tell', len: 90, obstacles: { cone: 3, blitzer: 2, bike: 2, car: 2 }, items: ['voucher'], quest: { item: 'voucher', n: 8 }, hero: 'racer' },
   L8: { icon: '🍹', scene: 'chococino', music: 'habanera', len: 90, obstacles: { barstool: 3, bottle: 2, trays: 2 }, items: ['bluelagoon', 'bluelagoon', 'cocktail', 'cupid'], quest: { item: 'cupid', n: 10 }, hero: 'barkeeper', goalHearts: 1 },
-  L9: { icon: '🐱', scene: 'catFlat', music: 'turca', len: 90, obstacles: { log: 3, wool: 3, tp: 2 }, items: ['treat'], quest: { item: 'treat', n: 15 }, hero: 'catears', fipsBox: 1 },
+  L9: { icon: '🐱', scene: 'parentsFlat', music: 'turca', len: 90, obstacles: { log: 3, wool: 3, tp: 2 }, items: ['treat'], quest: { item: 'treat', n: 15 }, hero: 'catears', fipsBox: 1 },
   L10: { icon: '📚', scene: 'hola', music: 'mountain', len: 150, obstacles: { books: 3, alarm: 2, ice4: 3, grade6: 1 }, items: ['coffee', 'cheatnote'], quest: { survive: 1 }, hero: 'tutor', checkpoint: 1 },
   L11: { icon: '🎓', scene: 'uni', music: 'ode', len: 90, obstacles: { bench: 2, tray: 3, books: 2 }, items: ['fries2', 'coffee'], quest: { item: 'fries2', n: 10 }, hero: 'graduate' },
   L12: { icon: '⚖️', scene: 'wiesbaden', music: 'toccata', len: 105, obstacles: { folders: 2, barstool: 2, paragraph: 3, facewalk: 1 }, items: ['redbull', 'koelsch', 'akte'], quest: { item: 'akte', n: 8 }, hero: 'angel' },
