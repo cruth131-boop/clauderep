@@ -188,6 +188,8 @@ export class Game {
     if (this.lv.world2 && want === 1) this.events.onWorld?.(this.lv.world2, 0);
     if (this.biome === FIPSLAND) { this.savedBiome = { ...this.savedBiome, id: this.scenes[want] }; return; }
     this.prevBiome = this.biome; this.biome = { ...this.biome, id: this.scenes[want] }; this.biomeFade = silent ? 1 : 0;
+    if (want >= 1 && this.lv.obstacles2) this.biome.obstacles = this.lv.obstacles2; // zweiter Teil: eigene Hindernisse & Items
+    if (want >= 1 && this.lv.items2) this.biome.items = this.lv.items2;
     if (!silent) sfx('memory');
   }
 

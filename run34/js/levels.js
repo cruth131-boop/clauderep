@@ -48,9 +48,53 @@ const EO = {
   skull: ['💀', 28], fish2: ['🐟', 28, { move: 60 }], bolt: ['⚡', 30, { fly: 1 }],
   snowman: ['☃️', 36], grade6: ['6', 30, { fly: 1, text: '#c0392b' }], chartfly: ['📉', 30, { fly: 1 }], target: ['🎯', 32], clown: ['🤡', 34],
   flyball: ['🎊', 30, { fly: 1 }], hourfly: ['⏳', 28, { fly: 1 }], rocking: ['🐴', 34], dartboard: ['🎯', 30, { fly: 1 }],
+  creuset: ['', 34, { draw: 'creuset' }], smoker: ['', 46, { draw: 'smokerObs' }], pepperbox: ['', 30, { draw: 'pepperbox' }],
   pizzatower: ['', 34, { draw: 'pizzatower' }], griess: ['', 34, { draw: 'griess' }], weedleaf: ['', 32, { fly: 1, draw: 'weedleaf' }], lava: ['', 30, { draw: 'lava' }], couchG: ['🛋️', 40],
 };
+// Gusseisen-Bräter (rot, Verlauf nach unten dunkler, Griffe & Knauf) – x = Mitte, y = Boden
+export function drawCocotte(g, x, y, s = 1, t = 0, steam = true) {
+  g.save(); g.translate(x, y); g.scale(s, s);
+  const bg = g.createLinearGradient(0, -26, 0, 0); bg.addColorStop(0, '#ff5a3c'); bg.addColorStop(0.55, '#d8261b'); bg.addColorStop(1, '#5e0d0a');
+  g.fillStyle = '#2a0a08'; roundRect(g, -20, -4, 40, 4, 2); g.fill();
+  g.fillStyle = bg; g.beginPath(); g.moveTo(-19, -22); g.quadraticCurveTo(-21, -2, -14, 0); g.lineTo(14, 0); g.quadraticCurveTo(21, -2, 19, -22); g.closePath(); g.fill();
+  for (const sx of [-1, 1]) { g.fillStyle = '#b81f16'; g.beginPath(); g.ellipse(sx * 22, -16, 4.5, 3, 0, 0, TAU); g.fill(); g.fillStyle = '#3a0907'; g.beginPath(); g.ellipse(sx * 22, -16, 2, 1.3, 0, 0, TAU); g.fill(); }
+  const lg = g.createLinearGradient(0, -32, 0, -21); lg.addColorStop(0, '#ff6b4a'); lg.addColorStop(1, '#c4231a');
+  g.fillStyle = lg; g.beginPath(); g.ellipse(0, -22, 21, 6, 0, Math.PI, 0); g.fill(); g.fillRect(-21, -23, 42, 2.5);
+  g.fillStyle = '#c9c9cf'; roundRect(g, -4, -33, 8, 5, 2); g.fill(); g.fillStyle = '#8a8a92'; g.fillRect(-2, -29, 4, 2.5); // Knauf
+  g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.ellipse(-10, -14, 2.5, 6, 0.3, 0, TAU); g.fill();
+  if (steam) { g.fillStyle = 'rgba(255,255,255,0.45)'; for (let i = 0; i < 3; i++) { const k = (((t * 0.8 + i / 3) % 1) + 1) % 1; g.beginPath(); g.arc(Math.sin(t * 2 + i) * 6, -36 - k * 26, 3 + k * 4, 0, TAU); g.fill(); } }
+  g.restore();
+}
+// Rote Spitzpaprika / Gemüsepaprika
+export function drawPaprika(g, x, y, s = 1, col = '#e0281e', rot = 0) {
+  g.save(); g.translate(x, y); g.rotate(rot); g.scale(s, s);
+  const pg = g.createRadialGradient(-3, -3, 1, 0, 0, 10); pg.addColorStop(0, col === '#e0281e' ? '#ff6b5e' : '#fff3a0'); pg.addColorStop(1, col);
+  g.fillStyle = pg; g.beginPath(); g.moveTo(0, -8); g.bezierCurveTo(9, -9, 10, 4, 4, 9); g.quadraticCurveTo(0, 11, -4, 9); g.bezierCurveTo(-10, 4, -9, -9, 0, -8); g.fill();
+  g.strokeStyle = 'rgba(0,0,0,0.18)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(0, -6); g.quadraticCurveTo(1, 2, 0, 9); g.stroke();
+  g.fillStyle = '#2e7d32'; g.fillRect(-1.2, -12, 2.4, 5); g.beginPath(); g.ellipse(0, -8, 4, 1.6, 0, 0, TAU); g.fill();
+  g.restore();
+}
+// Offset-Smoker: liegendes Garfass auf Beinen, Brennkammer seitlich, Kamin mit Rauch
+export function drawSmoker(g, x, y, s = 1, t = 0) {
+  g.save(); g.translate(x, y); g.scale(s, s);
+  g.strokeStyle = '#1b1b1e'; g.lineWidth = 3; for (const lx of [-34, 30]) { g.beginPath(); g.moveTo(lx, -26); g.lineTo(lx, 0); g.stroke(); }
+  g.fillStyle = '#2b2b30'; g.beginPath(); g.arc(-34, -2, 5, 0, TAU); g.fill(); g.fillStyle = '#777'; g.beginPath(); g.arc(-34, -2, 1.8, 0, TAU); g.fill();
+  g.fillStyle = '#5d4037'; g.fillRect(-38, -14, 72, 3); // Ablage
+  const bg = g.createLinearGradient(0, -52, 0, -24); bg.addColorStop(0, '#4a4a52'); bg.addColorStop(0.5, '#26262b'); bg.addColorStop(1, '#141417');
+  g.fillStyle = bg; roundRect(g, -40, -52, 74, 28, 14); g.fill(); // Garkammer
+  g.strokeStyle = '#0c0c0e'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(-38, -39); g.lineTo(32, -39); g.stroke();
+  g.strokeStyle = '#b0b0b8'; g.lineWidth = 2; g.beginPath(); g.moveTo(-14, -46); g.lineTo(6, -46); g.stroke(); // Griff
+  g.fillStyle = '#e8e8ee'; g.beginPath(); g.arc(18, -45, 3.6, 0, TAU); g.fill(); g.strokeStyle = '#d32f2f'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(18, -45); g.lineTo(19.8, -47.5); g.stroke(); // Thermometer
+  g.fillStyle = '#1e1e22'; roundRect(g, 33, -46, 20, 22, 4); g.fill(); // Brennkammer
+  g.fillStyle = `rgba(255,${120 + Math.sin(t * 9) * 40},40,0.9)`; g.fillRect(37, -34, 12, 4);
+  g.fillStyle = '#1b1b1e'; g.fillRect(-44, -76, 6, 30); g.fillRect(-46, -78, 10, 3); // Kamin
+  g.fillStyle = 'rgba(190,190,190,0.5)'; for (let i = 0; i < 5; i++) { const k = (((t * 0.6 + i / 5) % 1) + 1) % 1; g.beginPath(); g.arc(-41 + Math.sin(t * 2 + i) * 6 + k * 10, -82 - k * 46, 4 + k * 7, 0, TAU); g.fill(); }
+  g.restore();
+}
 const CUSTOM = {
+  creuset(g, x, b, o) { drawCocotte(g, x + o.w / 2, b, 0.95, o.t, true); },
+  smokerObs(g, x, b, o) { drawSmoker(g, x + o.w / 2 - 2, b, 0.62, o.t); },
+  pepperbox(g, x, b, o) { g.fillStyle = '#a1887f'; roundRect(g, x + 2, b - 16, o.w - 4, 16, 3); g.fill(); g.strokeStyle = '#6d4c41'; g.lineWidth = 1; for (let i = 6; i < o.w - 4; i += 6) { g.beginPath(); g.moveTo(x + i, b - 15); g.lineTo(x + i, b - 1); g.stroke(); } [[8, -18, '#e0281e'], [15, -21, '#ffcf33'], [22, -18, '#e0281e'], [12, -14, '#43a047']].forEach(([dx, dy, c], i) => drawPaprika(g, x + dx, b + dy, 0.75, c, i * 0.4 - 0.4)); },
   puddle(g, x, b, o) { g.fillStyle = 'rgba(80,150,230,0.85)'; g.beginPath(); g.ellipse(x + o.w / 2, b - 3, o.w / 2, 4, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillRect(x + 8, b - 5, 8, 1.5); const s = Math.sin(o.t * 6) * 2; g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 1; g.beginPath(); g.ellipse(x + o.w * 0.6, b - 3, 4 + s, 1.5, 0, 0, TAU); g.stroke(); },
   hay(g, x, b, o) { g.fillStyle = '#e9c46a'; roundRect(g, x, b - 30, o.w, 30, 6); g.fill(); g.strokeStyle = '#c9a227'; g.lineWidth = 1.2; for (let i = 6; i < o.w; i += 6) { g.beginPath(); g.moveTo(x + i, b - 29); g.lineTo(x + i - 2, b - 1); g.stroke(); } g.strokeStyle = '#8d6e1f'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, b - 20); g.lineTo(x + o.w, b - 20); g.moveTo(x, b - 10); g.lineTo(x + o.w, b - 10); g.stroke(); },
   laser(g, x, b, o) { const c = ['#ff2d55', '#3ee6b4', '#7cc6ff'][((o.t * 3) | 0) % 3]; g.save(); g.shadowColor = c; g.shadowBlur = 12; g.strokeStyle = c; g.lineWidth = 4; g.beginPath(); g.moveTo(x - 4, b - 12); g.lineTo(x + 42, b - 12); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.stroke(); g.restore(); },
@@ -172,7 +216,7 @@ export const ITEM_EMO = {
   wood: '🪵', clay: '🧱', woolres: '🐑', grain: '🌾', ore: '🪨', card: '🃏', psl: 'draw', brezel: '🥨', candycane: '🍭', sausage: '🌭', gulasch: '🥣',
   steak: '🥩', glitter: '✨', mimisoup: '🌶️', ring: '💍', confetti2: '🎊', weddingcake: '🎂', schnitzel: '🍖', onion: '🧅', gerippter: 'draw', winktuch: '🏳️',
   hotdog: '🌭', beignet: '🍩', cowboyhat: '🤠', boots: '👢', asbach: 'draw', jaegi: 'draw', cherry: '🍒', weck: '🥖', cheese2: '🧀', blossom: '🌸', los: '🎟️', blackring: 'draw',
-  turkey: '🍗', shortbread: '🍪', whisky: '🥃', snack: '🍿', domsign: 'draw', burger2: '🍔', donut: '🍩', apple: '🍎', fries2: '🍟', wine2: '🍷', cocktail2: '🍸', superdrink: 'draw',
+  turkey: '🍗', shortbread: '🍪', whisky: '🥃', snack: '🍿', domsign: 'draw', burger2: '🍔', donut: '🍩', apple: '🍎', fries2: '🍟', wine2: '🍷', cocktail2: '🍸', superdrink: 'draw', paprika: 'draw',
 };
 const ITEM_DRAW = {
   schokokuss(g) { g.fillStyle = '#e9d8b8'; g.beginPath(); g.ellipse(0, 7, 11, 3, 0, 0, TAU); g.fill(); g.fillStyle = '#4a2a17'; g.beginPath(); g.ellipse(0, 6, 10, 15, 0, Math.PI, 0); g.fill(); g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.ellipse(-4, -3, 2, 5, 0.3, 0, TAU); g.fill(); },
@@ -182,6 +226,7 @@ const ITEM_DRAW = {
   blackring(g, t) { const gl = g.createRadialGradient(0, 0, 2, 0, 0, 22); gl.addColorStop(0, 'rgba(255,240,150,0.8)'); gl.addColorStop(1, 'rgba(255,240,150,0)'); g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 22, 0, TAU); g.fill(); g.strokeStyle = '#111'; g.lineWidth = 4; g.beginPath(); g.ellipse(0, 0, 9, 9 * Math.abs(Math.cos(t * 2)) + 2, 0, 0, TAU); g.stroke(); g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1; g.stroke(); },
   saeftchen(g, t) { const c = ['#ff4fa3', '#3ee6b4', '#ffd23f', '#b388ff'][Math.floor(t) % 4]; g.fillStyle = 'rgba(255,255,255,0.65)'; g.beginPath(); g.moveTo(-6, -9); g.lineTo(6, -9); g.lineTo(5, 9); g.lineTo(-5, 9); g.closePath(); g.fill(); g.fillStyle = c; g.beginPath(); g.moveTo(-5.5, -3); g.lineTo(5.5, -3); g.lineTo(4.6, 8); g.lineTo(-4.6, 8); g.fill(); g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(-4, -2, 2, 8); },
   asbach(g) { drawAsbachGlass(g, 0, 12, 1); },
+  paprika(g, t) { drawPaprika(g, 0, 1, 1.25, '#e0281e', Math.sin(t * 2) * 0.15); },
   superdrink(g, t) { // Superdrink: Longdrink-Glas mit leuchtendem Türkis-Blau, Strohhalm und Etikett
     const gl = g.createRadialGradient(0, 0, 3, 0, 0, 24); gl.addColorStop(0, 'rgba(62,230,180,0.55)'); gl.addColorStop(1, 'rgba(62,230,180,0)');
     g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 24, 0, TAU); g.fill();
@@ -702,8 +747,45 @@ export const SCENES = {
     const gy = V.groundY;
     sky(g, V, '#ffcf8a', '#fff1d8'); clouds(g, V, off, 0.6);
     g.fillStyle = '#3e8e41'; g.beginPath(); g.moveTo(0, gy); for (let x = 0; x <= V.w + 20; x += 20) g.lineTo(x, gy - 76 - Math.sin((x + off * 0.3) * 0.05) * 6); g.lineTo(V.w, gy); g.fill();
-    rep(V, off, 0.45, 400, (x) => { g.strokeStyle = '#3e2723'; g.lineWidth = 4; g.beginPath(); g.moveTo(x + 20, gy); g.lineTo(x + 60, gy - 100); g.lineTo(x + 100, gy); g.stroke(); g.lineWidth = 2; g.beginPath(); g.moveTo(x + 60, gy - 100); g.lineTo(x + 60, gy - 64); g.stroke(); g.fillStyle = '#263238'; g.beginPath(); g.ellipse(x + 60, gy - 46, 30, 20, 0, 0, Math.PI); g.fill(); g.fillRect(x + 30, gy - 62, 60, 16); emoji(g, '🔥', x + 60, gy - 14, 30 + Math.sin(t * 9) * 3); g.fillStyle = 'rgba(200,200,200,0.5)'; for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(x + 60 + Math.sin(t + i) * 10, gy - 80 - ((t * 30 + i * 20) % 100), 8 + i, 0, TAU); g.fill(); } g.fillStyle = '#795548'; g.fillRect(x + 200, gy - 36, 120, 6); emoji(g, '🍺', x + 220, gy - 50, 16); emoji(g, '🌭', x + 260, gy - 48, 16); emoji(g, '🥩', x + 300, gy - 48, 16); });
+    rep(V, off, 0.45, 400, (x) => { // Smoker statt Dreibein, daneben Biertisch
+      g.fillStyle = '#6d4c41'; for (let i = 0; i < 4; i++) { g.fillRect(x + 100, gy - 10 - i * 8, 40, 7); } // Holzstapel
+      drawSmoker(g, x + 60, gy, 1.15, t);
+      g.fillStyle = '#795548'; g.fillRect(x + 200, gy - 36, 120, 6); g.fillRect(x + 210, gy - 30, 5, 30); g.fillRect(x + 305, gy - 30, 5, 30);
+      emoji(g, '🍺', x + 220, gy - 50, 16); emoji(g, '🌭', x + 250, gy - 48, 16); emoji(g, '🥩', x + 280, gy - 48, 16); drawCocotte(g, x + 305, gy - 36, 0.45, t, false);
+    });
     grass(g, V, off);
+  },
+
+  // Gulasch-Küche: Fliesen, Holzschränke, Herd mit rotem Gusseisen-Bräter, Paprikaschnüre & Gemüse
+  gulaschKitchen(g, V, off, t) {
+    const gy = V.groundY;
+    g.fillStyle = '#f3ead8'; g.fillRect(0, 0, V.w, gy);
+    g.strokeStyle = 'rgba(160,140,110,0.25)'; g.lineWidth = 1;
+    rep(V, off, 0.6, 18, (x) => { g.beginPath(); g.moveTo(x, gy - 150); g.lineTo(x, gy - 40); g.stroke(); });
+    for (let y = gy - 150; y < gy - 40; y += 18) { g.beginPath(); g.moveTo(0, y); g.lineTo(V.w, y); g.stroke(); }
+    rep(V, off, 0.6, 520, (x, k) => {
+      // Oberschränke
+      g.fillStyle = '#a0703c'; g.fillRect(x, gy - 230, 200, 70); g.strokeStyle = '#6d4c2a'; g.lineWidth = 2; for (let i = 0; i < 4; i++) g.strokeRect(x + 4 + i * 49, gy - 226, 45, 62);
+      g.fillStyle = '#d4af37'; for (let i = 0; i < 4; i++) g.fillRect(x + 24 + i * 49, gy - 172, 6, 2);
+      // Fenster
+      g.fillStyle = '#bfe3ff'; g.fillRect(x + 250, gy - 220, 90, 70); g.strokeStyle = '#fff'; g.lineWidth = 5; g.strokeRect(x + 250, gy - 220, 90, 70); g.beginPath(); g.moveTo(x + 295, gy - 220); g.lineTo(x + 295, gy - 150); g.stroke();
+      // Paprikaschnüre am Fenster
+      for (const px of [x + 236, x + 354]) { g.strokeStyle = '#8d6e63'; g.lineWidth = 1; g.beginPath(); g.moveTo(px, gy - 226); g.lineTo(px, gy - 140); g.stroke(); for (let i = 0; i < 7; i++) drawPaprika(g, px + (i % 2 ? 3 : -3), gy - 218 + i * 12, 0.55, '#b71c1c', i % 2 ? 0.6 : -0.6); }
+      // Arbeitsplatte + Herd
+      g.fillStyle = '#7b5232'; g.fillRect(x, gy - 40, 380, 40); g.fillStyle = '#e8dcc6'; g.fillRect(x - 4, gy - 46, 388, 8);
+      g.fillStyle = '#2b2b30'; g.fillRect(x + 40, gy - 48, 90, 4); g.fillStyle = '#444'; g.fillRect(x + 50, gy - 36, 70, 30); g.fillStyle = '#ff7043'; g.fillRect(x + 54, gy - 30, 62, 3);
+      drawCocotte(g, x + 85, gy - 48, 1.3, t + k, true);
+      // Schneidebrett mit Paprika & Zwiebeln, Gewürzdose
+      g.fillStyle = '#c69c6d'; roundRect(g, x + 170, gy - 52, 70, 8, 3); g.fill();
+      drawPaprika(g, x + 185, gy - 60, 0.9, '#e0281e', 0.3); drawPaprika(g, x + 205, gy - 60, 0.85, '#ffcf33', -0.2); emoji(g, '🧅', x + 228, gy - 60, 14);
+      g.fillStyle = '#c62828'; roundRect(g, x + 262, gy - 70, 16, 24, 3); g.fill(); g.fillStyle = '#fff'; g.font = '900 5px sans-serif'; g.textAlign = 'center'; g.fillText('PAPRIKA', x + 270, gy - 56);
+      // Schüssel mit Paprika
+      g.fillStyle = '#efe6d4'; g.beginPath(); g.ellipse(x + 320, gy - 50, 26, 8, 0, 0, Math.PI); g.fill();
+      [[300, -58, '#e0281e'], [314, -62, '#ffcf33'], [328, -59, '#43a047'], [342, -57, '#e0281e']].forEach(([dx, dy, c], i) => drawPaprika(g, x + dx, gy + dy, 0.8, c, i * 0.3 - 0.4));
+    });
+    // Fliesenboden
+    g.fillStyle = '#d9cbb0'; g.fillRect(0, gy, V.w, V.h - gy);
+    rep(V, off, 1, 80, (x) => { for (let i = 0; i < 2; i++) for (let r = 0; r < 3; r++) { g.fillStyle = (i + r) % 2 ? '#c8b892' : '#e6d9bd'; g.fillRect(x + i * 40, gy + r * 20, 40, 20); } });
   },
 
   // 30. Geburtstag „Pizza & Glitzer“
@@ -1060,7 +1142,7 @@ export const LEVELS = {
   L21: { icon: '🐒', scene: 'serengeti', world: 'zoo', music: 'safari', len: 105, obstacles: { banana: 3, fence: 2, jeep: 2, parrot: 3, zebra: 1 }, items: ['monkey'], quest: { item: 'monkey', n: 8 }, hero: 'tarzan' },
   L22: { icon: '🗽', scene: 'nyc', music: 'jinglebells', len: 105, obstacles: { taxi: 2, snowpile: 3, skater: 2, hydrant: 2, smalltree: 1 }, items: ['psl', 'brezel', 'candycane'], quest: { item: 'psl', n: 8 }, hero: 'winter', noFamily: 1, fireworks: 1, goalHearts: 1 },
   L23: { icon: '🥕', scene: 'hanauMarkt', world: 'market', music: 'nachtmusik', len: 105, obstacles: { fruitcrate: 3, flowers: 2, basket: 2, cheese: 2, pigeon: 3 }, items: ['apple', 'sausage'], quest: { item: 'sausage', n: 6 }, hero: 'crier' },
-  L24: { icon: '🍲', scene: 'bbq', music: 'hungarian', len: 105, obstacles: { kettle: 2, grill: 3, logs: 2, smoke: 2 }, items: ['gulasch', 'sausage', 'steak'], quest: { item: 'gulasch', n: 10 }, hero: 'grill' },
+  L24: { icon: '🍲', scene: ['gulaschKitchen', 'bbq'], music: 'hungarian', len: 105, obstacles: { creuset: 3, pepperbox: 2, flour: 2 }, obstacles2: { smoker: 3, logs: 2, smoke: 2 }, items: ['gulasch', 'paprika'], items2: ['gulasch', 'sausage', 'steak'], quest: { item: 'gulasch', n: 10 }, hero: 'grill' },
   L25: { icon: '🍕', scene: 'pizzaGlitter', music: 'bday30', len: 120, obstacles: { pizzatower: 3, speaker: 2, bottle: 3, confetti: 2 }, items: ['pizza', 'glitter'], quest: { item: 'glitter', n: 30 }, hero: 'glitter', party: 1, glitterRush: 1, glitterGuests: 1, outfit: { top: 'glitter', topColor: 'f', bottom: 'tutu', extra: ['party'] } },
   L26: { icon: '💼', scene: 'office', world: 'office', music: 'bumblebee', len: 120, obstacles: { chair: 3, boss: 2, folders: 3, paper: 3 }, items: ['coffee', 'mimisoup'], quest: { survive: 1 }, hero: 'business' },
   L27: { icon: '💍', scene: 'barn', music: 'punk', len: 150, obstacles: { hayball: 3, bench: 2, dancers: 2, bouquet: 3 }, items: ['ring', 'confetti2', 'weddingcake'], quest: { items: ['ring', 'confetti2'], n: 10 }, hero: 'groom', checkpoint: 1, party: 1, fireworks: 1, goalHearts: 1 },
