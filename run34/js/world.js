@@ -1,5 +1,5 @@
 // Spiellogik: Physik, Hindernisse, Items, Power-ups, Cameos, Hintergründe.
-import { drawCharacter, drawCat, drawPerson, drawHero, drawFan, drawRollatorOma, star, roundRect } from './character.js';
+import { drawCharacter, drawCat, drawPerson, drawHero, drawFan, drawRollatorOma, star, roundRect, setKidFaces } from './character.js';
 import { assets, getFace } from './assets.js';
 import { Particles } from './fx.js';
 import { sfx } from './audio.js';
@@ -88,6 +88,7 @@ export class Game {
     this.green = this.outfit.top === 'green' && mode !== 'horror';
     this.hour = new Date().getHours();
     this.boxSpawned = false; this.fipsT = 0; this.savedBiome = null;
+    if (mode !== 'attract') setKidFaces(this.lvP?.kids);
     // Heidi versteckt sich im Geburtstags-Modus (und im Finale) hinter einem Busch -> Antippen = Pilzwald
     this.heidiOn = mode === 'birthday' || level === 'L38'; this.heidiPeek = null; this.nextHeidi = rand(12, 55); this.heidiDone = false; // nur ein einziger Auftritt pro Lauf, Zeitpunkt zufällig
     this.miniDone = false;
@@ -515,6 +516,8 @@ export class Game {
     const src = this.lvP.guests === 'all' ? this.guestList(this.lvP) : (this.lvP.guests || []);
     for (const c of src) { const k = c.face || c.emoji; if (seen.has(k) || (c.face && c.face === this.lvP.heroFace)) continue; seen.add(k); stage.push(c); if (stage.length >= 6) break; }
     this.stage = stage.map((c, i) => ({ ...c, x: 0, i, color: pick(['#5b7bd5', '#d55b8f', '#3ea37a', '#d58a3e', '#8e5aa8']) }));
+    const onStage = new Set(stage.map((c) => c.face).filter(Boolean));
+    this.cameos = this.cameos.filter((c) => !onStage.has(c.face) || c.x < this.p.x - 40); // wer gleich am Ziel steht, nicht doppelt zeigen
     const L = this.lv;
     const gfx = {};
     if (L.party) { gfx.disco = 1; gfx.confetti = 1; }
@@ -622,7 +625,7 @@ export class Game {
       else {
         this.nextPower = this.mercy >= 1 ? rand(12, 18) : rand(22, 34);
         let type = this.horror ? 'fips' : (Math.random() < 0.55 ? 'fips' : 'hammer');
-        if (type === 'hammer' && this.lv) { if (this.hammerSpawned) type = 'fips'; else this.hammerSpawned = true; } // Abrisshammer höchstens 1× pro Level
+        if (type === 'hammer' && this.lv) { if (this.hammerSpawned || this.lvP?.phase === 'Kindheit') type = 'fips'; else this.hammerSpawned = true; } // Abrisshammer höchstens 1× pro Level
         this.items.push(this.makeItem(type, V.w + 40 + this.nextGap * 0.5, 60));
       }
     }
@@ -646,6 +649,7 @@ export class Game {
   spawnCameos(dt) {
     const list = this.lv ? this.levelGuests : this.biome?.guests || (this.biome && this.cfg.biomeCameos?.[this.biome.id]) || this.cfg.cameos || [];
     if (!list.length || this.state === 'goal') return;
+    if (this.lv && this.lvTarget - this.distance < this.V.w * 1.6) return; // letzter Bildschirm vor dem Ziel: keine neuen Gäste (sonst doppelt im Ziel)
     this.nextCameo -= dt;
     if (this.nextCameo <= 0) {
       this.nextCameo = this.state === 'idle' ? rand(6, 9) : this.lv ? this.cameoGap * rand(0.85, 1.15) : rand(16, 26);
@@ -1191,7 +1195,7 @@ export class Game {
         g.fillStyle = au; g.beginPath(); g.arc(p.x, V.groundY - p.y - 60, 95, 0, 7); g.fill();
       }
       drawCharacter(g, p.x, V.groundY - p.y, {
-        pose, phase: p.phase, outfit: this.story?.outfitNow || this.outfit, expr: this.lvP?.kid && p.expr !== 'sad' ? 'child' : p.expr, scale: CHAR_SCALE * (this.strongT > 0 ? 1 + 0.22 * Math.min(1, this.strongT * 3) : 1), t: this.t, swell: p.swell, headScale: this.eggT > 0 ? 1.9 : 0,
+        pose, phase: p.phase, outfit: this.story?.outfitNow || this.outfit, expr: this.lvP?.kid && p.expr !== 'sad' ? 'child' : p.expr, scale: CHAR_SCALE * (this.strongT > 0 ? 1 + 0.22 * Math.min(1, this.strongT * 3) : 1) * (this.lvP?.kid ? 0.86 : 1), t: this.t, swell: p.swell, headScale: this.eggT > 0 ? 1.9 : this.lvP?.kid ? 1.15 : 0,
         rot: this.state === 'dying' ? -Math.min(1.2, this.deadT * 4) : 0,
       });
       if (this.god) drawLauncher(g, p.x, V.groundY - p.y - (p.duck && p.y < 1 ? 56 : 86), this.t);
