@@ -737,6 +737,32 @@ const OBJ_UPD = {
 
 // Szenen-Objekte am Boden
 const OBJ_DRAW = {
+  rhinoRider(g, game, s, a, x, y) { // Nashorn im Galopp (läuft nach links), Reiter obendrauf
+    const t = s.t, ph = t * 11, bob = Math.abs(Math.sin(ph)) * 4, dir = a.dir ?? -1;
+    if (Math.random() < 0.5) game.fx.list.push({ x: x - dir * 50, y: y - 4, vx: -dir * rand(20, 60), vy: rand(-30, -10), life: 0.6, max: 0.6, color: 'rgba(200,170,110,0.55)', size: 6, gravity: -10, type: 'smoke', rot: 0, vr: 0, drag: 1 });
+    g.save(); g.translate(x, y - bob); if (dir > 0) g.scale(-1, 1); g.scale(1.25, 1.25); // Nashorn deutlich größer als ein Mensch
+    // Reiter (Beine hinter dem Körper verborgen)
+    g.save(); g.scale(-1, 1); drawPerson(g, 0, -33, { faceKey: a.face, t: t * 1.4, color: a.color || '#3ea37a', scale: SC / 1.25, wave: true, expr: 'happy' }); g.restore();
+    const grey = g.createLinearGradient(0, -70, 0, -12); grey.addColorStop(0, '#a3a3aa'); grey.addColorStop(1, '#6d6d75');
+    // Beine (Galopp)
+    for (const [lx, off] of [[-30, 0], [-18, Math.PI], [22, Math.PI * 0.5], [34, Math.PI * 1.5]]) { const sw = Math.sin(ph + off) * 7; g.fillStyle = '#6d6d75'; roundRect(g, lx - 6 + sw * 0.4, -26, 12, 26 + Math.min(0, -Math.abs(sw) * 0.3), 4); g.fill(); g.fillStyle = '#4e4e55'; g.fillRect(lx - 6 + sw * 0.4, -4, 12, 4); }
+    // Körper
+    g.fillStyle = grey; g.beginPath(); g.ellipse(4, -40, 48, 25, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(60,60,66,0.5)'; g.lineWidth = 1.4; for (const fx of [-18, 20]) { g.beginPath(); g.arc(fx, -40, 24, -1.1, 1.1); g.stroke(); }
+    // Schwanz
+    g.strokeStyle = '#6d6d75'; g.lineWidth = 3; g.beginPath(); g.moveTo(50, -46); g.quadraticCurveTo(60, -40 + Math.sin(ph) * 5, 56, -30); g.stroke();
+    // Kopf mit Hörnern
+    g.fillStyle = grey; g.beginPath(); g.moveTo(-36, -58); g.quadraticCurveTo(-62, -60, -80, -36); g.quadraticCurveTo(-84, -22, -70, -22); g.lineTo(-40, -26); g.closePath(); g.fill();
+    g.fillStyle = '#e8e0cf'; g.beginPath(); g.moveTo(-78, -38); g.quadraticCurveTo(-90, -58, -84, -72); g.quadraticCurveTo(-78, -52, -70, -42); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(-64, -48); g.lineTo(-66, -60); g.lineTo(-58, -50); g.closePath(); g.fill();
+    g.fillStyle = '#8d8d94'; g.beginPath(); g.ellipse(-40, -62, 4, 8, -0.4, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#1b1b1e'; g.beginPath(); g.arc(-56, -46, 1.8, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#4e4e55'; g.lineWidth = 1; g.beginPath(); g.moveTo(-78, -28); g.lineTo(-72, -27); g.stroke();
+    // Bein des Reiters an der Seite
+    g.strokeStyle = '#333a4a'; g.lineWidth = 8; g.lineCap = 'round'; g.beginPath(); g.moveTo(2, -60); g.lineTo(-6, -44); g.lineTo(2, -30); g.stroke();
+    g.fillStyle = '#222'; roundRect(g, -4, -33, 12, 6, 3); g.fill();
+    g.restore();
+  },
   moneybath(g, game, s, a, x, y) { // Badewanne voller Geld, Kopf & Arme schauen raus
     const t = s.t, lt = t - (a.t0 || 0), tub = 0.95;
     const throwing = t >= (a.throwAt ?? 1.5);
