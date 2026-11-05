@@ -55,6 +55,8 @@ export function startStory(game, ev) {
     s.items.forEach((it) => { it.dug = false; });
     s.need = 4 + Math.floor(Math.random() * 4); s.digN = 0; // Ring frühestens beim 4.–7. Graben
     s.kimiPose = 'cheer';
+  } else if (s.kind === 'quiz') {
+    s.pick = null; s.phase = 'intro';
   } else if (s.kind === 'sprint') {
     s.d = 0; s.v = 0; s.rd = 0; s.rv = 0; s.taps = 0; s.go = null; s.myT = null; s.rT = null; s.lastBeep = -1; s.tapFx = [];
   } else if (s.kind === 'mushrooms') {
@@ -270,6 +272,41 @@ function drawSprint(g, game, s) {
   if (s.phase === 'end') { const win = s.win; banner(g, V, win ? `🥇 Gewonnen! ${s.myT.toFixed(2)} s` : `🥈 ${names[s.ev.rival] || 'Rivale'} war schneller!`, s.t - s.endT, true); }
 }
 
+// ---------------------------------------------------------------------------
+// Geschichts-Quiz: egal was man antwortet – die Note bleibt eine eingefrorene 4
+function quizBoxes(game) {
+  const V = game.V, w = Math.min(V.w * 0.42, 230), h = 40, gx = V.w / 2, top = V.h * 0.42;
+  return [0, 1, 2, 3].map((i) => ({ x: gx + (i % 2 ? 8 : -8 - w), y: top + Math.floor(i / 2) * (h + 10), w, h }));
+}
+function quizHit(game, s, x, y) { return quizBoxes(game).findIndex((b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h); }
+function drawQuiz(g, game, s) {
+  const V = game.V, ev = s.ev;
+  g.fillStyle = 'rgba(10,20,40,0.55)'; g.fillRect(0, 0, V.w, V.h);
+  if (ev.teacher) { drawPerson(g, V.w * 0.88, V.groundY - 6, { emojiHead: ev.teacher, t: s.t, color: '#6d4c41', scale: SC, wave: s.phase === 'reveal' }); }
+  if (s.phase === 'intro') { banner(g, V, ev.text || '📜 Geschichts-Quiz!', s.t); return; }
+  // Frage
+  const qw = Math.min(V.w * 0.86, 480), qx = V.w / 2 - qw / 2, qy = V.h * 0.16;
+  g.fillStyle = '#fffdf3'; roundRect(g, qx, qy, qw, 62, 12); g.fill(); g.strokeStyle = '#c9a227'; g.lineWidth = 2; g.stroke();
+  g.fillStyle = '#333'; g.font = '900 16px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(ev.question || 'Wann war der Wiener Kongress?', V.w / 2, qy + 37, qw - 20);
+  quizBoxes(game).forEach((b, i) => {
+    const picked = s.pick === i;
+    g.fillStyle = picked ? '#ffd23f' : '#3949ab'; roundRect(g, b.x, b.y, b.w, b.h, 10); g.fill();
+    g.fillStyle = picked ? '#3a2400' : '#fff'; g.font = '800 15px ui-rounded, system-ui, sans-serif'; g.fillText(`${'ABCD'[i]}) ${(ev.answers || ['1648', '1789', '1814/15', '1871'])[i]}`, b.x + b.w / 2, b.y + 26, b.w - 10);
+  });
+  if (s.phase === 'ask') { g.globalAlpha = 0.6 + Math.sin(s.t * 6) * 0.4; g.fillStyle = '#fff'; g.font = '800 13px ui-rounded, system-ui, sans-serif'; g.fillText('Tippe deine Antwort!', V.w / 2, V.h * 0.42 + 112); g.globalAlpha = 1; }
+  if (s.phase === 'reveal' && s.t - s.revT > 0.8) {
+    const k = clamp((s.t - s.revT - 0.8) / 0.2, 0, 1), sc = 2.4 - 1.4 * k;
+    g.save(); g.translate(V.w / 2, V.h * 0.5); g.rotate(-0.15); g.scale(sc, sc); g.globalAlpha = k;
+    const ig = g.createLinearGradient(-50, -50, 50, 50); ig.addColorStop(0, '#e1f5fe'); ig.addColorStop(1, '#81d4fa');
+    g.fillStyle = ig; roundRect(g, -48, -52, 96, 104, 10); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke();
+    g.fillStyle = '#c62828'; g.font = '900 78px ui-rounded, system-ui, sans-serif'; g.fillText(ev.grade || '4', 0, 28);
+    g.restore();
+    const right = s.pick === (ev.correct ?? 2);
+    if (s.t - s.revT > 1.2) bubble(g, V.w * 0.88, V.groundY - 158, right ? (ev.lineRight || 'Richtig. Trotzdem 4.') : (ev.lineWrong || 'Falsch. Aber 4 bleibt 4.'));
+    if (s.t - s.revT > 1.4) { g.fillStyle = '#fff'; g.font = '900 15px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(right ? '✅ Richtig! … Note: 4 ❄️' : '❌ Falsch … Note: 4 ❄️', V.w / 2, V.h * 0.5 + 92); }
+  }
+}
+
 function finish(game, s, label, value, bonus, frac = null) {
   if (s.result) return;
   s.result = { label, value, bonus: Math.max(0, Math.round(bonus)), rating: frac != null ? rating(frac) : null };
@@ -305,6 +342,11 @@ export function updateStory(game, s, dt) {
   else if (s.kind === 'tapgame') updTap(game, s, dt);
   else if (s.kind === 'mushrooms') updateMushrooms(game, s, dt);
   else if (s.kind === 'sprint') updateSprint(game, s, dt);
+  else if (s.kind === 'quiz') {
+    if (s.phase === 'intro' && s.t > 1.4) s.phase = 'ask';
+    if (s.phase === 'reveal' && !s.stampDone && s.t - s.revT > 0.8) { s.stampDone = true; sfx('smash'); sfx('bad'); game.shake = 8; game.flash = 0.4; const right = s.pick === (s.ev.correct ?? 2); finish(game, s, s.ev.label || '📜 Geschichts-Quiz', right ? 'richtig – trotzdem 4 ❄️' : 'falsch – auch 4 ❄️', 10, 0.4); }
+    if (s.phase === 'reveal' && s.t - s.revT > 4.2) s.done = true;
+  }
   else if (s.kind === 'throw') updThrow(game, s, dt);
   else if (s.kind === 'slot') updSlot(game, s, dt);
   else if (s.kind === 'candles') {
@@ -586,6 +628,7 @@ export function storyInput(game, s, type, x, y) {
   const V = game.V;
   if (s.kind === 'mushrooms') { mushInput(game, s, type, x); return; }
   if (s.kind === 'sprint') { if (type === 'down') sprintTap(game, s, x, y); return; }
+  if (s.kind === 'quiz') { if (type === 'down' && s.phase === 'ask') { const i = quizHit(game, s, x, y); if (i >= 0) { s.pick = i; s.phase = 'reveal'; s.revT = s.t; sfx('tap', 3); } } return; }
   if (s.kind === 'candles' && s.phase === 'play' && (type === 'move' || type === 'down')) {
     for (const c of s.candles) if (c.lit && Math.abs(c.x - x) < 16 && Math.abs(c.y - 12 - y) < 26) { c.lit = false; s.out++; sfx('tap', s.out % 12); game.fx.burst(c.x, c.y - 14, { n: 6, type: 'smoke', colors: ['#ddd', '#fff'], speed: 40, size: 4, gravity: -60 }); }
     return;
@@ -1027,6 +1070,7 @@ export function drawStory(g, game, s) {
   else if (s.kind === 'tapgame') drawTap(g, game, s);
   else if (s.kind === 'mushrooms') drawMushrooms(g, game, s);
   else if (s.kind === 'sprint') drawSprint(g, game, s);
+  else if (s.kind === 'quiz') drawQuiz(g, game, s);
   else if (s.kind === 'throw') drawThrow(g, game, s);
   else if (s.kind === 'slot') drawSlot(g, game, s);
   else if (s.kind === 'candles') drawCandles(g, game, s);
