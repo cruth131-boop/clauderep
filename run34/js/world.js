@@ -1,5 +1,5 @@
 // Spiellogik: Physik, Hindernisse, Items, Power-ups, Cameos, Hintergründe.
-import { drawCharacter, drawCat, drawPerson, drawHero, drawFan, drawRollatorOma, star, roundRect, setKidFaces, setCatStyle } from './character.js';
+import { drawCharacter, drawCat, drawPerson, drawHero, drawFan, drawRollatorOma, star, roundRect, setKidFaces, setCatStyle, drawTwerkFall } from './character.js';
 import { assets, getFace } from './assets.js';
 import { Particles } from './fx.js';
 import { sfx } from './audio.js';
@@ -1360,6 +1360,13 @@ export class Game {
   drawCameo(g, c) {
     const V = this.V;
     if (c.mini && !this.miniDone) { g.globalAlpha = 0.6 + Math.sin(c.t * 6) * 0.4; emoji(g, '👟', c.x + 22, V.groundY - 150, 18); emoji(g, '✨', c.x - 20, V.groundY - 140, 14); g.globalAlpha = 1; }
+    if (c.twerkfall) { // twerkt am Rand, fällt um, rappelt sich auf (Endlosschleife)
+      const st = drawTwerkFall(g, c.x, V.groundY - 6, c.t, { faceKey: c.face, color: c.color, acc: c.acc, scale: CAMEO_SCALE });
+      if (st === 'impact' && !c.plumped) { c.plumped = true; sfx('smash'); this.fx.text(c.x - 40, V.groundY - 80, 'PLUMPS! 💥', { color: '#ffd23f', size: 18 }); }
+      if (st === 'twerk') c.plumped = false;
+      if (c.said && c.sayT < 2 && c.line) speech(g, c.x + 12, V.groundY - 154, c.line);
+      return;
+    }
     if (c.chasedBy) { // läuft weg – dahinter rennt jemand verliebt hinterher
       const b = c.chasedBy, gap = 74 + Math.sin(c.t * 3) * 10;
       g.save(); g.translate(c.x, 0); g.scale(-1, 1); g.translate(-c.x, 0);

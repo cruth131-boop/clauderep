@@ -1,6 +1,6 @@
 // Level-Modus: Szenen (Hintergründe nach echten Orten), Emoji-Hindernisse, Items, Level-Definitionen.
 // Namen, Texte und Gäste stehen NICHT hier, sondern verschlüsselt in der privaten Config (config.levels).
-import { roundRect } from './character.js';
+import { roundRect, star } from './character.js';
 import { OBS, ITEM_ICONS, drawAnyBiomeBg, drawMonkey } from './biomes.js';
 import { drawFaceOn } from './character.js';
 import { emoji } from './emoji.js';
@@ -637,23 +637,51 @@ export const SCENES = {
     cobble(g, V, off, '#a8a39a', '#868077');
   },
 
-  // Cocoon Club Frankfurt (3deluxe): weiße Waben-Membranwand mit Projektionen und eingelassenen „Cocoons“
+  // Club mit organischer Lochmembran-Wand (grün/blau angestrahlt, Laser-Projektionen), weißen „Cocoon“-Kapseln mit
+  // gelbgrün leuchtenden Sitznischen und einer verkleideten Partymenge (Neon-Stern, Federn, Tütü, Pierrot)
   cocoon(g, V, off, t, lv) {
     const gy = V.groundY;
-    sky(g, V, '#05040a', '#120a1f');
-    const hue = (t * 40) % 360;
-    rep(V, off, 0.3, 36, (x, k) => {
-      for (let r = 0; r < 8; r++) {
-        const cx = x + (r % 2) * 18, cy = 18 + r * ((gy - 40) / 8);
-        g.fillStyle = `hsla(${(hue + k * 12 + r * 20) % 360},80%,${55 + Math.sin(t * 2 + k + r) * 15}%,0.85)`;
-        g.beginPath(); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + Math.PI / 6; g.lineTo(cx + Math.cos(a) * 15, cy + Math.sin(a) * 15); } g.fill();
-        g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 2; g.stroke();
+    sky(g, V, '#04060f', '#0b1028');
+    // Membranwand: Grundfläche + unregelmäßige Löcher
+    const wg = g.createLinearGradient(0, 0, V.w, gy); wg.addColorStop(0, '#1d5a3a'); wg.addColorStop(0.5, '#2f8f4e'); wg.addColorStop(1, '#203a7a');
+    g.fillStyle = wg; g.fillRect(0, 10, V.w, gy - 40);
+    rep(V, off, 0.3, 30, (x, k) => {
+      for (let r = 0; r < 13; r++) {
+        const j = ((((k * 7 + r * 13) % 11) + 11) % 11) / 11, cx = x + (r % 2) * 15 + j * 6, cy = 18 + r * ((gy - 50) / 13) + j * 5, rw = 4 + j * 7, rh = 3.5 + ((((k + r) % 3) + 3) % 3) * 2.2;
+        g.fillStyle = '#05070f'; g.beginPath(); g.ellipse(cx, cy, rw, rh, j * 2, 0, TAU); g.fill();
+        g.strokeStyle = 'rgba(160,255,120,0.35)'; g.lineWidth = 1.5; g.stroke();
       }
     });
-    rep(V, off, 0.35, 300, (x) => { g.fillStyle = '#f5f5f5'; g.beginPath(); g.ellipse(x + 100, gy - 110, 44, 32, 0, 0, TAU); g.fill(); g.fillStyle = `hsl(${(hue + 180) % 360},70%,45%)`; g.beginPath(); g.ellipse(x + 100, gy - 108, 34, 24, 0, 0, TAU); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.arc(x + 90, gy - 112, 5, 0, TAU); g.arc(x + 110, gy - 110, 5, 0, TAU); g.fill(); });
-    g.save(); g.globalCompositeOperation = 'lighter'; for (let i = 0; i < 6; i++) { const a = Math.sin(t * (1 + i * 0.3) + i) * 0.8; g.strokeStyle = ['rgba(255,40,90,0.5)', 'rgba(60,255,160,0.5)', 'rgba(90,160,255,0.5)'][i % 3]; g.lineWidth = 2; g.beginPath(); g.moveTo(V.w * (i / 5), 0); g.lineTo(V.w * (i / 5) + Math.sin(a) * gy, gy); g.stroke(); } g.restore();
-    crowd(g, V, off, 0.5, t, '#000', 18, 8);
-    once(V, off, 0.3, 900, 150, (x) => neon(g, S(lv, 'club', 'COCOON'), x, 30, '#fff', 20, t));
+    // Laser-Projektionen (Linienbündel)
+    g.save(); g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 14; i++) { const ph = t * 0.6 + i * 0.45; g.strokeStyle = i % 3 ? 'rgba(80,255,150,0.28)' : 'rgba(80,180,255,0.3)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(-40 + ((i * 60 + t * 40) % (V.w + 80)), 10); g.lineTo(((i * 60 + t * 40) % (V.w + 80)) + 80 + Math.sin(ph) * 60, gy - 30); g.stroke(); }
+    g.restore();
+    // weiße Cocoon-Kapseln mit leuchtender Sitznische
+    rep(V, off, 0.36, 420, (x) => {
+      const cx = x + 160, cy = gy - 110, w = 170, h = 82;
+      g.fillStyle = '#f2f4f2'; roundRect(g, cx - w / 2 - 10, cy - h / 2 - 10, w + 20, h + 20, 44); g.fill();
+      const ig = g.createRadialGradient(cx, cy - 10, 10, cx, cy, w * 0.6); ig.addColorStop(0, '#f6ff9a'); ig.addColorStop(0.6, '#c6e83a'); ig.addColorStop(1, '#7fae1e');
+      g.fillStyle = ig; roundRect(g, cx - w / 2, cy - h / 2, w, h, 38); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(cx - w / 2 + 16, cy + 10, w - 32, 6); // Sitzbank
+      for (let i = 0; i < 4; i++) { const px = cx - 54 + i * 36; g.fillStyle = 'rgba(40,50,20,0.65)'; g.beginPath(); g.arc(px, cy - 10, 7, 0, TAU); g.fill(); g.fillRect(px - 7, cy - 3, 14, 16); }
+      g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillRect(cx - 40, cy - 2, 3, 10); g.fillRect(cx + 22, cy - 2, 3, 10);
+      g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 2; g.beginPath(); g.ellipse(cx - w / 2 + 30, cy - h / 2 + 2, 22, 5, -0.2, 0, TAU); g.stroke();
+    });
+    once(V, off, 0.3, 900, 150, (x) => neon(g, S(lv, 'club', 'CLUB'), x, 30, '#fff', 20, t));
+    // verkleidete Partymenge
+    rep(V, off, 0.5, 64, (x, k) => {
+      const kk = ((k % 6) + 6) % 6, bob = Math.abs(Math.sin(t * 6 + k)) * 5, bx = x + 20, by = gy - 4 - bob;
+      g.fillStyle = ['#ff4fd8', '#f5f5f5', '#3ee6b4', '#ffd23f', '#7c4dff', '#ff7043'][kk]; roundRect(g, bx - 9, by - 46, 18, 30, 6); g.fill();
+      g.fillStyle = '#111'; g.fillRect(bx - 7, by - 18, 5, 18); g.fillRect(bx + 2, by - 18, 5, 18);
+      if (kk === 0) { g.fillStyle = '#ff80df'; g.beginPath(); g.ellipse(bx, by - 18, 16, 6, 0, 0, TAU); g.fill(); } // Tütü
+      g.fillStyle = kk === 3 ? '#fafafa' : '#e0b090'; g.beginPath(); g.arc(bx, by - 54, 8, 0, TAU); g.fill();
+      if (kk === 0) { g.fillStyle = '#ff4fd8'; star(g, bx, by - 70, 12); } // Neonstern
+      if (kk === 1) { for (let i = 0; i < 5; i++) { g.fillStyle = i % 2 ? '#e53935' : '#fff'; g.beginPath(); g.ellipse(bx - 8 + i * 4, by - 66, 2.5, 9, (i - 2) * 0.25, 0, TAU); g.fill(); } } // Federkranz
+      if (kk === 3) { g.fillStyle = '#111'; g.fillRect(bx - 4, by - 56, 2, 2); g.fillRect(bx + 2, by - 56, 2, 2); g.fillStyle = '#e53935'; g.beginPath(); g.arc(bx, by - 50, 2.5, 0, TAU); g.fill(); } // Pierrot
+      if (kk === 4) { g.fillStyle = '#ba68c8'; for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(bx - 10 + i * 4, by - 62 - (i % 2) * 3, 4, 0, TAU); g.fill(); } } // Federboa
+      g.strokeStyle = '#e0b090'; g.lineWidth = 3; g.beginPath(); g.moveTo(bx - 8, by - 42); g.lineTo(bx - 16, by - 56 - Math.sin(t * 6 + k) * 6); g.moveTo(bx + 8, by - 42); g.lineTo(bx + 16, by - 56 - Math.cos(t * 6 + k) * 6); g.stroke();
+    });
+    const hue = (t * 40) % 360;
     floor(g, V, '#0b0b12', '#2a2a3a', off, () => { rep(V, off, 1, 30, (x, k) => { g.fillStyle = `hsla(${(hue + k * 40) % 360},90%,60%,0.35)`; g.fillRect(x + 1, gy + 3, 28, 6); }); });
   },
 
@@ -1531,7 +1559,7 @@ export const LEVELS = {
   L11: { icon: '🎓', scene: 'uni', music: 'ode', len: 90, obstacles: { bench: 2, tray: 3, books: 2 }, items: ['fries2', 'coffee'], quest: { item: 'fries2', n: 10 }, hero: 'graduate' },
   L12: { icon: '⚖️', scene: 'wiesbaden', music: 'toccata', len: 105, obstacles: { folders: 2, barstool: 2, paragraph: 3, facewalk: 1 }, items: ['redbull', 'koelsch', 'akte'], quest: { item: 'akte', n: 8 }, hero: 'angel' },
   L13: { icon: '👻', scene: 'horror', music: 'horror', len: 90, horror: 1, obstacles: { shirt: 2, flyshirt: 3, ghost: 2, stink: 3, rille: 2, fish: 2, merz: 2 }, items: ['candle'], bad: 0.45, quest: { survive: 1 }, hero: 'zombie' },
-  L14: { icon: '🪩', scene: 'cocoon', music: 'techno', len: 105, obstacles: { speaker: 3, laser: 3, fog: 2, bouncer: 1 }, items: ['glow', 'water'], quest: { item: 'glow', n: 12 }, hero: 'raver', outfit: { top: 'glitter', topColor: 'f', bottom: 'tutu', socks: 'ringel', shoes: 'docs', extra: ['afro', 'starshades', 'boa'] }, party: 1 },
+  L14: { icon: '🪩', scene: 'cocoon', music: 'techno', len: 105, obstacles: { speaker: 3, laser: 3, fog: 2, bouncer: 1 }, items: ['glow', 'water'], quest: { item: 'glow', n: 12 }, hero: 'raver', outfit: { top: 'glitter', topColor: 'f', bottom: 'tutu', socks: 'ringel', shoes: 'docs', extra: ['boa'] }, party: 1 }, // Kopf frei lassen, damit man sie erkennt
   L15: { icon: '🎄', scene: ['xmasRoom', 'omaXmas'], music: 'deckhalls', len: 105, obstacles: { gift: 3, snowman: 2, smalltree: 2, candlebig: 2 }, items: ['eierlikoer', 'cookie2', 'wine'], quest: { item: 'cookie2', n: 12 }, hero: 'santa' },
   L16: { icon: '🎡', scene: 'plaerrer', music: 'volksfest', len: 105, obstacles: { 'maß': 3, hayball: 2, carousel: 1, target: 2, dartboard: 2 }, items: ['brezn', 'lebherz', 'domsign'], quest: { item: 'domsign', n: 6 }, hero: 'lederhosen', party: 1, goalRain: '👶' },
   L17: { icon: '🏖️', scene: ['sicily', 'apulia'], music: 'mobile', len: 105, obstacles: { sandcastle: 2, crab: 2, gull: 3, wave: 2, vespa: 2 }, items: ['gelato', 'pizza', 'mussel', 'cocktail'], badItems: ['fig'], bad: 0.3, quest: { avoid: 'fig' }, hero: 'baywatch', figStory: 1 },

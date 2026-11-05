@@ -1031,6 +1031,28 @@ function drawCatHead(g, x, y, photo, orange, dark, light, front) {
 // ---------------------------------------------------------------------------
 // Cameo-Figuren (Eltern, Oma) am Wegesrand
 // ---------------------------------------------------------------------------
+// Twerken – Gleichgewicht verlieren – rückwärts auf den Hintern – liegen mit Sternchen – aufrappeln.
+// lt = Zeit seit Beginn der Nummer (Sekunden), Zyklus 6 s (für Gäste am Rand wiederholbar)
+export function drawTwerkFall(g, x, footY, lt, o = {}) {
+  const T = lt % 6, sc = o.scale || 1, base = { faceKey: o.faceKey, color: o.color, acc: o.acc, scale: sc };
+  if (T < 2.2) { drawPerson(g, x, footY, { ...base, t: lt, twerk: true }); return 'twerk'; }
+  if (T < 2.75) { // wackelt, rudert mit den Armen, kippt nach hinten
+    const k = (T - 2.2) / 0.55, rot = -k * k * 1.45, wob = Math.sin(T * 40) * 0.08 * (1 - k);
+    g.save(); g.translate(x, footY); g.rotate(rot + wob); g.translate(-x, -footY);
+    drawPerson(g, x, footY, { ...base, t: lt * 3, wave: true, expr: 'shock' }); g.restore();
+    return 'tip';
+  }
+  const lying = T < 4.9, k = lying ? 1 : 1 - (T - 4.9) / 0.6;
+  g.save(); g.translate(x, footY); g.rotate(-1.45 * Math.max(0, k)); g.translate(-x, -footY);
+  drawPerson(g, x, footY - (T < 2.95 ? Math.sin((T - 2.75) / 0.2 * Math.PI) * 6 : 0), { ...base, t: lt, wave: !lying, expr: lying ? 'sad' : 'happy' });
+  g.restore();
+  if (lying) { // Sternchen kreisen über dem Kopf
+    const hx = x - 70 * sc, hy = footY - 18 * sc;
+    for (let i = 0; i < 3; i++) { const a = T * 5 + i * 2.1; emoji(g, '⭐', hx + Math.cos(a) * 16 * sc, hy - 18 * sc + Math.sin(a) * 6 * sc, 12 * sc); }
+  }
+  return lying ? (T < 3.1 ? 'impact' : 'lie') : 'up';
+}
+
 // Kinder in Kindheits-Leveln: kleiner Körper, relativ großer Kopf
 const KID_FACES = new Set();
 export function setKidFaces(list) { KID_FACES.clear(); for (const f of list || []) KID_FACES.add(f); }

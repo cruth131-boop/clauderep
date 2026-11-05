@@ -2,7 +2,7 @@
 // Designregeln: eine Geste pro Spiel, per animierter Hand gezeigt statt erklärt, 6–12 s, kein Scheitern
 // (nur mehr oder weniger Bonuspunkte), viel Feedback, eine Überraschung pro Spiel. Einspieler: zeigen statt erzählen.
 // Die Ereignisse selbst (wer, was, Texte) stehen in der privaten Config: config.levels[i].events.
-import { drawPerson, drawCat, drawHero, drawRollatorOma, roundRect } from './character.js';
+import { drawPerson, drawCat, drawHero, drawRollatorOma, roundRect, drawTwerkFall } from './character.js';
 import { emoji } from './emoji.js';
 import { assets } from './assets.js';
 import { COSTUMES, drawIceToss } from './levels.js';
@@ -984,6 +984,10 @@ function drawActor(g, game, s, a, i, extra = {}) {
   g.save(); g.translate(x, y - 40); g.rotate(rot); g.translate(-x, -(y - 40));
   if (a.rollator) { drawRollatorOma(g, x, y + 6, { t: s.t, scale: 0.95 * 1.05 }); if (a.moves && s.t > a.moves[a.moves.length - 1][0] - 1) game.fx.list.push({ x: x - 40, y: y - 16, vx: -60, vy: rand(-10, 10), life: 0.6, max: 0.6, color: 'rgba(200,200,200,0.8)', size: 4, gravity: -20, type: 'smoke', rot: 0, vr: 0, drag: 1 }); }
   else if (a.obj && OBJ_DRAW[a.obj]) OBJ_DRAW[a.obj](g, game, s, a, x, y);
+  else if (anim === 'twerkfall') {
+    const st = drawTwerkFall(g, x, y, lt, { faceKey: a.face, color: a.color, acc: a.acc, scale: sc });
+    if (st === 'impact' && !a.plumped) { a.plumped = true; sfx('smash'); game.shake = 8; pop(s, x - 40, y - 70, a.fallText || 'PLUMPS! 💥', '#ffd23f', 24); game.fx.burst(x - 30, y - 6, { n: 16, colors: ['#ffffff', '#ff4fd8', '#3ee6b4'], speed: 180, size: 3 }); }
+  }
   else if (a.big) emoji(g, a.big, x, y - 34 * (a.scale || 1), 70 * (a.scale || 1), 0, !!a.flip);
   else if (a.cat) {
     const salto = anim === 'salto' ? (lt % 1.6) : 0, jy = anim === 'salto' ? Math.sin(Math.min(1, salto / 0.9) * Math.PI) * 60 : 0;
