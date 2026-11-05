@@ -85,7 +85,7 @@ export const DEFAULT_CONFIG = {
     treat: { label: 'Leckerli', points: 3 },
   },
   allergyLines: ['ALLERGIE-ALARM!', 'Igitt, eine Feige!', 'Garnele?! Bloß nicht!'],
-  hammerLines: ['ABRISS!', 'Bauleiterin am Werk!', 'Weg mit den Fliesen!'],
+  hammerLines: ['SCHLÜRF!', 'Blitzblank! ✨', 'Weggesaugt!'],
   memories: [
     // { img: 'memory1', caption: 'Urlaub 2019' }
   ],

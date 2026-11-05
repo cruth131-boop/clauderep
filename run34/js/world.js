@@ -339,7 +339,7 @@ export class Game {
       if (this.state === 'finale' && this.speed <= 0 && !this.finaleSent) { this.finaleSent = true; this.events.onFinale?.(); }
     }
     this.biomeFade = Math.min(1, this.biomeFade + dt / 1.6);
-    p.exprT -= dt; if (p.exprT <= 0) p.expr = this.state === 'dying' ? 'sad' : this.hammer > 0 ? 'hammer' : this.baseExpr;
+    p.exprT -= dt; if (p.exprT <= 0) p.expr = this.state === 'dying' ? 'sad' : this.hammer > 0 ? 'happy' : this.baseExpr;
     p.invuln = Math.max(0, p.invuln - dt);
     p.swell = Math.max(0, p.swell - dt / 4);
     this.fips = Math.max(0, this.fips - dt);
@@ -909,10 +909,12 @@ export class Game {
     if (o.secret) { o.knock = { vx: 0, vy: -2000, vr: 0 }; o.yOff = -500; this.enterFipsland(); return; }
     const ox = o.x + o.w / 2, oy = this.screenY(o.yOff + 20);
     if (this.hammer > 0) {
+      // Wischsauger: Hindernis wird eingesaugt – Wasser, Schaum, Glitzer
       o.knock = { vx: 0, vy: -2000, vr: 0 }; o.yOff = -500;
-      this.fx.burst(ox, oy, { n: 26, colors: ['#9a8a7a', '#c9b8a5', '#6ab0a8', '#d9d0c4'], speed: 320, type: 'rubble', size: 5, gravity: 900, spread: Math.PI, angle: -Math.PI / 2 });
-      this.fx.text(ox, oy - 30, pick(this.cfg.hammerLines || ['ABRISS!']), { color: '#ffd23f', size: 20 });
-      this.shake = 10; sfx('smash');
+      this.fx.burst(ox, oy, { n: 22, colors: ['#7cc6ff', '#bfe6ff', '#ffffff', '#4fa3e0'], speed: 260, size: 3.5, gravity: 500, spread: Math.PI, angle: -Math.PI / 2 });
+      this.fx.burst(ox, oy, { n: 10, type: 'smoke', colors: ['rgba(255,255,255,0.9)'], speed: 90, size: 6, gravity: -40 });
+      this.fx.text(ox, oy - 30, pick(this.cfg.hammerLines || ['SCHLÜRF!']), { color: '#7cc6ff', size: 20 });
+      this.shake = 5; sfx('dig'); sfx('collect');
       return;
     }
     if (this.fips > 0) {
@@ -993,8 +995,8 @@ export class Game {
     }
     if (it.type === 'hammer') {
       this.hammer = 5.5; sfx('power');
-      this.fx.text(it.x, this.screenY(iy) - 20, 'STEMMHAMMER!', { color: '#ffd23f', size: 22 });
-      this.events.onToast?.('🔨 Abriss-Modus: Alles wird weggestemmt!');
+      this.fx.text(it.x, this.screenY(iy) - 20, 'WISCHSAUGER!', { color: '#7cc6ff', size: 22 });
+      this.events.onToast?.('🧽 Tineco-Modus: Alles wird blitzblank weggesaugt!');
       return;
     }
     if (it.type === 'monkey') {
@@ -1210,7 +1212,7 @@ export class Game {
       });
       if (this.god) drawLauncher(g, p.x, V.groundY - p.y - (p.duck && p.y < 1 ? 56 : 86), this.t);
       if (flip) g.restore();
-      if (this.hammer > 0 && this.state === 'run') drawJackhammer(g, p.x + 30, V.groundY - p.y - 40, this.t, this.hammer < 1.5);
+      if (this.hammer > 0 && this.state === 'run') drawTineco(g, p.x + 52, V.groundY - p.y, this.t, this.hammer < 1.5, 1);
     }
     if (this.state === 'finale' && this.speed <= 5) {
       drawCat(g, p.x - 60, V.groundY, { pose: 'sit', scale: 1.2, t: this.t });
@@ -1585,6 +1587,32 @@ function drawTee(g, cx, cy, w, color, flap, t, angry) {
   }
 }
 
+// Nass-Trocken-Wischsauger (aufrecht, Stil Tineco Floor One S7): Bodendüse mit Walze & LED, schlanker
+// anthrazitfarbener Korpus mit Holzoptik-Blende, Frisch-/Schmutzwassertank, rundes Display mit Farbring (rot → blau)
+function drawTineco(g, x, y, t, blink, s = 1) {
+  if (blink && Math.floor(t * 10) % 2) return;
+  g.save(); g.translate(x, y); g.scale(s, s);
+  // Wasserspur
+  g.fillStyle = 'rgba(124,198,255,0.25)'; g.fillRect(-60, -2, 70, 3);
+  // Bodendüse
+  g.fillStyle = '#2b2d33'; roundRect(g, -8, -11, 34, 11, 4); g.fill();
+  g.fillStyle = '#5a5e68'; g.beginPath(); g.arc(18, -5, 4.5, 0, 7); g.fill(); g.fillStyle = '#9aa3ad'; g.save(); g.translate(18, -5); g.rotate(t * 25); g.fillRect(-4, -0.8, 8, 1.6); g.restore();
+  g.fillStyle = `rgba(80,180,255,${0.6 + Math.sin(t * 8) * 0.3})`; g.fillRect(-6, -3, 20, 1.6); // LED-Leiste
+  // Korpus schräg nach hinten zur Hand
+  g.save(); g.translate(4, -10); g.rotate(-0.2);
+  g.fillStyle = '#33363d'; roundRect(g, -6, -58, 13, 58, 5); g.fill();
+  g.fillStyle = '#b08458'; g.fillRect(-6, -40, 4, 26); // Holzoptik-Blende
+  g.fillStyle = 'rgba(160,215,255,0.75)'; roundRect(g, -2, -26, 9, 20, 3); g.fill(); // Frischwasser
+  g.fillStyle = 'rgba(120,120,120,0.55)'; roundRect(g, -2, -48, 9, 14, 3); g.fill(); // Schmutzwasser
+  const ring = Math.sin(t * 2) > 0 ? '#ff4d4d' : '#3fa9ff';
+  g.fillStyle = '#111'; g.beginPath(); g.arc(1, -62, 6, 0, 7); g.fill(); g.strokeStyle = ring; g.lineWidth = 2; g.beginPath(); g.arc(1, -62, 5, 0, 7); g.stroke();
+  g.fillStyle = '#e0e0e0'; g.fillRect(-0.5, -100, 3, 36); g.fillStyle = '#222'; roundRect(g, -4, -108, 10, 10, 3); g.fill(); // Stiel & Griff
+  g.restore();
+  // Spritzer
+  g.fillStyle = 'rgba(190,230,255,0.9)'; for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(30 + Math.random() * 8, -4 - Math.random() * 6, 1.4 + Math.random(), 0, 7); g.fill(); }
+  g.restore();
+}
+
 function drawJackhammer(g, x, y, t, blink) {
   if (blink && Math.floor(t * 10) % 2) return;
   const v = Math.sin(t * 70) * 1.5;
@@ -1695,7 +1723,7 @@ export function drawItemIcon(g, type, t = 0) {
   } else if (type === 'fips') {
     drawCat(g, -2, 12, { pose: 'sit', scale: 0.55, t });
   } else if (type === 'hammer') {
-    drawJackhammer(g, -6, -10, t, false);
+    drawTineco(g, -4, 14, t, false, 0.3);
   }
 }
 
