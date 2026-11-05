@@ -463,6 +463,20 @@ function disco(g, V, t, power = 1) {
   for (let i = 0; i < 10; i++) { const a = i / 10 * 6.28 + t * 3; g.fillStyle = `hsl(${(i * 50 + t * 200) % 360},100%,75%)`; g.fillRect(bx + Math.cos(a) * 9 - 1.5, by + Math.sin(a) * 9 - 1.5, 3, 3); }
 }
 
+// Gezeichnete Requisiten für Szenen
+const PROP_DRAW = {
+  waferbox(g, x, y, t) { // sechseckige Waffelröllchen-Schachtel (Sonderedition) mit herausschauenden Röllchen
+    g.save(); g.translate(x, y); g.rotate(-0.25 + Math.sin(t * 3) * 0.05);
+    g.fillStyle = '#d9a75a'; for (const [rx, ry] of [[-3, -16], [2, -19], [6, -15]]) { g.save(); g.translate(rx, ry); g.rotate(0.1); g.fillRect(-1.6, -4, 3.2, 12); g.strokeStyle = '#8a5a22'; g.lineWidth = 0.5; for (let k = -3; k < 8; k += 2) { g.beginPath(); g.moveTo(-1.6, k); g.lineTo(1.6, k + 1.4); g.stroke(); } g.restore(); }
+    g.fillStyle = '#3b2314'; g.beginPath(); g.moveTo(-8, -10); g.lineTo(8, -10); g.lineTo(11, -4); g.lineTo(11, 14); g.lineTo(-11, 14); g.lineTo(-11, -4); g.closePath(); g.fill();
+    g.strokeStyle = '#d4af37'; g.lineWidth = 1.2; g.stroke();
+    g.fillStyle = '#ff5fa2'; g.fillRect(-11, 3, 22, 3);
+    g.fillStyle = '#d4af37'; g.font = '900 4.2px sans-serif'; g.textAlign = 'center'; g.fillText('WAFFEL', 0, -1);
+    g.save(); g.translate(8, -9); g.rotate(Math.sin(t * 5) * 0.2); g.fillStyle = '#ffd23f'; g.beginPath(); for (let k = 0; k < 10; k++) { const r = k % 2 ? 3 : 6.5, a2 = k * Math.PI / 5 - Math.PI / 2; g.lineTo(Math.cos(a2) * r, Math.sin(a2) * r); } g.closePath(); g.fill(); g.fillStyle = '#b3236b'; g.font = '900 3px sans-serif'; g.fillText('NEU', 0, 1); g.restore();
+    g.restore();
+  },
+};
+
 function drawActor(g, game, s, a, i, extra = {}) {
   const V = game.V, t0 = a.t0 || 0;
   if (s.t < t0) return;
@@ -498,7 +512,7 @@ function drawActor(g, game, s, a, i, extra = {}) {
     drawPerson(g, x, y, { faceKey: a.face, emojiHead: a.emoji, t: s.t + i, color: a.color, scale: sc, wave: anim !== 'twerk' && !a.ice, pet: a.pet, oma: a.oma, run: anim === 'run', acc: a.acc, twerk: anim === 'twerk' || a.twerk });
     if (a.ice) drawIceToss(g, x, y, s.t + i);
   }
-  if (a.prop && (!a.propT || s.t >= a.propT) && (!a.propEnd || s.t < a.propEnd)) emoji(g, a.prop, x + 16, y - (a.pet ? 18 : 60), 20);
+  if (a.prop && (!a.propT || s.t >= a.propT) && (!a.propEnd || s.t < a.propEnd)) { if (PROP_DRAW[a.prop]) PROP_DRAW[a.prop](g, x + 20, y - 58, s.t); else emoji(g, a.prop, x + 16, y - (a.pet ? 18 : 60), 20); }
   g.restore();
   for (const [st, en, txt] of a.says || []) if (s.t >= st && s.t <= en) bubble(g, x, y - (a.pet ? 62 : a.rollator ? 120 : a.big ? 80 : 140) * (a.scale || 1), txt);
 }

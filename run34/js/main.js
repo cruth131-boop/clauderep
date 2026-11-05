@@ -1,9 +1,9 @@
 import { IntroScene } from './intro.js';
 import { assets, fetchBundle, unlockWithPassword, unlockWithStoredKey } from './assets.js';
-import { OUTFIT_PARTS, PRESETS, ACHIEVEMENTS, CHALLENGES, FAIL_TITLES } from './config.js';
+import { OUTFIT_PARTS, PRESETS, LOOKS, BOOSTS, ACHIEVEMENTS, CHALLENGES, FAIL_TITLES } from './config.js';
 import { Game } from './world.js';
 import { LoseScene, FinaleScene, animateMap } from './scenes.js';
-import { drawCharacter } from './character.js';
+import { drawCharacter, FIXED_TOP } from './character.js';
 import { MOTIFS } from './motifs.js';
 import { initAudio, sfx, playMusic, stopMusic, setMuted, isMuted, suspendAudio, resumeAudio } from './audio.js';
 import { LEVELS, PHASE_ICONS } from './levels.js';
@@ -74,7 +74,7 @@ addEventListener('resize', resize); resize();
 
 // ----------------------------------------------------------------- Zustand
 let screen = 'boot';
-let game = null, scene = null, paused = false;
+let game = null, scene = null, paused = false, runDouble = false;
 const input = { jumpHeld: false, jumpPressed: false, duck: false, left: false, right: false, fire: false };
 
 function show(id) {
@@ -135,6 +135,7 @@ function toMenu() {
   if (innerHeight > innerWidth) lines.push('Tipp: Quer halten = mehr Überblick');
   $('menu-hint').textContent = lines.join('\n');
   $('btn-mute').textContent = isMuted() ? '🔇' : '🔊';
+  refreshTaler();
   show('scr-menu');
   playMusic('menu');
 }
@@ -198,6 +199,13 @@ function startGame(mode, { level = null, startAt = 0 } = {}) {
       },
     },
   });
+  // Booster aus dem Shop (werden beim Start automatisch verbraucht)
+  runDouble = false;
+  const used = [];
+  if (save.boosts?.heart > 0) { save.boosts.heart--; game.hearts += 1; used.push('❤️'); }
+  if (save.boosts?.fips > 0) { save.boosts.fips--; game.fips = Math.max(game.fips, 8); used.push('🐱'); }
+  if (save.boosts?.double > 0) { save.boosts.double--; runDouble = true; used.push('🪙×2'); }
+  if (used.length) { persist(); setTimeout(() => toast(`⚡ Booster aktiv: ${used.join(' ')}`, 2400), 2700); }
   if (mode === 'roadtrip') unlockAch('roadtrip');
   if (save.outfit.top === 'green') unlockAch('green');
   if (eggHead) setTimeout(() => toast('🥚 Eierkopf-Modus! 30 Sekunden Riesenkopf'), 200);
@@ -279,6 +287,8 @@ function showGameOver(info, mercyMsg) {
   $('over-line').textContent = `„${pickL(pool)}"`;
   $('over-score').textContent = info.score;
   $('over-best').textContent = info.mode === 'birthday' ? `von ${cfg.birthdayTarget || 34} Kerzen 🕯️ – noch ${Math.max(0, (cfg.birthdayTarget || 34) - info.score)}!` : `Rekord: ${save.best[info.mode]}`;
+  const tal = earnTaler(info.mode === 'birthday' ? info.score / 2 : info.mode === 'level' ? info.score / 15 : info.score / 8);
+  $('over-taler').textContent = tal ? `+${tal} 🪙 Taler${runDouble ? ' (×2)' : ''} · Konto: ${save.taler} 🪙` : '';
   $('over-mercy').textContent = mercyMsg;
   $('over-mercy').classList.toggle('hidden', !mercyMsg);
   const cp = info.mode === 'level' && LEVELS[info.level]?.checkpoint && info.progress >= 0.5;
@@ -303,6 +313,7 @@ let stopMap = null;
 function showReveal(fromMenu = false) {
   const gift = assets.config.gift || {};
   const firstWin = !fromMenu && !save.won;
+  if (firstWin) earnTaler(150);
   if (!fromMenu) {
     save.won = true;
     unlockAch('birthday');
@@ -395,76 +406,211 @@ addEventListener('keyup', (e) => {
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// ----------------------------------------------------------------- Kleiderschrank
-let previewT = 0, previewRaf = null;
-function buildWardrobe() {
-  const wrap = $('wardrobe-cats'); wrap.innerHTML = '';
-  for (const [cat, def] of Object.entries(OUTFIT_PARTS)) {
-    if (cat === 'topColor' && ['princess', 'green'].includes(save.outfit.top)) continue;
-    const box = document.createElement('div'); box.className = 'cat';
-    box.innerHTML = `<h3>${def.label}</h3>`;
-    const chips = document.createElement('div'); chips.className = 'chips';
-    for (const [key, opt] of Object.entries(def.options)) {
-      const b = document.createElement('button'); b.className = 'chip';
-      const locked = opt.unlock && !unlocked(opt.unlock);
-      const on = def.multi ? (save.outfit.extra || []).includes(key) : save.outfit[cat] === key;
-      if (on) b.classList.add('on');
-      if (locked) b.classList.add('locked');
-      if (opt.color) { b.style.borderColor = opt.color; b.innerHTML = `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${opt.color};vertical-align:-1px"></span> ${opt.label}`; }
-      else b.textContent = (locked ? '🔒 ' : '') + opt.label;
-      b.addEventListener('click', () => {
-        initAudio();
-        if (locked) {
-          const wl = { office: 'L26', garden: 'L36', party: 'L20', zoo: 'L21', market: 'L23', kitchen: 'L36' }[opt.unlock?.slice(6)];
-          const wt = wl && lvList().find((l) => l.id === wl);
-          $('wardrobe-msg').textContent = wt ? `🔒 Wird in Level ${lvNum(wl)} „${wt.title}“ freigeschaltet!` : '🔒 Wird im Geburtstags-Modus freigeschaltet!';
-          sfx('bad'); return;
-        }
-        if (opt.refuse && !save.greenUnlocked) {
-          save.greenTaps = (save.greenTaps || 0) + 1; persist();
-          if (save.greenTaps >= 10) {
-            save.greenUnlocked = true; persist();
-            $('wardrobe-msg').textContent = 'Na gut… 🤢 Du hast es so gewollt. Grün ist jetzt erlaubt.';
-            sfx('power'); buildWardrobe(); return;
-          }
-          $('wardrobe-msg').textContent = save.greenTaps >= 6 ? `Du bist ganz schön hartnäckig… (${10 - save.greenTaps})` : `„${assets.config.loseLines?.[0] || 'Nein.'}" Grün kommt hier nicht rein. (Außer im Horror-Modus… 👻)`;
-          sfx('no'); b.animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], { duration: 250, iterations: 2 });
-          return;
-        }
-        if (def.multi) {
-          const set = new Set(save.outfit.extra || []);
-          set.has(key) ? set.delete(key) : set.add(key);
-          if (key === 'party' && set.has('party')) set.delete('shades');
-          if (key === 'shades' && set.has('shades')) set.delete('party');
-          save.outfit.extra = [...set];
-        } else save.outfit[cat] = key;
-        $('wardrobe-msg').textContent = '';
-        sfx('collect'); persist(); buildWardrobe();
-      });
-      chips.appendChild(b);
-    }
-    box.appendChild(chips); wrap.appendChild(box);
-  }
+// ----------------------------------------------------------------- Kleiderschrank & Shop
+// UX: oben eine große Live-Vorschau, darunter Kategorie-Tabs (Icons) und ein Raster aus
+// Karten mit Mini-Vorschau des jeweiligen Teils. Alles ist anprobierbar – auch Gesperrtes
+// und Shop-Ware; gekauft wird direkt aus der Anprobe heraus.
+save.taler ??= 0; save.owned ??= []; save.boosts ??= {};
+if (DEV && save.taler < 500) save.taler = 999;
+const ikey = (cat, key) => `${cat}:${key}`;
+const optOf = (cat, key) => OUTFIT_PARTS[cat]?.options[key];
+function itemState(cat, key) { // own | shop | lock
+  const o = optOf(cat, key);
+  if (!o) return 'lock';
+  if (o.shop) return save.owned.includes(ikey(cat, key)) ? 'own' : 'shop'; // auch im Test-Link kaufen (dort mit 999 🪙)
+  if (o.unlock && !unlocked(o.unlock)) return 'lock';
+  return 'own';
 }
-document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => {
-  const p = b.dataset.preset;
-  if (p === 'princess' && !unlocked('birthday')) { $('wardrobe-msg').textContent = '🔒 Die Krone muss man sich verdienen! (Geburtstags-Modus)'; sfx('bad'); return; }
-  save.outfit = structuredClone(PRESETS[p]); persist(); buildWardrobe(); sfx('power');
-}));
-$('btn-wardrobe').addEventListener('click', () => {
-  initAudio(); screen = 'wardrobe'; buildWardrobe(); show('scr-wardrobe');
+const lockHint = (o) => {
+  const wl = { office: 'L26', garden: 'L36', party: 'L20', zoo: 'L21', market: 'L23', kitchen: 'L36' }[o.unlock?.slice(6)];
+  const wt = wl && lvList().find((l) => l.id === wl);
+  return wt ? `🔒 Wird in Level ${lvNum(wl)} „${wt.title}“ freigeschaltet!` : '🔒 Wird im Geburtstags-Modus freigeschaltet!';
+};
+const lookItems = (id) => { const p = PRESETS[id]; return [['top', p.top], ['bottom', p.bottom], ['socks', p.socks], ['shoes', p.shoes], ...(p.extra || []).map((e) => ['extra', e])]; };
+function lookInfo(id) {
+  const L = LOOKS[id], items = lookItems(id);
+  const missing = items.filter(([c, k]) => itemState(c, k) === 'shop');
+  const sum = missing.reduce((a, [c, k]) => a + optOf(c, k).shop, 0);
+  const lock = (L.unlock && !unlocked(L.unlock)) || items.some(([c, k]) => itemState(c, k) === 'lock');
+  return { missing, price: Math.round((sum * (L.discount || 1)) / 5) * 5, lock };
+}
+function earnTaler(n) { n = Math.max(0, Math.round(n * (runDouble ? 2 : 1))); save.taler += n; persist(); return n; }
+const talerTxt = () => `🪙 ${save.taler}`;
+function refreshTaler() { for (const id of ['wr-taler', 'shop-taler']) $(id).textContent = talerTxt(); $('menu-taler').textContent = save.taler ? `${save.taler} 🪙` : ''; }
+function spend(price, msgEl) {
+  if (save.taler < price) { $(msgEl).textContent = `Dir fehlen noch ${price - save.taler} 🪙 – spiel ein paar Level! 🏃‍♀️`; sfx('no'); return false; }
+  save.taler -= price; persist(); refreshTaler(); return true;
+}
+
+// Mini-Vorschau: Figur mit Ausschnitt je Kategorie (Höhen ab Fußsohle, nach oben positiv)
+const CROP = { look: [-4, 152], top: [36, 104], topColor: [36, 104], bottom: [-2, 66], socks: [-3, 36], shoes: [-4, 34], extra: [40, 150], hat: [88, 158], face: [92, 140] };
+const HATS = new Set(['crown', 'safari', 'chef', 'beanie', 'cowboyhat']), FACEX = new Set(['shades', 'party']);
+function drawThumb(cv, outfit, region) {
+  const g2 = cv.getContext('2d'), W = cv.width, H = cv.height;
+  const [y0, y1] = CROP[region] || CROP.look, h = y1 - y0, s = H / h, mid = (y0 + y1) / 2;
+  g2.setTransform(1, 0, 0, 1, 0, 0); g2.clearRect(0, 0, W, H);
+  g2.setTransform(s, 0, 0, s, W / 2 - 3 * s, H / 2 + mid * s);
+  drawCharacter(g2, 0, 0, { pose: 'idle', phase: 0, outfit, scale: 1, t: 1, expr: 'happy' });
+}
+const regionOf = (cat, key) => (cat === 'extra' ? (HATS.has(key) ? 'hat' : FACEX.has(key) ? 'face' : 'extra') : cat);
+const withItem = (base, cat, key) => {
+  const o = structuredClone(base);
+  if (cat === 'extra') { const set = new Set(o.extra || []); set.add(key); if (key === 'party') set.delete('shades'); if (key === 'shades') set.delete('party'); if (HATS.has(key)) for (const hh of HATS) if (hh !== key) set.delete(hh); o.extra = [...set]; } else o[cat] = key;
+  return o;
+};
+
+let wrTab = 'looks', tryOn = null, previewT = 0, previewRaf = null;
+const previewOutfit = () => (!tryOn ? save.outfit : tryOn.look ? structuredClone(PRESETS[tryOn.look]) : withItem(save.outfit, tryOn.cat, tryOn.key));
+function setTry(t) {
+  tryOn = t;
+  const bar = $('wr-try'); bar.classList.toggle('hidden', !t);
+  if (!t) return;
+  let label, price = 0, state;
+  if (t.look) { const li = lookInfo(t.look); label = `${LOOKS[t.look].icon} ${LOOKS[t.look].label}`; price = li.price; state = li.lock ? 'lock' : li.missing.length ? 'shop' : 'own'; }
+  else { const o = optOf(t.cat, t.key); label = o.label; price = o.shop || 0; state = itemState(t.cat, t.key); }
+  $('wr-try-text').textContent = state === 'lock' ? `Anprobe: ${label}` : `Anprobe: ${label}`;
+  const b = $('wr-buy');
+  b.classList.toggle('hidden', state !== 'shop');
+  b.textContent = `Kaufen · ${price} 🪙`; b.classList.toggle('poor', save.taler < price);
+}
+function buyTry() {
+  const t = tryOn; if (!t) return;
+  if (t.look) {
+    const li = lookInfo(t.look); if (li.lock || !spend(li.price, 'wardrobe-msg')) return;
+    for (const [c, k] of li.missing) save.owned.push(ikey(c, k));
+    save.outfit = structuredClone(PRESETS[t.look]);
+  } else {
+    const o = optOf(t.cat, t.key); if (!spend(o.shop, 'wardrobe-msg')) return;
+    save.owned.push(ikey(t.cat, t.key)); save.outfit = withItem(save.outfit, t.cat, t.key);
+  }
+  persist(); sfx('power'); $('wardrobe-msg').textContent = '🛍️ Gekauft & angezogen! Steht dir super.';
+  setTry(null); buildWardrobe();
+}
+$('wr-buy').addEventListener('click', buyTry);
+$('wr-cancel').addEventListener('click', () => { setTry(null); $('wardrobe-msg').textContent = ''; buildWardrobe(); });
+
+function card({ region, outfit, name, badge, cls = '', onClick }) {
+  const b = document.createElement('button'); b.className = `wr-card ${cls}${region === 'look' ? ' look' : ''}`;
+  const cv = document.createElement('canvas'); cv.width = 132; cv.height = region === 'look' ? 200 : 132; drawThumb(cv, outfit, region);
+  b.appendChild(cv);
+  b.insertAdjacentHTML('beforeend', `<span class="wr-name">${escH(name)}</span>${badge ? `<span class="wr-badge">${badge}</span>` : ''}`);
+  b.addEventListener('click', () => { initAudio(); onClick(b); });
+  return b;
+}
+const FIXED_TOPS = new Set(Object.keys(FIXED_TOP));
+function buildWardrobe() {
+  refreshTaler();
+  const tabs = $('wr-tabs'); tabs.innerHTML = '';
+  const cats = [['looks', '✨', 'Looks'], ...Object.entries(OUTFIT_PARTS).map(([c, d]) => [c, d.icon || '•', d.label])]
+    .filter(([c]) => !(c === 'topColor' && FIXED_TOPS.has(previewOutfit().top)));
+  if (!cats.some(([c]) => c === wrTab)) wrTab = 'looks';
+  for (const [c, ic, lb] of cats) {
+    const t = document.createElement('button'); t.className = `wr-tab${c === wrTab ? ' on' : ''}`;
+    t.innerHTML = `<span>${ic}</span><small>${escH(lb)}</small>`;
+    t.addEventListener('click', () => { wrTab = c; sfx('tap', 1); buildWardrobe(); });
+    tabs.appendChild(t);
+  }
+  const grid = $('wr-grid'); grid.innerHTML = '';
+  if (wrTab === 'looks') {
+    for (const [id, L] of Object.entries(LOOKS)) {
+      const li = lookInfo(id), on = JSON.stringify(PRESETS[id]) === JSON.stringify(save.outfit);
+      const badge = li.lock ? '🔒' : li.missing.length ? `🪙 ${li.price}` : on ? '✓' : '';
+      grid.appendChild(card({ region: 'look', outfit: PRESETS[id], name: `${L.icon} ${L.label}`, badge, cls: `${on ? 'on' : ''} ${li.lock ? 'lock' : li.missing.length ? 'shop' : ''}`, onClick: () => {
+        if (li.lock) { setTry({ look: id }); $('wardrobe-msg').textContent = '🔒 Die Krone muss man sich verdienen! (Geburtstags-Modus)'; sfx('bad'); return; }
+        if (li.missing.length) { setTry({ look: id }); $('wardrobe-msg').textContent = `Fehlt noch: ${li.missing.map(([c, k]) => optOf(c, k).label).join(', ')}`; sfx('tap', 2); buildWardrobe(); return; }
+        save.outfit = structuredClone(PRESETS[id]); persist(); setTry(null); sfx('power'); $('wardrobe-msg').textContent = ''; buildWardrobe();
+      } }));
+    }
+  } else {
+    const def = OUTFIT_PARTS[wrTab];
+    const entries = Object.entries(def.options).sort((a, b) => (itemState(wrTab, a[0]) === 'shop') - (itemState(wrTab, b[0]) === 'shop'));
+    for (const [key, opt] of entries) {
+      const st = itemState(wrTab, key);
+      const on = def.multi ? (save.outfit.extra || []).includes(key) : save.outfit[wrTab] === key;
+      const outfit = def.multi ? withItem({ ...save.outfit, extra: [] }, wrTab, key) : withItem(save.outfit, wrTab, key);
+      const badge = st === 'lock' ? '🔒' : st === 'shop' ? `🪙 ${opt.shop}` : on ? '✓' : '';
+      grid.appendChild(card({ region: regionOf(wrTab, key), outfit, name: opt.label, badge, cls: `${on ? 'on' : ''} ${st === 'lock' ? 'lock' : st === 'shop' ? 'shop' : ''}`, onClick: (b) => tapItem(wrTab, key, opt, st, def, b) }));
+    }
+  }
+  setTry(tryOn);
+}
+function tapItem(cat, key, opt, st, def, b) {
+  const msg = $('wardrobe-msg');
+  if (st === 'lock') { setTry({ cat, key }); msg.textContent = lockHint(opt); sfx('bad'); return; }
+  if (st === 'shop') { setTry({ cat, key }); msg.textContent = `${opt.label} – ${opt.shop} 🪙. Gefällt’s? Dann kaufen!`; sfx('tap', 2); return; }
+  if (opt.refuse && !save.greenUnlocked) {
+    save.greenTaps = (save.greenTaps || 0) + 1; persist();
+    if (save.greenTaps >= 10) { save.greenUnlocked = true; persist(); msg.textContent = 'Na gut… 🤢 Du hast es so gewollt. Grün ist jetzt erlaubt.'; sfx('power'); buildWardrobe(); return; }
+    msg.textContent = save.greenTaps >= 6 ? `Du bist ganz schön hartnäckig… (${10 - save.greenTaps})` : `„${assets.config.loseLines?.[0] || 'Nein.'}" Grün kommt hier nicht rein. (Außer im Horror-Modus… 👻)`;
+    sfx('no'); b.animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], { duration: 250, iterations: 2 });
+    return;
+  }
+  if (def.multi) {
+    if ((save.outfit.extra || []).includes(key)) save.outfit.extra = save.outfit.extra.filter((k) => k !== key);
+    else save.outfit = withItem(save.outfit, cat, key);
+  } else save.outfit[cat] = key;
+  setTry(null); msg.textContent = ''; sfx('collect'); persist(); buildWardrobe();
+}
+$('wr-random').addEventListener('click', () => {
+  const own = (cat) => Object.keys(OUTFIT_PARTS[cat].options).filter((k) => itemState(cat, k) === 'own' && !(OUTFIT_PARTS[cat].options[k].refuse && !save.greenUnlocked));
+  const r = (a) => a[(Math.random() * a.length) | 0];
+  const o = { top: r(own('top')), topColor: r(own('topColor')), bottom: r(own('bottom')), socks: r(own('socks')), shoes: r(own('shoes')), extra: [] };
+  const ex = own('extra').sort(() => Math.random() - 0.5).slice(0, (Math.random() * 3) | 0);
+  for (const e of ex) Object.assign(o, withItem(o, 'extra', e));
+  save.outfit = o; persist(); setTry(null); sfx('power'); $('wardrobe-msg').textContent = '🎲 Überraschungs-Look!'; buildWardrobe();
+});
+function openWardrobe(t = null) {
+  initAudio(); screen = 'wardrobe'; $('wardrobe-msg').textContent = '';
+  tryOn = t; if (t) wrTab = t.look ? 'looks' : t.cat;
+  buildWardrobe(); show('scr-wardrobe');
   const pc = $('preview'), pg = pc.getContext('2d');
   const loop = () => {
     if (screen !== 'wardrobe') return;
     previewT += 1 / 60;
     pg.setTransform(1, 0, 0, 1, 0, 0); pg.clearRect(0, 0, pc.width, pc.height);
     pg.setTransform(2.1, 0, 0, 2.1, 0, 0);
-    drawCharacter(pg, 70, 128, { pose: 'run', phase: previewT * 7, outfit: save.outfit, scale: 0.95, t: previewT });
+    const pose = Math.floor(previewT / 3.5) % 2 ? 'idle' : 'run';
+    drawCharacter(pg, 70, 132, { pose, phase: previewT * 7, outfit: previewOutfit(), scale: 0.95, t: previewT, expr: tryOn ? 'happy' : 'normal' });
     previewRaf = requestAnimationFrame(loop);
   };
   cancelAnimationFrame(previewRaf); loop();
-});
-$('btn-wardrobe-done').addEventListener('click', toMenu);
+}
+$('btn-wardrobe').addEventListener('click', () => openWardrobe());
+$('btn-wardrobe-done').addEventListener('click', () => { setTry(null); toMenu(); });
+$('wr-toshop').addEventListener('click', () => { setTry(null); openShop(); });
+
+// Shop
+function openShop() {
+  initAudio(); screen = 'shop'; refreshTaler(); $('shop-msg').textContent = '';
+  const looks = $('shop-looks'); looks.innerHTML = '';
+  for (const [id, L] of Object.entries(LOOKS)) {
+    if (!L.discount) continue;
+    const li = lookInfo(id);
+    looks.appendChild(card({ region: 'look', outfit: PRESETS[id], name: `${L.icon} ${L.label}`, badge: li.missing.length ? `🪙 ${li.price}` : '✓', cls: li.missing.length ? 'shop' : 'on', onClick: () => openWardrobe(li.missing.length ? { look: id } : null) }));
+  }
+  const items = $('shop-items'); items.innerHTML = '';
+  for (const [cat, def] of Object.entries(OUTFIT_PARTS)) for (const [key, opt] of Object.entries(def.options)) {
+    if (!opt.shop) continue;
+    const st = itemState(cat, key);
+    items.appendChild(card({ region: regionOf(cat, key), outfit: def.multi ? withItem({ ...save.outfit, extra: [] }, cat, key) : withItem(save.outfit, cat, key), name: opt.label, badge: st === 'shop' ? `🪙 ${opt.shop}` : '✓', cls: st === 'shop' ? 'shop' : 'on', onClick: () => openWardrobe({ cat, key }) }));
+  }
+  const boosts = $('shop-boosts'); boosts.innerHTML = '';
+  for (const [id, B] of Object.entries(BOOSTS)) {
+    const n = save.boosts[id] || 0;
+    const b = document.createElement('button'); b.className = 'boost-card';
+    b.innerHTML = `<span class="bi">${B.icon}</span><b>${escH(B.label)}</b><small>${escH(B.text)}</small><span class="wr-badge">🪙 ${B.price}</span>${n ? `<span class="bn">×${n}</span>` : ''}`;
+    b.addEventListener('click', () => {
+      initAudio();
+      if (n >= 3) { $('shop-msg').textContent = 'Mehr als 3 gehen nicht in den Rucksack. 🎒'; sfx('no'); return; }
+      if (!spend(B.price, 'shop-msg')) return;
+      save.boosts[id] = n + 1; persist(); sfx('power'); openShop(); $('shop-msg').textContent = `${B.icon} ${B.label} eingepackt – wird beim nächsten Lauf automatisch benutzt!`;
+    });
+    boosts.appendChild(b);
+  }
+  show('scr-shop');
+}
+$('btn-shop').addEventListener('click', openShop);
+$('btn-shop-done').addEventListener('click', toMenu);
 
 // ----------------------------------------------------------------- Loop
 let last = performance.now();
@@ -695,6 +841,8 @@ function onLevelDone(res) {
   if (lvOrder().every((l) => lvDone(l.id))) unlockAch('levels');
   if (lvOrder().every((l) => (save.levels[l.id]?.stars || 0) >= 3)) unlockAch('allstars');
   runEnded(res.stats, res.score, 'level', res.time);
+  const newStars = Math.max(0, res.stars - (prev.stars || 0));
+  const tal = earnTaler(res.score / 10 + newStars * 15 + (first ? 10 : 0));
   persist();
   doneId = id; screen = 'lvdone'; setHud(false);
   const l = lvList().find((x) => x.id === id);
@@ -709,6 +857,7 @@ function onLevelDone(res) {
   ].map((x) => `<li>${x}</li>`).join('');
   $('lvd-score').textContent = res.score;
   $('lvd-best').textContent = `Bestwert: ${save.levels[id].best}`;
+  $('lvd-taler').textContent = `+${tal} 🪙 Taler${newStars ? ` (inkl. ${newStars} neue${newStars > 1 ? '' : 'r'} Stern${newStars > 1 ? 'e' : ''})` : ''}${runDouble ? ' ×2' : ''} · Konto: ${save.taler} 🪙`;
   $('lvd-unlock').textContent = unl.join('  ·  ');
   const fin = id === 'L38';
   $('lvd-credits').classList.toggle('hidden', !fin);

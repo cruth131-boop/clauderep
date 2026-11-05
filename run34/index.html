@@ -68,6 +68,7 @@
       <button class="btn big gift hidden" id="btn-gift">🎁 Mein Geschenk</button>
       <div class="row">
         <button class="btn" id="btn-wardrobe">👗 Kleiderschrank</button>
+        <button class="btn shopbtn" id="btn-shop">🛍️ Shop <small id="menu-taler"></small></button>
         <button class="btn" id="btn-ach">🏆 Erfolge</button>
         <button class="btn" id="btn-shake" title="Schüttel mich!">📳</button>
         <button class="btn" id="btn-mute">🔊</button>
@@ -79,19 +80,43 @@
 
 <!-- Kleiderschrank -->
 <section id="scr-wardrobe" class="screen hidden">
-  <div class="panel wardrobe">
+  <div class="panel wardrobe2">
     <div class="wardrobe-head">
-      <h2>Kleiderschrank</h2>
+      <h2>👗 Kleiderschrank</h2>
+      <span class="taler" id="wr-taler">🪙 0</span>
       <button class="btn" id="btn-wardrobe-done">Fertig ✓</button>
     </div>
-    <canvas id="preview" width="300" height="300"></canvas>
-    <div class="presets">
-      <button class="chip" data-preset="matrose">⚓ Klassiker</button>
-      <button class="chip" data-preset="casual">👖 Casual</button>
-      <button class="chip" data-preset="princess">👑 Birthday Princess</button>
+    <div class="wr-body">
+      <div class="wr-stage">
+        <canvas id="preview" width="300" height="300"></canvas>
+        <div class="wr-try hidden" id="wr-try"><span id="wr-try-text"></span><button class="btn buy" id="wr-buy">Kaufen</button><button class="chip" id="wr-cancel">✕</button></div>
+        <div class="row wr-stage-btns"><button class="chip" id="wr-random">🎲 Zufall</button><button class="chip" id="wr-toshop">🛍️ Shop</button></div>
+      </div>
+      <div class="wr-side">
+        <div class="wr-tabs" id="wr-tabs"></div>
+        <div class="wr-grid" id="wr-grid"></div>
+        <p id="wardrobe-msg" class="hint"></p>
+      </div>
     </div>
-    <div id="wardrobe-cats"></div>
-    <p id="wardrobe-msg" class="hint"></p>
+  </div>
+</section>
+
+<!-- Shop -->
+<section id="scr-shop" class="screen hidden">
+  <div class="panel shop">
+    <div class="wardrobe-head">
+      <h2>🛍️ Shop</h2>
+      <span class="taler" id="shop-taler">🪙 0</span>
+      <button class="btn" id="btn-shop-done">Fertig ✓</button>
+    </div>
+    <p class="hint shop-earn">🪙 Taler gibt’s für Punkte in jedem Lauf, für jeden neuen Level-Stern und für den Geburtstags-Sieg. Tippe ein Teil an, um es anzuprobieren.</p>
+    <h3 class="shop-h">✨ Komplett-Looks <small>20 % Rabatt</small></h3>
+    <div class="shop-row" id="shop-looks"></div>
+    <h3 class="shop-h">🆕 Neu im Sortiment</h3>
+    <div class="shop-row" id="shop-items"></div>
+    <h3 class="shop-h">⚡ Booster für den nächsten Lauf</h3>
+    <div class="shop-row" id="shop-boosts"></div>
+    <p id="shop-msg" class="hint"></p>
   </div>
 </section>
 
@@ -153,6 +178,7 @@
     <div id="lvd-stars" class="stars big"></div>
     <ul id="lvd-list" class="lvd-list"></ul>
     <div class="over-score"><span id="lvd-score">0</span><small id="lvd-best"></small></div>
+    <p id="lvd-taler" class="taler-earn"></p>
     <p id="lvd-unlock" class="hint"></p>
     <div id="lvd-credits" class="credits hidden"><div class="roll" id="lvd-roll"></div></div>
     <button class="btn primary big" id="btn-lvd-next">Nächstes Level ▶</button>
@@ -179,6 +205,7 @@
     <p id="over-line" class="quote"></p>
     <div class="over-score"><span id="over-score">0</span><small id="over-best"></small></div>
     <p id="over-mercy" class="mercy hidden"></p>
+    <p id="over-taler" class="taler-earn"></p>
     <button class="btn primary big" id="btn-again">Nochmal!</button>
     <button class="btn big hidden" id="btn-checkpoint">🚩 Ab Checkpoint</button>
     <button class="btn" id="btn-over-menu">Menü</button>

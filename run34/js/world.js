@@ -664,7 +664,7 @@ export class Game {
       }
     } else if (active && this.cfg.chaser && !this.horror && !this.hero && !this.omaRide) {
       this.nextChase -= dt;
-      if (this.nextChase <= 0) { this.nextChase = this.lv ? freqT(this.lvP.freq?.chaser) : rand(22, 32); const ch = this.lvP?.chaser || this.cfg.chaser; this.chase = { x: -60, t: 0, face: ch.face, line: ch.line }; }
+      if (this.nextChase <= 0) { this.nextChase = this.lv ? freqT(this.lvP.freq?.chaser) : rand(22, 32); const ch = this.lvP?.chaser || this.cfg.chaser; this.chase = { x: -60, t: 0, face: ch.face, line: ch.line, suit: ch.suit }; }
     }
     // Fips flitzt durchs Bild, überholt und springt wieder raus
     if (this.dash) {
@@ -1132,7 +1132,7 @@ export class Game {
       const c = this.chase;
       g.save();
       if (c.knock) { const cy = V.groundY - 50 - (c.ky || 0); g.translate(c.x, cy); g.rotate(c.rot || 0); g.translate(-c.x, -cy); g.translate(0, -(c.ky || 0)); }
-      drawPerson(g, c.x, V.groundY, { faceKey: c.face, t: this.t, color: c.face === this.cfg.chaser?.face ? '#5b7bd5' : '#2b2d42', scale: 0.95, run: !c.knock, expr: c.knock ? 'sad' : 'happy' });
+      drawPerson(g, c.x, V.groundY, { faceKey: c.face, t: this.t, color: c.face === this.cfg.chaser?.face ? '#5b7bd5' : '#2b2d42', scale: 0.95, run: !c.knock, expr: c.knock ? 'sad' : 'happy', suit: c.suit });
       g.restore();
       if (!c.knock && c.t > 0.6 && (c.t < 4.2 || c.rescue)) speech(g, c.x - 4, V.groundY - 142, c.line || 'Payback!');
     }

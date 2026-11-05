@@ -106,7 +106,7 @@ export const DEFAULT_CONFIG = {
 
 export const OUTFIT_PARTS = {
   top: {
-    label: 'Oberteil',
+    label: 'Oberteil', icon: '👕',
     options: {
       matrose: { label: 'Matrose' },
       ripp: { label: 'Ripp-Shirt' },
@@ -115,10 +115,13 @@ export const OUTFIT_PARTS = {
       blazer: { label: 'Blazer', unlock: 'world:office' },
       glitter: { label: 'Glitzer-Top', unlock: 'world:party' },
       green: { label: 'Grünes T-Shirt', refuse: true },
+      pyjama: { label: 'Schlafanzug-Shirt', shop: 80 },
+      vans: { label: 'Vans Checkerboard-Shirt', shop: 90 },
+      carhartt: { label: 'Carhartt Detroit-Jacke', shop: 160 },
     },
   },
   topColor: {
-    label: 'Farbe Oberteil',
+    label: 'Farbe', icon: '🎨',
     options: {
       a: { label: 'Navy', color: '#2c3157' },
       b: { label: 'Senf', color: '#d79a2b' },
@@ -129,17 +132,19 @@ export const OUTFIT_PARTS = {
     },
   },
   bottom: {
-    label: 'Unten',
+    label: 'Hose', icon: '👖',
     options: {
       jeans: { label: 'Jeans' },
       culotte: { label: 'Culotte' },
       latz: { label: 'Latzhose' },
       matrose: { label: 'Matrosenhose' },
       tutu: { label: 'Tüll-Rock', unlock: 'birthday' },
+      pyshorts: { label: 'Schlafanzug-Shorts', shop: 60 },
+      doubleknee: { label: 'Carhartt Double Knee', shop: 120 },
     },
   },
   socks: {
-    label: 'Socken',
+    label: 'Socken', icon: '🧦',
     options: {
       ringel: { label: 'Ringelsocken' },
       plain: { label: 'Weiß' },
@@ -147,15 +152,18 @@ export const OUTFIT_PARTS = {
     },
   },
   shoes: {
-    label: 'Schuhe',
+    label: 'Schuhe', icon: '👟',
     options: {
       sneaker: { label: 'Sneaker' },
       docs: { label: 'Docs' },
       sailor: { label: 'Halbschuhe' },
+      checker: { label: 'Vans Slip-On kariert', shop: 110 },
+      oldskool: { label: 'Vans Old Skool', shop: 100 },
+      cowboy: { label: 'Cowboy-Boots', shop: 140 },
     },
   },
   extra: {
-    label: 'Extra',
+    label: 'Extras', icon: '🎩',
     multi: true,
     options: {
       scarf: { label: 'Schal' },
@@ -167,6 +175,8 @@ export const OUTFIT_PARTS = {
       safari: { label: 'Safari-Hut', unlock: 'world:zoo' },
       tote: { label: 'Jutebeutel', unlock: 'world:market' },
       chef: { label: 'Kochmütze', unlock: 'world:kitchen' },
+      beanie: { label: 'Carhartt Beanie', shop: 50 },
+      cowboyhat: { label: 'Cowboyhut', shop: 70 },
     },
   },
 };
@@ -175,6 +185,28 @@ export const PRESETS = {
   matrose: { top: 'matrose', topColor: 'a', bottom: 'matrose', socks: 'none', shoes: 'sailor', extra: [] },
   casual: { top: 'ripp', topColor: 'b', bottom: 'jeans', socks: 'ringel', shoes: 'docs', extra: ['scarf'] },
   princess: { top: 'princess', topColor: 'f', bottom: 'tutu', socks: 'plain', shoes: 'sneaker', extra: ['crown', 'sash'] },
+  vans: { top: 'vans', topColor: 'd', bottom: 'jeans', socks: 'plain', shoes: 'checker', extra: [] },
+  carhartt: { top: 'carhartt', topColor: 'c', bottom: 'doubleknee', socks: 'none', shoes: 'docs', extra: ['beanie'] },
+  pyjama: { top: 'pyjama', topColor: 'a', bottom: 'pyshorts', socks: 'plain', shoes: 'checker', extra: [] },
+  cowgirl: { top: 'ripp', topColor: 'e', bottom: 'jeans', socks: 'none', shoes: 'cowboy', extra: ['cowboyhat'] },
+};
+
+// Komplett-Looks im Kleiderschrank/Shop (Bundle-Preis = Rabatt auf fehlende Teile)
+export const LOOKS = {
+  matrose: { label: 'Klassiker', icon: '⚓' },
+  casual: { label: 'Casual', icon: '👖' },
+  princess: { label: 'Birthday Princess', icon: '👑', unlock: 'birthday' },
+  vans: { label: 'Vans-Skater', icon: '🛹', discount: 0.8 },
+  carhartt: { label: 'Carhartt-Workwear', icon: '🧱', discount: 0.8 },
+  pyjama: { label: 'Kurzer Schlafanzug', icon: '😴', discount: 0.8 },
+  cowgirl: { label: 'Cowgirl', icon: '🤠', discount: 0.8 },
+};
+
+// Booster für den nächsten Lauf
+export const BOOSTS = {
+  heart: { label: 'Extra-Herz', icon: '❤️', price: 40, text: 'Startet mit einem Herz mehr' },
+  fips: { label: 'Fips-Start', icon: '🐱', price: 30, text: 'Fips räumt die ersten Sekunden ab' },
+  double: { label: 'Doppel-Taler', icon: '✖️2', price: 50, text: 'Doppelte Taler im nächsten Lauf' },
 };
 
 // Titel nach Anzahl der Fehlversuche ("Das hab ich mir so nicht vorgestellt!"-Zähler)

@@ -1,6 +1,6 @@
 // Prozedural gezeichnete Spielfigur (Comic-Körper + Foto-Kopf), Katze & Cameo-Figuren.
 import { emoji } from './emoji.js';
-import { getFace, faceMeta } from './assets.js';
+import { assets, getFace, faceMeta } from './assets.js';
 import { OUTFIT_PARTS } from './config.js';
 
 const SKIN = '#f3c4a2';
@@ -138,7 +138,7 @@ export function drawCharacter(g, x, footY, opt) {
   const P = computePose(pose, phase);
   const o = outfit;
   const top = o.top;
-  const topCol = top === 'princess' ? '#f58dc2' : top === 'green' ? '#3fae3a' : (OUTFIT_PARTS.topColor.options[o.topColor]?.color || '#2c3157');
+  const topCol = FIXED_TOP[top] || (OUTFIT_PARTS.topColor.options[o.topColor]?.color || '#2c3157');
   const extras = new Set(o.extra || []);
 
   const hip = [0, P.hipY];
@@ -181,12 +181,17 @@ export function drawCharacter(g, x, footY, opt) {
 // Beine, Socken, Hosen, Schuhe
 // ---------------------------------------------------------------------------
 const DENIM = { jeans: '#42649e', latz: '#6a8fc8' };
+// Oberteile mit fester Farbe (Farbwahl ausgeblendet)
+export const FIXED_TOP = { princess: '#f58dc2', green: '#3fae3a', pyjama: '#7fcf8e', vans: '#1d1d24', carhartt: '#a86e34' };
+const PJ = '#7fcf8e', DK_BROWN = '#5b4630', BOOT = '#8a5a30';
+/** Drei feine Streifen längs eines Segments (Trainingsanzug). */
+function stripes3(g, a, b, side, color = '#ffffff') { for (const off of [2.2, 3.6, 5]) lineAlong(g, a, b, side * off, color, 0.8); }
 
 function legPieces(H, L, o, f) {
   const { k: K, a: A, sh } = L;
   const P = [];
   const b = o.bottom;
-  const bare = b === 'culotte' || b === 'tutu';
+  const bare = b === 'culotte' || b === 'tutu' || b === 'pyshorts';
   P.push(cap(H, K, 11, 9.6, SKIN, f, (g) => {
     g.fillStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.arc(K[0] + 1, K[1] - 1, 2.2, 0, 7); g.fill();
   }));
@@ -247,6 +252,28 @@ function legPieces(H, L, o, f) {
         for (const off of [-5, 0.5, 6]) lineAlong(g, lerpP(K, hem, 0.15), lerpP(K, hem, 0.8), off, 'rgba(0,0,0,0.22)', 0.7);
       },
     });
+  } else if (b === 'pyshorts') { // kurze Schlafanzughose mit weißer Paspel
+    const hem = lerpP(H, K, 0.62);
+    P.push(cap(H, hem, 15.5, 15, PJ, f, (g) => {
+      lineAcross(g, lerpP(H, hem, 0.9), H, hem, 9, '#ffffff', 1.3);
+      g.fillStyle = 'rgba(255,255,255,0.5)'; for (const tt of [0.3, 0.6]) { const q = lerpP(H, hem, tt); g.beginPath(); g.arc(q[0] + 2, q[1], 0.9, 0, 7); g.fill(); }
+    }));
+  } else if (b === 'doubleknee') { // Workwear-Hose mit doppeltem Knie
+    const c = DK_BROWN, hem = lerpP(K, A, 0.95), k0 = lerpP(H, K, 0.7), k1 = lerpP(K, A, 0.4);
+    P.push(cap(H, K, 14.4, 13, c, f, (g) => { lineAlong(g, H, K, -4.4, 'rgba(232,184,90,0.6)', 0.6, [1.4, 1.1]); }));
+    P.push(cap(K, hem, 13, 13.2, c, f, (g) => lineAlong(g, K, hem, -4, 'rgba(232,184,90,0.6)', 0.6, [1.4, 1.1])));
+    P.push(cap(k0, k1, 13.8, 13.6, '#4a3826', f, (g) => {
+      lineAcross(g, lerpP(k0, k1, 0.04), k0, k1, 7, 'rgba(232,184,90,0.7)', 0.6);
+      lineAcross(g, lerpP(k0, k1, 0.96), k0, k1, 7, 'rgba(232,184,90,0.7)', 0.6);
+    }));
+  }
+  if (o.shoes === 'cowboy') { // Stiefelschaft mit Ziernähten (über der Hose getragen)
+    const s0 = lerpP(K, A, 0.4);
+    P.push(cap(s0, A, 11.6, 9.8, BOOT, f, (g) => {
+      lineAcross(g, lerpP(s0, A, 0.06), s0, A, 7, shade('#3d2412', f), 1.4);
+      lineAlong(g, lerpP(s0, A, 0.15), lerpP(s0, A, 0.8), 0.5, shade('#f2d3a0', f), 0.6, [1.2, 0.9]);
+      lineAlong(g, lerpP(s0, A, 0.2), lerpP(s0, A, 0.7), 2.5, shade('#f2d3a0', f), 0.5, [1.2, 0.9]);
+    }));
   }
   P.push(shoePiece(A, sh, o.shoes, f));
   return P;
@@ -285,6 +312,39 @@ function shoePiece(A, sh, type, f) {
       for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(2.6 + i * 1.6, -6.6 + i * 1.1); g.lineTo(5.4 + i * 1.6, -5.4 + i * 1.1); g.stroke(); }
       g.restore();
     };
+  } else if (type === 'checker' || type === 'oldskool') {
+    // Skate-Schuh: flaches Canvas-Obermaterial, weiße Vulkanisiersohle mit Rand-Streifen
+    const slip = type === 'checker';
+    path = (g) => { g.save(); tf(g); g.moveTo(-6, -5.6); g.quadraticCurveTo(-8.4, 1, -6.8, 5.2); g.lineTo(14.6, 5.2); g.quadraticCurveTo(17.8, 4.6, 16.8, 1); g.quadraticCurveTo(15, -3.2, 7, -3.8); g.lineTo(slip ? 2.5 : 3.5, slip ? -5.2 : -6.8); g.quadraticCurveTo(-2, -7.2, -6, -5.6); g.closePath(); g.restore(); };
+    fill = (g) => (slip ? shade('#f4f1ea', f) : shade('#1b1b20', f));
+    detail = (g) => {
+      g.save(); tf(g);
+      if (slip) { // Schachbrett
+        for (let x = -9; x < 18; x += 2.6) for (let y = -8; y < 2.4; y += 2.6) if (((Math.round((x + 9) / 2.6) + Math.round((y + 8) / 2.6)) % 2) === 0) { g.fillStyle = shade('#16161a', f); g.fillRect(x, y, 2.6, 2.6); }
+        g.fillStyle = shade('#222', f); g.beginPath(); g.moveTo(1.2, -5.4); g.lineTo(4.2, -5.6); g.lineTo(2.7, -2.2); g.closePath(); g.fill(); // Gummizug
+      } else { // seitlicher Schwung-Streifen + Schnürung
+        g.strokeStyle = shade('#ffffff', f); g.lineWidth = 1.6; g.beginPath(); g.moveTo(-4.5, 0.6); g.quadraticCurveTo(2, 0.8, 5, -2.5); g.quadraticCurveTo(6.5, -0.6, 11, 0.4); g.stroke();
+        g.strokeStyle = shade('#e8e8e8', f); g.lineWidth = 0.8; for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(3.4 + i * 1.6, -6.4 + i * 1.1); g.lineTo(6 + i * 1.6, -5.2 + i * 1.1); g.stroke(); }
+      }
+      g.fillStyle = shade('#fbfaf6', f); g.fillRect(-9, 2.1, 28, 4.2); // Sohle
+      g.strokeStyle = shade(slip ? '#1b1b20' : '#b33a3a', f); g.lineWidth = 0.6; g.beginPath(); g.moveTo(-8, 3.4); g.lineTo(18, 3.4); g.stroke();
+      g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 0.5; g.beginPath(); g.moveTo(-8, 2.1); g.lineTo(18, 2.1); g.stroke();
+      g.fillStyle = shade('#c9a46b', f); g.fillRect(-8.6, 5, 2.2, 1); // Ferse
+      g.restore();
+    };
+  } else if (type === 'cowboy') {
+    // Cowboystiefel: spitze Kappe, Absatz, Ziernähte (Schaft kommt aus legPieces)
+    path = (g) => { g.save(); tf(g); g.moveTo(-6.4, -8); g.lineTo(5, -8); g.quadraticCurveTo(6, -4.5, 9, -3.6); g.quadraticCurveTo(16, -2, 20.5, 3.4); g.quadraticCurveTo(14, 4.4, 1, 4); g.lineTo(-1.6, 5.2); g.lineTo(-7.2, 5.2); g.lineTo(-7.4, -2); g.closePath(); g.restore(); };
+    fill = (g) => { const gr = g.createLinearGradient(A[0], A[1] - 8, A[0], A[1] + 5); gr.addColorStop(0, shade('#a06a3a', f)); gr.addColorStop(1, shade('#5e3a1c', f)); return gr; };
+    detail = (g) => {
+      g.save(); tf(g);
+      g.fillStyle = shade('#2e1c0e', f); g.fillRect(-7.4, 2.4, 6, 3); g.fillRect(-1.6, 3.4, 22, 1.2);
+      g.strokeStyle = shade('#f2d3a0', f); g.lineWidth = 0.55; g.setLineDash([1.1, 0.8]);
+      g.beginPath(); g.moveTo(7, -2.6); g.quadraticCurveTo(12, -0.6, 17, 2.2); g.stroke();
+      g.beginPath(); g.arc(9.5, -0.8, 2.2, Math.PI, 0); g.stroke(); g.setLineDash([]);
+      g.fillStyle = 'rgba(255,255,255,0.3)'; g.beginPath(); g.ellipse(14, -0.4, 2.8, 0.8, 0.3, 0, 7); g.fill();
+      g.restore();
+    };
   } else {
     path = (g) => { g.save(); tf(g); g.moveTo(-6, -4.5); g.quadraticCurveTo(-8.5, 2.5, -6.4, 5.2); g.lineTo(13.5, 5.2); g.quadraticCurveTo(16.8, 4.4, 15.6, 0.4); g.quadraticCurveTo(12.5, -4, 4, -4.4); g.closePath(); g.restore(); };
     fill = (g) => { const gr = g.createLinearGradient(A[0], A[1] - 5, A[0], A[1] + 5); gr.addColorStop(0, shade('#3b3540', f)); gr.addColorStop(1, shade('#0f0d12', f)); return gr; };
@@ -306,7 +366,7 @@ function armPieces(S, [up, fo], top, topCol, f) {
   const E = pt(S[0], S[1], up, L_UPPER);
   const Hn = pt(E[0], E[1], fo, L_FORE);
   const P = [cap(S, E, 9.2, 7.6, SKIN, f), cap(E, Hn, 7.6, 6.4, SKIN, f)];
-  if (top === 'matrose' || top === 'ripp' || top === 'blazer') {
+  if (top === 'matrose' || top === 'ripp' || top === 'blazer' || top === 'carhartt') {
     const c1 = lerpP(E, Hn, 0.7), c2 = lerpP(E, Hn, 0.84);
     const tex = top === 'ripp'
       ? (a, b) => (g) => { for (const off of [-3, -1.5, 0, 1.5, 3]) lineAlong(g, a, b, off, 'rgba(0,0,0,0.13)', 0.55); }
@@ -315,6 +375,8 @@ function armPieces(S, [up, fo], top, topCol, f) {
     P.push(cap(E, c1, 9.6, 9, topCol, f, tex(E, c1)));
     if (top === 'blazer') {
       P.push(cap(c1, c2, 8.6, 8.2, '#ffffff', f));
+    } else if (top === 'carhartt') { // Druckknopf-Bündchen
+      P.push(cap(c1, c2, 9.4, 9.2, shade(topCol, 0.82), f, (g) => { const m = lerpP(c1, c2, 0.5); g.fillStyle = '#d8c9a0'; g.beginPath(); g.arc(m[0], m[1], 1, 0, 7); g.fill(); }));
     } else if (top === 'matrose') {
       P.push(cap(c1, c2, 9.4, 9.2, '#f4f2ee', f, (g) => {
         lineAcross(g, lerpP(c1, c2, 0.35), c1, c2, 6, shade('#2c3157', f), 0.9);
@@ -336,9 +398,13 @@ function armPieces(S, [up, fo], top, topCol, f) {
         g.fillStyle = 'rgba(255,255,255,0.7)'; star(g, pm[0] + 1, pm[1] - 2, 1.6);
       },
     });
-  } else if (top === 'green') {
+  } else if (top === 'green' || top === 'pyjama' || top === 'vans') {
     const e2 = lerpP(S, E, 0.58);
-    P.push(cap(S, e2, 12.4, 12, topCol, f, (g) => lineAcross(g, lerpP(S, e2, 0.86), S, e2, 8, 'rgba(0,0,0,0.2)', 0.8)));
+    P.push(cap(S, e2, 12.4, 12, topCol, f, (g) => {
+      if (top === 'pyjama') lineAcross(g, lerpP(S, e2, 0.88), S, e2, 8, '#ffffff', 1.3);
+      else if (top === 'vans') { const m = lerpP(S, e2, 0.8); for (let k = -2; k <= 2; k++) { const q = lerpP(S, e2, 0.8 + k * 0.035); g.fillStyle = (k + 2) % 2 ? '#f4f1ea' : '#16161a'; g.beginPath(); g.arc(q[0], q[1], 1.6, 0, 7); g.fill(); } void m; }
+      else lineAcross(g, lerpP(S, e2, 0.86), S, e2, 8, 'rgba(0,0,0,0.2)', 0.8);
+    }));
   } else if (top === 'tank') {
     // Träger sitzen am Torso
   }
@@ -394,12 +460,14 @@ const hGrad = (g, base, y0, y1) => {
 function torsoPieces(o, topCol, extras) {
   const P = [];
   const top = o.top, b = o.bottom;
-  const tucked = b === 'jeans' || b === 'matrose' || b === 'culotte';
-  const hemY = tucked ? -6 : top === 'green' ? -1 : -3;
+  const tucked = b === 'jeans' || b === 'matrose' || b === 'culotte' || b === 'doubleknee';
+  const hemY = tucked && top !== 'pyjama' ? -6 : top === 'green' || top === 'pyjama' ? -1 : -3;
   // Hautbasis (sichtbar bei Ausschnitten)
   P.push({ path: (g) => bodyPath(g, -36, -20), fill: (g) => hGrad(g, SKIN), noOutline: true });
 
-  if (top === 'blazer') {
+  if (top === 'carhartt') {
+    // Workwear-Jacke (Canvas, Cordkragen, Reißverschluss, Brusttasche) – siehe unten, über der Hose
+  } else if (top === 'blazer') {
     P.push({
       path: (g) => bodyPath(g, -36, -1, { botCurve: 1 }),
       fill: (g) => hGrad(g, topCol),
@@ -460,6 +528,18 @@ function torsoPieces(o, topCol, extras) {
           g.fillStyle = 'rgba(0,0,0,0.10)'; g.fillRect(-12, hemY - 3, 26, 3);
           g.fillStyle = shade(topCol, 0.82); g.beginPath(); g.ellipse(1.5, -36, 6.5, 2.4, 0, 0, 7); g.fill();
         }
+        if (top === 'pyjama') { // Reverskragen + Knopfleiste mit weißer Paspel
+          g.fillStyle = SKIN; g.beginPath(); g.moveTo(1, -36.5); g.lineTo(10, -36.5); g.lineTo(5.5, -27); g.closePath(); g.fill();
+          g.strokeStyle = '#ffffff'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(-1, -36.5); g.lineTo(5.5, -27); g.lineTo(11, -36.5); g.stroke();
+          g.beginPath(); g.moveTo(5.5, -27); g.lineTo(5.5, hemY); g.stroke();
+          g.fillStyle = '#ffffff'; for (const by of [-22, -15, -8]) { g.beginPath(); g.arc(7, by, 0.95, 0, 7); g.fill(); }
+          g.fillStyle = 'rgba(255,255,255,0.35)'; for (const [sx, sy] of [[-6, -30], [-2, -18], [-8, -10], [9, -14]]) { g.beginPath(); g.arc(sx, sy, 1, 0, 7); g.fill(); }
+          g.strokeStyle = '#ffffff'; g.lineWidth = 1; g.beginPath(); g.moveTo(-12, hemY - 1); g.lineTo(13, hemY - 1); g.stroke();
+        }
+        if (top === 'vans') { // schwarzes Shirt mit Schachbrett-Band
+          for (let x = -12, i = 0; x < 13; x += 2.4, i++) for (let r = 0; r < 2; r++) { g.fillStyle = (i + r) % 2 ? '#f4f1ea' : '#16161a'; g.fillRect(x, -23 + r * 2.4, 2.4, 2.4); }
+          g.fillStyle = shade(topCol, 1.3); g.beginPath(); g.ellipse(1.5, -36, 6, 2.2, 0, 0, 7); g.fill();
+        }
         if (green) {
           g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(-12, hemY - 2.5, 26, 1);
           g.fillStyle = 'rgba(255,255,255,0.3)'; g.font = '900 5px sans-serif'; g.textAlign = 'center'; g.fillText('IIH', 2, -18);
@@ -493,13 +573,18 @@ function torsoPieces(o, topCol, extras) {
 
   // Hosenbund / Becken
   if (tucked) {
-    const pc = b === 'jeans' ? DENIM.jeans : b === 'matrose' ? '#2b3158' : '#2b2b36';
+    const pc = b === 'jeans' ? DENIM.jeans : b === 'matrose' ? '#2b3158' : b === 'doubleknee' ? DK_BROWN : '#2b2b36';
     const top2 = b === 'culotte' ? -12 : -9;
     P.push({
       path: (g) => bodyPath(g, top2, 5, { botCurve: 1.5 }),
       fill: (g) => hGrad(g, pc),
       detail: (g) => {
-        if (b === 'jeans') {
+        if (b === 'doubleknee') {
+          g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(-12, top2, 25, 2.6);
+          for (const lx of [-8, -1, 6]) { g.fillStyle = shade(DK_BROWN, 0.8); g.fillRect(lx, top2 - 0.4, 1.4, 3.4); }
+          g.strokeStyle = 'rgba(232,184,90,0.6)'; g.lineWidth = 0.55; g.setLineDash([1.2, 1]); g.beginPath(); g.moveTo(9, top2 + 3); g.quadraticCurveTo(8.5, top2 + 9, 7, top2 + 12); g.stroke(); g.setLineDash([]);
+          g.fillStyle = '#d8c9a0'; g.fillRect(-11.5, top2 + 4, 1.6, 6); // Hammerschlaufe
+        } else if (b === 'jeans') {
           g.fillStyle = '#6b4325'; g.fillRect(-12, top2, 25, 2.6);
           g.fillStyle = '#e2c25a'; g.fillRect(7.5, top2 - 0.2, 3.6, 3); g.fillStyle = '#6b4325'; g.fillRect(8.4, top2 + 0.6, 1.8, 1.4);
           g.fillStyle = shade(DENIM.jeans, 0.8); for (const lx of [-8, -1]) g.fillRect(lx, top2 - 0.4, 1.4, 3.4);
@@ -538,10 +623,27 @@ function torsoPieces(o, topCol, extras) {
     P.push({ path: (g) => { g.moveTo(-3.5, -25.5); g.lineTo(-0.5, -25.5); g.lineTo(-3, -37); g.lineTo(-6, -37); g.closePath(); }, fill: shade(c, 0.92) });
     P.push({ path: (g) => { g.moveTo(8, -25.5); g.lineTo(11, -25.5); g.lineTo(6.5, -37); g.lineTo(3.5, -37); g.closePath(); }, fill: shade(c, 1.02) });
     for (const bx of [-2.2, 9.4]) P.push({ path: (g) => g.rect(bx - 1.8, -27.5, 3.6, 2.8), fill: '#e2c25a' });
+  } else if (b === 'pyshorts') {
+    P.push({ path: (g) => bodyPath(g, -7, 5, { botCurve: 1.5 }), fill: (g) => hGrad(g, PJ), detail: (g) => { g.fillStyle = 'rgba(255,255,255,0.75)'; g.fillRect(-12, -6.5, 25, 1.4); } });
   } else if (b === 'tutu') {
     P.push({ path: (g) => bodyPath(g, -8, -3.5), fill: '#e0458f', detail: (g) => { g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(-12, -7.5, 25, 1); } });
   }
 
+  if (top === 'carhartt') {
+    P.push({
+      path: (g) => bodyPath(g, -37, 3, { botCurve: 1 }),
+      fill: (g) => hGrad(g, topCol),
+      detail: (g) => {
+        g.strokeStyle = 'rgba(0,0,0,0.08)'; g.lineWidth = 0.5; for (let y = -36; y < 3; y += 1.6) { g.beginPath(); g.moveTo(-12, y); g.lineTo(13, y + 0.6); g.stroke(); } // Canvas-Struktur
+        g.fillStyle = '#c9c4b8'; g.fillRect(5.6, -33, 1, 35); // Reißverschluss
+        g.fillStyle = shade(topCol, 0.85); g.fillRect(-1, -24, 6, 6); g.strokeStyle = 'rgba(232,184,90,0.7)'; g.lineWidth = 0.5; g.strokeRect(-1, -24, 6, 6); // Brusttasche
+        g.fillStyle = '#16161a'; g.fillRect(0.4, -22.6, 3.2, 2.4);
+        g.fillStyle = shade(topCol, 0.78); g.fillRect(-12, 0, 25, 3); // Bund
+        g.fillStyle = '#4a3220'; g.beginPath(); g.moveTo(-11, -37.5); g.quadraticCurveTo(0, -40, 12, -37); g.lineTo(9, -32); g.lineTo(5.5, -35); g.lineTo(2, -32); g.lineTo(-10, -33); g.closePath(); g.fill(); // Cordkragen
+        g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = 0.5; for (let x = -10; x < 11; x += 1.4) { g.beginPath(); g.moveTo(x, -38.5); g.lineTo(x + 0.3, -33.5); g.stroke(); }
+      },
+    });
+  }
   if (extras.has('sash')) {
     P.push({
       path: (g) => capPath(g, [-9.5, -33], [10, -6], 6.2, 6.2),
@@ -679,7 +781,19 @@ function drawHead(g, neck, lean, expr, faceKey, extras, t, opt = {}) {
   if (extras.has('crown')) drawCrown(g, 0, -h / 2 + 2, w * 0.55);
   if (extras.has('safari')) drawSafari(g, 0, -h / 2 + 6, w);
   if (extras.has('chef')) drawChefHat(g, 0, -h / 2 + 5, w);
+  if (extras.has('beanie')) drawBeanie(g, w, h);
+  if (extras.has('cowboyhat')) drawCowboyHat(g, w, h);
   g.restore();
+}
+// Strickmütze mit Umschlag und kleinem Etikett (Workwear-Style)
+function drawBeanie(g, w, h) {
+  const y = -h * 0.3;
+  g.fillStyle = '#b8652a'; g.beginPath(); g.moveTo(-w * 0.46, y); g.quadraticCurveTo(-w * 0.5, -h * 0.78, 0, -h * 0.8); g.quadraticCurveTo(w * 0.5, -h * 0.78, w * 0.46, y); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(0,0,0,0.18)'; g.lineWidth = 0.8; for (let x = -w * 0.38; x < w * 0.4; x += w * 0.09) { g.beginPath(); g.moveTo(x, y - 2); g.quadraticCurveTo(x * 0.9, -h * 0.6, x * 0.6, -h * 0.74); g.stroke(); }
+  g.fillStyle = '#9c5221'; g.beginPath(); g.moveTo(-w * 0.5, y + h * 0.02); g.lineTo(w * 0.5, y + h * 0.02); g.lineTo(w * 0.47, y - h * 0.14); g.lineTo(-w * 0.47, y - h * 0.14); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(0,0,0,0.2)'; for (let x = -w * 0.46; x < w * 0.47; x += w * 0.06) { g.beginPath(); g.moveTo(x, y + h * 0.01); g.lineTo(x, y - h * 0.13); g.stroke(); }
+  g.fillStyle = '#16161a'; g.fillRect(-w * 0.07, y - h * 0.115, w * 0.14, h * 0.09);
+  g.strokeStyle = OL; g.lineWidth = 1.2; g.beginPath(); g.moveTo(-w * 0.5, y + h * 0.02); g.lineTo(w * 0.5, y + h * 0.02); g.stroke();
 }
 
 // Verkleidungs-Accessoires (Ursprung = Augenhöhe)
@@ -874,7 +988,10 @@ function drawCatHead(g, x, y, photo, orange, dark, light, front) {
 // ---------------------------------------------------------------------------
 // Cameo-Figuren (Eltern, Oma) am Wegesrand
 // ---------------------------------------------------------------------------
-export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wave = true, oma = false, scale = 1, expr = 'happy', run = false, pet = false, emojiHead = null, acc = null, twerk = false }) {
+export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wave = true, oma = false, scale = 1, expr = 'happy', run = false, pet = false, emojiHead = null, acc = null, twerk = false, suit = null }) {
+  const fixed = assets.config.guestColors?.[faceKey]; if (fixed) color = fixed; // Lieblingsfarbe einer Person
+  const track = suit === 'track'; if (track) color = '#1f7a3a';
+  const tstripe = (x1, y1, x2, y2, side) => { if (!track) return; for (const off of [1.6, 3, 4.4]) { const dx = x2 - x1, dy = y2 - y1, l = Math.hypot(dx, dy) || 1, nx = -dy / l * off * side, ny = dx / l * off * side; g.strokeStyle = '#ffffff'; g.lineWidth = 0.9; g.lineCap = 'butt'; g.beginPath(); g.moveTo(x1 + nx * 0.6, y1 + ny * 0.6); g.lineTo(x2 + nx * 0.6, y2 + ny * 0.6); g.stroke(); } g.lineCap = 'round'; };
   g.save(); g.translate(x, footY); g.scale(scale, scale);
   if (twerk) { // Twerk: tiefe Hocke, Hände auf den Knien, Oberkörper still, Hüfte poppt schnell vor und zurück
     const pop = Math.sin(t * 17), bounce = Math.abs(pop) * 3;
@@ -907,7 +1024,7 @@ export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wav
     if (faceKey) drawFaceOn(g, faceKey, expr, fx, fy, 21); else if (emojiHead) emoji(g, emojiHead, fx, fy - 18, 40);
     if (acc?.length) { g.save(); g.translate(fx, fy - 21 + 4); const set = new Set(acc); const w = 40, h = 58; if (set.has('afro')) drawAfro(g, w, h, t); if (set.has('starshades')) drawStarShades(g, w, h, t); if (set.has('stache')) drawStache(g, w, h); if (set.has('boa')) drawBoa(g, w, h, t); if (set.has('cowboyhat')) drawCowboyHat(g, w, h); if (set.has('sequins')) { for (let k = 0; k < 14; k++) { const tw = (Math.sin(t * 6 + k * 1.7) + 1) / 2; g.fillStyle = `rgba(255,255,255,${0.3 + tw * 0.7})`; const sx = ((k * 37) % 26) - 13, sy = 26 + ((k * 23) % 36); g.beginPath(); g.arc(sx, sy, 1 + tw * 1.4, 0, 7); g.fill(); } } if (set.has('choco')) { g.fillStyle = 'rgba(74,42,23,0.92)'; for (let k = 0; k < 6; k++) { g.beginPath(); g.arc(Math.sin(k * 2.3) * w * 0.25, h * 0.05 + Math.cos(k * 1.7) * h * 0.2, w * (0.12 + (k % 2) * 0.06), 0, 7); g.fill(); } } g.restore(); }
   };
-  const legC = oma ? '#6b5b4b' : '#333a4a';
+  const legC = track ? '#1f7a3a' : oma ? '#6b5b4b' : '#333a4a';
   if (run) {
     const ph = t * 14, bob = Math.abs(Math.sin(ph)) * 3;
     g.translate(0, -bob); g.rotate(0.12);
@@ -915,18 +1032,23 @@ export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wav
       const a = Math.sin(ph + off) * 0.75;
       const k = pt(0, -40, a, 20), f = pt(k[0], k[1], a - 0.5 - Math.max(0, -Math.sin(ph + off + 0.9)) * 0.9, 20);
       seg(g, 0, -40, k[0], k[1], 9, legC); seg(g, k[0], k[1], f[0], f[1], 8, legC);
-      g.fillStyle = '#222'; roundRect(g, f[0] - 5, f[1] - 3, 13, 6, 3); g.fill();
+      tstripe(0, -40, k[0], k[1], -1); tstripe(k[0], k[1], f[0], f[1], -1);
+      g.fillStyle = track ? '#f4f4f4' : '#222'; roundRect(g, f[0] - 5, f[1] - 3, 13, 6, 3); g.fill();
     }
     g.fillStyle = color; roundRect(g, -13, -74, 26, 38, 8); g.fill();
+    if (track) { g.fillStyle = '#ffffff'; g.fillRect(-0.6, -72, 1.4, 34); g.fillRect(-13, -40, 26, 2); g.fillRect(-7, -75, 14, 2.4); }
     for (const off of [0, Math.PI]) {
-      const a = -Math.sin(ph + off) * 0.9, e = pt(0, -68, a, 15), h = pt(e[0], e[1], a + 1.4, 13);
-      seg(g, 0, -68, e[0], e[1], 8, color); seg(g, e[0], e[1], h[0], h[1], 7, SKIN);
+      const a = -Math.sin(ph + off) * 0.9, e = pt(0, -68, a, 15), h = pt(e[0], e[1], a + 1.4, track ? 11 : 13);
+      seg(g, 0, -68, e[0], e[1], 8, color); tstripe(0, -68, e[0], e[1], 1);
+      if (track) { const c2 = pt(e[0], e[1], a + 1.4, 9); seg(g, e[0], e[1], c2[0], c2[1], 7.5, color); tstripe(e[0], e[1], c2[0], c2[1], 1); seg(g, c2[0], c2[1], h[0] + (h[0] - c2[0]) * 0.4, h[1] + (h[1] - c2[1]) * 0.4, 7, SKIN); }
+      else seg(g, e[0], e[1], h[0], h[1], 7, SKIN);
     }
     face(0, -74);
     g.restore();
     return;
   }
   seg(g, -5, -40, -6, -4, 9, legC); seg(g, 5, -40, 6, -4, 9, legC);
+  tstripe(-5, -40, -6, -4, -1); tstripe(5, -40, 6, -4, 1);
   g.fillStyle = '#222'; roundRect(g, -13, -6, 12, 6, 3); g.fill(); roundRect(g, 1, -6, 12, 6, 3); g.fill();
   g.fillStyle = oma ? '#8a5aa8' : color;
   if (oma) { g.beginPath(); g.moveTo(-14, -72); g.lineTo(14, -72); g.lineTo(18, -30); g.lineTo(-18, -30); g.closePath(); g.fill(); }
