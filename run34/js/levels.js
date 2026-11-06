@@ -420,52 +420,116 @@ export const SCENES = {
     floor(g, V, '#c9b79c', '#a1887f', off, () => { g.fillStyle = '#fff'; rep(V, off, 1, 120, (x) => { g.fillRect(x, gy + 14, 2, 18); g.fillRect(x + 30, gy + 22, 40, 2); }); });
   },
 
-  // Einkaufen in der Stadt: Ladenzeile mit großen Schaufenstern, oben eine Galerie mit weiteren Läden
+  // Einkaufszentrum von außen (nach Fotos): Granitbau mit roten Buchstaben + gestapelten Ladenschildern,
+  // Glas-Rundbau mit Stadtbibliothek oben, Glasbrücke, großer Platanen-Baum, gemustertes Pflaster
+  mallOut(g, V, off, t, lv) {
+    const gy = V.groundY;
+    sky(g, V, '#8fb6d9', '#eef3f7'); clouds(g, V, off, 0.8);
+    const name = S(lv, 'mall', 'EINKAUFSZENTRUM'), shops = S(lv, 'mallShops', null) || ['SPIELWAREN', 'SCHUHE', 'MODE', 'DEKO', 'DROGERIE', 'SNEAKER'];
+    const seg = 900;
+    rep(V, off, 0.3, seg, (x) => {
+      // Granit-Kubus
+      const bx = x, bw = 300, bh = 200;
+      g.fillStyle = '#a7a39c'; g.fillRect(bx, gy - bh, bw, bh);
+      g.fillStyle = 'rgba(0,0,0,0.05)'; for (let i = 0; i < 40; i++) g.fillRect(bx + (i * 53) % bw, gy - bh + (i * 31) % bh, 14, 6);
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) { const wx = bx + 92 + c * 40, wy = gy - bh + 14 + r * 50; g.fillStyle = '#7b6545'; g.fillRect(wx, wy, 26, 40); g.fillStyle = '#2b2a2a'; g.fillRect(wx + 4, wy + 3, 18, 34); g.fillStyle = '#9a8a6a'; g.fillRect(wx + 10, wy + 3, 2, 34); }
+      // rote Buchstaben + gestapelte Ladenschilder an der Ecke
+      g.save(); g.translate(bx + 46, gy - bh + 24); g.rotate(0.12);
+      g.fillStyle = '#d32f2f'; g.font = '900 20px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center';
+      name.split(' ').forEach((w, i) => g.fillText(w, 0, i * 20, 84));
+      const scol = ['#e53935', '#fafafa', '#ff7043', '#ffd23f', '#e91e63', '#fafafa'];
+      shops.slice(0, 6).forEach((sname, i) => { g.font = `900 ${i % 2 ? 9 : 10}px ui-rounded, system-ui, sans-serif`; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.5)'; g.strokeText(sname, 0, 50 + i * 15, 80); g.fillStyle = scol[i]; g.fillText(sname, 0, 50 + i * 15, 80); });
+      g.restore();
+      // Erdgeschoss mit Schaufenstern + Sale
+      g.fillStyle = '#5e5446'; g.fillRect(bx, gy - 44, bw, 44);
+      for (let i = 0; i < 6; i++) { g.fillStyle = '#f6e7c9'; g.fillRect(bx + 6 + i * 49, gy - 38, 42, 38); g.fillStyle = '#d32f2f'; g.font = '900 10px sans-serif'; g.textAlign = 'center'; if (i % 2) g.fillText('-30%', bx + 27 + i * 49, gy - 22); }
+      // Glasbrücke zum Nachbarbau
+      g.fillStyle = 'rgba(190,220,240,0.75)'; g.fillRect(bx + bw, gy - 140, 130, 40); g.strokeStyle = '#7a8a96'; g.lineWidth = 2; g.strokeRect(bx + bw, gy - 140, 130, 40);
+      for (let i = 1; i < 6; i++) { g.beginPath(); g.moveTo(bx + bw + i * 22, gy - 140); g.lineTo(bx + bw + i * 22, gy - 100); g.stroke(); }
+      g.fillStyle = 'rgba(255,240,200,0.8)'; for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(bx + bw + 12 + i * 24, gy - 132, 3, 0, TAU); g.fill(); }
+      // Glas-Rundbau mit Stadtbibliothek oben und rotem Schriftzug
+      const rx = bx + bw + 130, rw = 170;
+      g.fillStyle = '#ece6da'; g.fillRect(rx + rw - 20, gy - 190, 160, 190); // heller Nachbarbau
+      g.fillStyle = '#d8d0c0'; for (let i = 0; i < 4; i++) g.fillRect(rx + rw + 10 + i * 34, gy - 170, 6, 80);
+      const gr = g.createLinearGradient(rx, 0, rx + rw, 0); gr.addColorStop(0, '#9cb6c8'); gr.addColorStop(0.5, '#dbe8f0'); gr.addColorStop(1, '#7f9aae');
+      g.fillStyle = gr; g.beginPath(); g.moveTo(rx, gy); g.lineTo(rx, gy - 196); g.quadraticCurveTo(rx + rw / 2, gy - 212, rx + rw, gy - 196); g.lineTo(rx + rw, gy); g.fill();
+      g.strokeStyle = 'rgba(60,80,95,0.6)'; g.lineWidth = 1.4; for (let i = 1; i < 8; i++) { const xx = rx + i * rw / 8; g.beginPath(); g.moveTo(xx, gy - 200 - Math.sin(i / 8 * Math.PI) * 8); g.lineTo(xx, gy); g.stroke(); }
+      for (const yy of [gy - 150, gy - 100, gy - 52]) { g.fillStyle = '#4a5560'; g.fillRect(rx, yy, rw, 4); }
+      g.fillStyle = '#fff'; g.font = '700 15px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(S(lv, 'library', 'Stadtbibliothek'), rx + rw / 2, gy - 168, rw - 16);
+      g.fillStyle = '#d32f2f'; g.font = '900 18px ui-rounded, system-ui, sans-serif'; name.split(' ').forEach((w, i) => g.fillText(w, rx + rw / 2, gy - 124 + i * 18, rw - 20));
+      g.fillStyle = 'rgba(255,230,170,0.55)'; g.fillRect(rx + 6, gy - 48, rw - 12, 44); // warm erleuchtetes EG
+      // große Platane
+      const tx = rx + rw + 150;
+      g.fillStyle = '#7b6a55'; g.fillRect(tx - 6, gy - 90, 12, 90);
+      for (const [dx, dy, r, c] of [[0, -150, 60, '#7d8f3a'], [-40, -120, 44, '#8a9a42'], [42, -118, 46, '#6f8233'], [0, -190, 40, '#94a54c'], [-20, -100, 34, '#a28a3c']]) { g.fillStyle = c; g.beginPath(); g.arc(tx + dx, gy + dy, r, 0, TAU); g.fill(); }
+      // rote Sonnenschirme vom Café
+      for (let i = 0; i < 2; i++) { const ux = rx - 70 + i * 40; g.fillStyle = '#c62828'; g.beginPath(); g.moveTo(ux - 16, gy - 34); g.lineTo(ux, gy - 48); g.lineTo(ux + 16, gy - 34); g.fill(); g.fillStyle = '#555'; g.fillRect(ux - 1, gy - 34, 2, 34); }
+    });
+    // gemustertes Pflaster (hell/dunkel versetzt)
+    floor(g, V, '#c7c5c0', '#a9a7a2', off, () => { rep(V, off, 1, 24, (x, k) => { for (let r = 0; r < 4; r++) { g.fillStyle = (k + r) % 3 ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.16)'; g.fillRect(x + (r % 2) * 12, gy + 4 + r * 10, 22, 8); } }); });
+  },
+
+  // Einkaufszentrum innen (nach Foto): geschwungene Galerien mit Glasgeländern, runde Deckenlampen mit Goldrand,
+  // Rolltreppen in der Mitte, Palmen in hohen weißen Kübeln, unten Food-Court mit runden Gitter-Lampenringen
   mall(g, V, off, t, lv) {
     const gy = V.groundY;
-    sky(g, V, '#f3f6fa', '#e6ebf2');
-    // Glasdach
-    g.strokeStyle = 'rgba(140,170,200,0.45)'; g.lineWidth = 2; rep(V, off, 0.12, 70, (x) => { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 35, 34); g.lineTo(x + 70, 0); g.stroke(); });
-    g.fillStyle = '#cfd8e2'; g.fillRect(0, 34, V.w, 5);
-    // obere Galerie (klein, hinten)
-    const up = [['#7b1fa2', 'BEAUTY', ['💄', '🧴', '💅']], ['#00897b', 'BÜCHER', ['📚', '📖', '📕']], ['#f57c00', 'SPIELWAREN', ['🧸', '🪀', '🎲']], ['#c62828', 'SCHMUCK', ['💍', '📿', '⌚']], ['#3949ab', 'ELEKTRO', ['📺', '📻', '🎧']]];
-    const gy2 = gy - 150;
-    rep(V, off, 0.32, 150, (x, k) => {
-      const [c, n, it] = up[((k % 5) + 5) % 5];
-      g.fillStyle = '#fafafa'; g.fillRect(x, gy2 - 70, 142, 74);
-      g.fillStyle = c; g.fillRect(x + 4, gy2 - 70, 134, 14); g.fillStyle = '#fff'; g.font = '900 9px sans-serif'; g.textAlign = 'center'; g.fillText(n, x + 71, gy2 - 60);
-      g.fillStyle = 'rgba(170,210,240,0.55)'; g.fillRect(x + 8, gy2 - 52, 126, 52);
-      it.forEach((e, i) => emoji(g, e, x + 30 + i * 40, gy2 - 24, 18));
+    g.fillStyle = '#efe7d8'; g.fillRect(0, 0, V.w, gy);
+    // Decke mit Oberlicht-Öffnung und Ring-Lampen
+    const cg = g.createLinearGradient(0, 0, 0, 60); cg.addColorStop(0, '#f6f0e4'); cg.addColorStop(1, '#e4d9c5'); g.fillStyle = cg; g.fillRect(0, 0, V.w, 60);
+    rep(V, off, 0.15, 520, (x) => { g.fillStyle = '#cfe4f3'; g.beginPath(); g.ellipse(x + 260, 8, 150, 26, 0, 0, Math.PI); g.fill(); g.strokeStyle = '#d8ccb6'; g.lineWidth = 4; g.beginPath(); g.ellipse(x + 260, 8, 150, 26, 0, 0, Math.PI); g.stroke(); });
+    rep(V, off, 0.2, 180, (x) => { g.fillStyle = '#b68a3a'; g.beginPath(); g.ellipse(x + 90, 46, 34, 7, 0, 0, TAU); g.fill(); g.fillStyle = '#fff8e0'; g.beginPath(); g.ellipse(x + 90, 46, 22, 4, 0, 0, TAU); g.fill(); const lg = g.createRadialGradient(x + 90, 50, 2, x + 90, 50, 40); lg.addColorStop(0, 'rgba(255,240,200,0.5)'); lg.addColorStop(1, 'rgba(255,240,200,0)'); g.fillStyle = lg; g.beginPath(); g.arc(x + 90, 50, 40, 0, TAU); g.fill(); });
+    g.fillStyle = '#fff6dc'; rep(V, off, 0.2, 36, (x) => { g.beginPath(); g.arc(x + 10, 62, 1.6, 0, TAU); g.fill(); });
+    // Obere Galerie: Läden hinter geschwungenem Glasgeländer
+    const upShops = S(lv, 'mallShopsIn', null) || ['MODE', 'BÜCHER', 'SCHUHE', 'BEAUTY', 'SPIELZEUG', 'SPORT'];
+    const shopCol = ['#3a3a3a', '#7b1fa2', '#c62828', '#00897b', '#f57c00', '#1e88e5'];
+    const gy2 = gy - 128;
+    rep(V, off, 0.3, 150, (x, k) => {
+      const i = ((k % upShops.length) + upShops.length) % upShops.length;
+      g.fillStyle = '#f9f6ef'; g.fillRect(x, gy2 - 64, 144, 64);
+      g.fillStyle = '#e8e2d4'; g.fillRect(x + 4, gy2 - 64, 136, 12); g.fillStyle = shopCol[i % 6]; g.font = '900 9px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(upShops[i], x + 72, gy2 - 55, 130);
+      g.fillStyle = 'rgba(200,225,240,0.7)'; g.fillRect(x + 10, gy2 - 48, 124, 48);
+      g.fillStyle = shopCol[i % 6]; for (let j = 0; j < 3; j++) { g.beginPath(); g.moveTo(x + 30 + j * 38, gy2 - 40); g.lineTo(x + 40 + j * 38, gy2 - 40); g.lineTo(x + 44 + j * 38, gy2 - 10); g.lineTo(x + 26 + j * 38, gy2 - 10); g.fill(); }
     });
-    g.fillStyle = 'rgba(200,230,250,0.5)'; g.fillRect(0, gy2 + 4, V.w, 16); g.fillStyle = '#90a4ae'; g.fillRect(0, gy2 + 2, V.w, 3); g.fillRect(0, gy2 + 20, V.w, 6);
-    rep(V, off, 0.32, 40, (x) => { g.fillStyle = '#b0bec5'; g.fillRect(x, gy2 + 4, 2, 16); });
-    // Ladenzeile unten: große Schaufenster
-    const shops = [
-      ['#e91e63', 'MODE', 'dress'], ['#5d4037', 'SCHUHE', ['👠', '👟', '👢', '🥿']], ['#43a047', 'SPORT', ['⚽', '🏸', '🎾', '👕']], ['#6d4c41', 'CAFÉ', ['☕', '🍰', '🥐', '🧁']],
-      ['#1e88e5', 'DROGERIE', ['🧴', '🧼', '🪥', '💄']], ['#8e24aa', 'SPIELZEUG', ['🧸', '🪁', '🚂', '🎈']], ['#f4511e', 'SALE %', 'dress'],
-    ];
-    rep(V, off, 0.55, 230, (x, k) => {
-      const [c, n, it] = shops[((k % 7) + 7) % 7];
-      g.fillStyle = '#eceff1'; g.fillRect(x, gy - 128, 222, 128);
-      g.fillStyle = c; g.fillRect(x, gy - 128, 222, 26);
-      g.fillStyle = '#fff'; g.font = '900 14px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(n, x + 111, gy - 109);
-      // Markise
-      for (let i = 0; i < 11; i++) { g.fillStyle = i % 2 ? '#fff' : c; g.beginPath(); g.moveTo(x + i * 20, gy - 102); g.lineTo(x + i * 20 + 20, gy - 102); g.lineTo(x + i * 20 + 20, gy - 92); g.quadraticCurveTo(x + i * 20 + 10, gy - 86, x + i * 20, gy - 92); g.fill(); }
-      // Schaufenster
-      g.fillStyle = 'rgba(190,225,250,0.75)'; g.fillRect(x + 8, gy - 86, 140, 80); g.strokeStyle = '#90a4ae'; g.lineWidth = 3; g.strokeRect(x + 8, gy - 86, 140, 80);
-      g.fillStyle = 'rgba(255,255,255,0.5)'; g.beginPath(); g.moveTo(x + 14, gy - 82); g.lineTo(x + 34, gy - 82); g.lineTo(x + 18, gy - 30); g.lineTo(x + 12, gy - 30); g.fill();
-      if (it === 'dress') {
-        const cols = ['#f06292', '#3fae3a', '#ffd54f'];
-        for (let i = 0; i < 3; i++) { const mx = x + 34 + i * 44; g.fillStyle = '#d7ccc8'; g.beginPath(); g.arc(mx, gy - 72, 5, 0, TAU); g.fill(); g.fillStyle = cols[i]; g.beginPath(); g.moveTo(mx - 8, gy - 66); g.lineTo(mx + 8, gy - 66); g.lineTo(mx + 14, gy - 26); g.lineTo(mx - 14, gy - 26); g.fill(); g.fillStyle = '#795548'; g.fillRect(mx - 1, gy - 26, 2, 18); g.fillRect(mx - 8, gy - 9, 16, 3); }
-        if (n.startsWith('SALE')) label(g, '-50%', x + 120, gy - 74, 10);
-      } else it.forEach((e, i) => { emoji(g, e, x + 30 + (i % 2) * 62 + (i > 1 ? 30 : 0), gy - (i > 1 ? 24 : 58), 24); });
-      // Tür
-      g.fillStyle = 'rgba(160,200,230,0.8)'; g.fillRect(x + 158, gy - 86, 56, 86); g.strokeStyle = '#78909c'; g.strokeRect(x + 158, gy - 86, 56, 86); g.beginPath(); g.moveTo(x + 186, gy - 86); g.lineTo(x + 186, gy); g.stroke();
-      g.fillStyle = '#78909c'; g.fillRect(x + 180, gy - 46, 3, 12); g.fillRect(x + 189, gy - 46, 3, 12);
+    // geschwungene Galeriebrüstung (hell) mit Glasgeländer
+    g.fillStyle = '#f3ecdf'; g.beginPath(); g.moveTo(0, gy2); for (let x = 0; x <= V.w; x += 10) g.lineTo(x, gy2 + 22 + Math.sin((x + off * 0.3) * 0.006) * 10); g.lineTo(V.w, gy2); g.fill();
+    g.fillStyle = 'rgba(200,230,245,0.35)'; g.fillRect(0, gy2 - 20, V.w, 20); g.fillStyle = '#9aa3ab'; g.fillRect(0, gy2 - 22, V.w, 3);
+    rep(V, off, 0.3, 46, (x) => { g.fillStyle = 'rgba(150,160,170,0.6)'; g.fillRect(x, gy2 - 20, 2, 20); });
+    // Ladenzeile unten mit Schaufenstern
+    const shops = S(lv, 'mallShopsDown', null) || ['DROGERIE', 'MODE', 'SCHUHE', 'CAFÉ', 'SPIELWAREN', 'SALE %'];
+    rep(V, off, 0.55, 260, (x, k) => {
+      const i = ((k % shops.length) + shops.length) % shops.length;
+      g.fillStyle = '#faf7f0'; g.fillRect(x, gy - 104, 250, 104);
+      g.fillStyle = '#2b2b2b'; g.fillRect(x + 8, gy - 102, 234, 18); g.fillStyle = ['#ffffff', '#ffd23f', '#ff6b6b', '#8fd3ff'][i % 4]; g.font = '900 12px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(shops[i], x + 125, gy - 88, 220);
+      g.fillStyle = 'rgba(200,228,245,0.8)'; g.fillRect(x + 10, gy - 80, 150, 80); g.strokeStyle = '#a9b4bd'; g.lineWidth = 2; g.strokeRect(x + 10, gy - 80, 150, 80);
+      const cols = ['#f06292', '#3fae3a', '#ffd54f', '#7e57c2'];
+      for (let j = 0; j < 3; j++) { const mx = x + 36 + j * 46; g.fillStyle = '#d7ccc8'; g.beginPath(); g.arc(mx, gy - 66, 5, 0, TAU); g.fill(); g.fillStyle = cols[(j + i) % 4]; g.beginPath(); g.moveTo(mx - 8, gy - 60); g.lineTo(mx + 8, gy - 60); g.lineTo(mx + 13, gy - 22); g.lineTo(mx - 13, gy - 22); g.fill(); }
+      if (shops[i].includes('%')) label(g, '-50%', x + 136, gy - 70, 10);
+      g.fillStyle = 'rgba(180,210,230,0.8)'; g.fillRect(x + 172, gy - 80, 66, 80); g.strokeStyle = '#8a98a4'; g.strokeRect(x + 172, gy - 80, 66, 80);
     });
-    // Pflanzkübel & Bänke
-    rep(V, off, 0.75, 520, (x) => { g.fillStyle = '#8d6e63'; g.fillRect(x, gy - 22, 30, 22); emoji(g, '🌿', x + 15, gy - 38, 34); g.fillStyle = '#a1887f'; g.fillRect(x + 60, gy - 20, 70, 5); g.fillRect(x + 64, gy - 15, 4, 15); g.fillRect(x + 122, gy - 15, 4, 15); });
-    floor(g, V, '#e8e4dc', '#c8c2b6', off, () => { g.strokeStyle = 'rgba(0,0,0,0.06)'; rep(V, off, 1, 40, (x) => g.strokeRect(x, gy + 2, 40, 40)); });
+    // Rolltreppen (paarweise, mit Glasseiten)
+    rep(V, off, 0.6, 760, (x) => {
+      for (let j = 0; j < 2; j++) {
+        const ex = x + 240 + j * 44;
+        g.fillStyle = 'rgba(190,215,235,0.6)'; g.beginPath(); g.moveTo(ex, gy); g.lineTo(ex + 40, gy); g.lineTo(ex + 150, gy2 + 4); g.lineTo(ex + 110, gy2 + 4); g.fill();
+        g.fillStyle = '#3c4a57'; g.beginPath(); g.moveTo(ex + 6, gy); g.lineTo(ex + 34, gy); g.lineTo(ex + 144, gy2 + 4); g.lineTo(ex + 116, gy2 + 4); g.fill();
+        g.strokeStyle = '#59697a'; g.lineWidth = 1; for (let s2 = 0; s2 < 14; s2++) { const u = ((s2 / 14) + t * 0.15 * (j ? -1 : 1) + 10) % 1; const sx = ex + 6 + u * 110, sy = gy - u * (gy - gy2 - 4); g.beginPath(); g.moveTo(sx, sy); g.lineTo(sx + 28, sy); g.stroke(); }
+        g.strokeStyle = '#1d2228'; g.lineWidth = 3; g.beginPath(); g.moveTo(ex, gy - 14); g.lineTo(ex + 110, gy2 - 10); g.moveTo(ex + 40, gy - 14); g.lineTo(ex + 150, gy2 - 10); g.stroke();
+      }
+    });
+    // Food-Court: runde Gitter-Ringe mit Glühbirnen-Pendeln, Holzbänke; Palmen in weißen Kübeln
+    rep(V, off, 0.7, 640, (x) => {
+      for (let j = 0; j < 2; j++) {
+        const cx = x + 80 + j * 110;
+        g.strokeStyle = '#222'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(cx, 0); g.lineTo(cx, gy - 120); g.stroke();
+        g.fillStyle = 'rgba(40,40,40,0.25)'; g.beginPath(); g.ellipse(cx, gy - 120, 48, 9, 0, 0, TAU); g.fill(); g.strokeStyle = '#1e1e1e'; g.lineWidth = 2; g.stroke();
+        for (let b2 = 0; b2 < 5; b2++) { const lx = cx - 32 + b2 * 16, ly = gy - 100 + (b2 % 2) * 12; g.strokeStyle = '#333'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(lx, gy - 118); g.lineTo(lx, ly); g.stroke(); g.fillStyle = 'rgba(255,220,150,0.95)'; g.beginPath(); g.arc(lx, ly + 3, 3, 0, TAU); g.fill(); }
+        g.fillStyle = '#c08a4e'; g.fillRect(cx - 40, gy - 30, 80, 6); g.fillStyle = '#a06f3a'; g.fillRect(cx - 44, gy - 24, 88, 24); g.fillStyle = '#c62828'; g.fillRect(cx - 40, gy - 34, 80, 4);
+      }
+      const px = x + 420;
+      g.fillStyle = '#f5f3ee'; g.beginPath(); g.moveTo(px - 14, gy - 70); g.lineTo(px + 14, gy - 70); g.lineTo(px + 9, gy); g.lineTo(px - 9, gy); g.fill(); g.strokeStyle = '#ddd6c8'; g.lineWidth = 1; g.stroke();
+      for (let l = 0; l < 7; l++) { g.save(); g.translate(px, gy - 70); g.rotate(-1.4 + l * 0.47); g.fillStyle = l % 2 ? '#2e7d32' : '#43a047'; g.beginPath(); g.ellipse(0, -22, 6, 24, 0, 0, TAU); g.fill(); g.restore(); }
+    });
+    floor(g, V, '#ece4d4', '#d6ccb8', off, () => { g.strokeStyle = 'rgba(0,0,0,0.07)'; g.lineWidth = 1; rep(V, off, 1, 36, (x) => { g.beginPath(); g.moveTo(x, gy + 2); g.lineTo(x - 16, V.h); g.stroke(); }); for (const yy of [12, 28, 48]) { g.beginPath(); g.moveTo(0, gy + yy); g.lineTo(V.w, gy + yy); g.stroke(); } });
   },
 
   // Payback: Tresorraum mit Goldbarren und Geldregen
@@ -1673,7 +1737,7 @@ export const LEVELS = {
   L1: { icon: '👵', scene: 'omaRoom', music: 'augustin', len: 60, obstacles: { wool: 3, teapot: 2, slipper: 3, couch: 1, griess: 2 }, items: ['cookie', 'milchschnitte'], quest: { item: 'milchschnitte', n: 12 }, hero: 'classic', speed: 0.92 },
   L2: { icon: '🛝', scene: 'kidStreet', music: 'entchen', len: 60, obstacles: { bobbycar: 3, football: 3, bucket: 2 }, items: ['brause', 'wassereis'], quest: { item: 'wassereis', n: 10 }, hero: 'kid', speed: 0.92 },
   L3: { icon: '🎒', scene: 'school', music: 'haenschen', len: 75, obstacles: { schoolbag: 3, trafficlight: 2, puddle: 3 }, items: ['sweets', 'cookie'], quest: { item: 'sweets', n: 10 }, hero: 'schooltuete', speed: 0.94 },
-  L4: { icon: '🛍️', scene: 'mall', music: 'elise', len: 90, obstacles: { shirtrack: 3, sale: 2, shopbag: 2, shirt: 2 }, items: ['shopbag2', 'coffee'], quest: { item: 'shopbag2', n: 8 }, hero: 'fan' },
+  L4: { icon: '🛍️', scene: ['mallOut', 'mall'], music: 'elise', len: 90, obstacles: { shirtrack: 3, sale: 2, shopbag: 2, shirt: 2 }, items: ['shopbag2', 'coffee'], quest: { item: 'shopbag2', n: 8 }, hero: 'fan' },
   L5: { icon: '🎈', scene: 'garden', music: 'birthday', len: 75, obstacles: { pot: 3, balloon: 3, gift: 2 }, items: ['schokokuss', 'cake'], quest: { item: 'schokokuss', n: 12 }, hero: 'knight', garlands: 1 },
   L6: { icon: '💸', scene: 'bank', music: 'entertainer', len: 75, obstacles: { invoice: 3, piggy: 2, tax: 2, chartfly: 2 }, items: ['coin', 'money'], quest: { item: 'money', n: 20 }, hero: 'banker', goalRain: '💸' },
   L7: { icon: '🚗', scene: 'driving', music: 'tell', len: 90, obstacles: { cone: 3, blitzer: 2, bike: 2, car: 2 }, items: ['voucher'], quest: { item: 'voucher', n: 8 }, hero: 'racer' },
