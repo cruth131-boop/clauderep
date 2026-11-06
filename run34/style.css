@@ -362,3 +362,14 @@ input[type=password] {
 .lvi-videos .btn { font-size: 14px; padding: 8px 12px; }
 .panel.lvintro { max-height: calc(100vh - 12px); max-height: calc(100dvh - 12px); overflow-y: auto; }
 @media (max-height: 430px) { .panel.lvintro .big-emoji { font-size: 30px; margin: 0; } .panel.lvintro h2 { margin: 2px 0; } .panel.lvintro .faces img { width: 30px; height: 30px; } }
+
+.panel.profiles { max-width: 760px; width: calc(100vw - 24px); max-height: calc(100dvh - 12px); overflow-y: auto; }
+.prof-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; margin: 10px 0; }
+.prof-tile { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 6px 4px; color: inherit; font: 700 12px ui-rounded, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+.prof-tile img { width: 52px; height: 60px; object-fit: contain; }
+.prof-tile.kimi { border-color: #ff4fa3; }
+.prof-tile .lock { font-size: 10px; opacity: 0.7; }
+.panel.profpw { max-height: calc(100dvh - 12px); overflow-y: auto; }
+.pp-face { width: 70px; height: 80px; object-fit: contain; display: block; margin: 0 auto; }
+#pp-form { display: flex; flex-direction: column; gap: 8px; }
+#btn-who { margin-top: 6px; }

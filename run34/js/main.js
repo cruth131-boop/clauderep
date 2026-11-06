@@ -1,5 +1,5 @@
 import { IntroScene } from './intro.js';
-import { assets, fetchBundle, unlockWithPassword, unlockWithStoredKey } from './assets.js';
+import { assets, fetchBundle, unlockWithPassword, unlockWithStoredKey, accessType } from './assets.js';
 import { OUTFIT_PARTS, PRESETS, LOOKS, BOOSTS, ACHIEVEMENTS, CHALLENGES, FAIL_TITLES } from './config.js';
 import { Game } from './world.js';
 import { LoseScene, FinaleScene, animateMap } from './scenes.js';
@@ -15,7 +15,12 @@ const g = canvas.getContext('2d');
 const DEV = new URLSearchParams(location.search).has('dev');
 
 // ----------------------------------------------------------------- Speicher
-const SAVE_KEY = 'br.save.v1';
+// Profile: '' = Kim; sonst Gesichts-Schlüssel eines Gastes (eigener Spielstand, eigenes Gesicht)
+const lsGet = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
+const PROFILE = lsGet('br.profile');
+const GUEST = !!PROFILE;
+assets.player = PROFILE || null;
+const SAVE_KEY = PROFILE ? `br.save.g.${PROFILE}` : 'br.save.v1';
 const save = {
   best: { birthday: 0, endless: 0, horror: 0, roadtrip: 0 }, fails: 0, won: false, outfit: { ...PRESETS.matrose }, muted: false, horrorSeen: false,
   levels: {}, secretFound: false, lastLevel: null,
@@ -25,6 +30,7 @@ if (new URLSearchParams(location.search).has('reset')) {
   try { localStorage.removeItem(SAVE_KEY); } catch {}
   const u = new URL(location.href); u.searchParams.delete('reset'); history.replaceState(null, '', u);
 }
+if (GUEST) { save.won = true; save.outfit = { ...PRESETS.casual }; } // Gäste: alles offen außer Kims Geburtstag & Geschenk
 try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch {}
 const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {} };
 save.album ??= []; save.levels ??= {}; save.best.level ??= 0; save.best.roadtrip ??= 0; save.stats ??= { monkeys: 0, mops: 0, chases: 0 }; save.ach ??= {}; save.worlds ??= []; save.challengeDone ??= {};
@@ -128,8 +134,12 @@ function toMenu() {
   const rb = $('btn-roadtrip');
   rb.classList.toggle('locked', !roadtripOpen());
   rb.textContent = roadtripOpen() ? '🚗 Roadtrip' : '🔒 Roadtrip (ab 4.12.)';
-  rb.classList.toggle('hidden', !save.won && !DEV);
-  $('btn-gift').classList.toggle('hidden', !save.won);
+  rb.classList.toggle('hidden', (!save.won && !DEV) || GUEST);
+  $('btn-gift').classList.toggle('hidden', !save.won || GUEST);
+  document.querySelector('[data-mode="birthday"]').classList.toggle('hidden', GUEST);
+  $('btn-who').classList.toggle('hidden', !(GUEST || accessType() === 'guest' || save.won || DEV));
+  $('btn-who').textContent = GUEST ? `👤 ${guestName(PROFILE)} · wechseln` : '👥 Wer spielt?';
+  if (GUEST) $('menu-sub').textContent = `Du spielst als ${guestName(PROFILE)} 👋`;
   const hb = $('btn-horror');
   hb.classList.toggle('hidden', !horrorOpen());
   $('btn-levels').classList.toggle('hidden', !(save.won || DEV));
@@ -143,7 +153,7 @@ function toMenu() {
   if (save.best.roadtrip) bests.push(`🚗 ${save.best.roadtrip}`);
   const lines = [];
   if (bests.length && fullUI()) lines.push(`Rekorde: ${bests.join('  ·  ')}`);
-  if (save.won) {
+  if (save.won && !GUEST) {
     const days = Math.ceil((ROADTRIP_START.getTime() - Date.now()) / 864e5);
     const end = new Date(2026, 11, 7).getTime();
     lines.push(days > 0 ? `🚗 Noch ${days} ${days === 1 ? 'Tag' : 'Tage'} bis Eindhoven! 🇳🇱` : Date.now() < end ? '🚗 Roadtrip läuft – gute Fahrt! 🇳🇱🇧🇪' : '🚗 Roadtrip-Modus freigeschaltet');
@@ -312,7 +322,7 @@ function showGameOver(info, mercyMsg) {
   $('over-best').textContent = info.mode === 'birthday' ? `von ${cfg.birthdayTarget || 34} Kerzen 🕯️ – noch ${Math.max(0, (cfg.birthdayTarget || 34) - info.score)}!` : `Rekord: ${save.best[info.mode]}`;
   const tal = earnTaler(info.mode === 'birthday' ? info.score / 2 : info.mode === 'level' ? info.score / 15 : info.score / 8);
   $('over-taler').textContent = tal && fullUI() ? `+${tal} 🪙 Taler${runDouble ? ' (×2)' : ''} · Konto: ${save.taler} 🪙` : '';
-  const lp = assets.images.lose_photo; // trauriges Foto zum Verlieren (nicht in Kinderleveln)
+  const lp = GUEST ? null : assets.images.lose_photo; // trauriges Foto zum Verlieren (nicht in Kinderleveln, nicht für Gäste)
   $('over-photo').classList.toggle('hidden', !lp || !!assets.kidMode);
   if (lp && !assets.kidMode) { $('over-photo').src = lp.src; $('over-photo').style.transform = `rotate(${(Math.random() * 8 - 4).toFixed(1)}deg)`; }
   $('over-mercy').textContent = mercyMsg;
@@ -730,8 +740,78 @@ async function boot() {
     $('lock-input').focus();
     return;
   }
+  afterUnlock();
+}
+// ----------------------------------------------------------------- Gäste-Profile
+const guestName = (f) => (f === 'him' ? assets.config.partnerName || 'Christoph' : assets.config.guestNames?.[f] || f);
+const PROF_STORE = 'br.profiles';
+const profStore = () => { try { return JSON.parse(localStorage.getItem(PROF_STORE) || '{}'); } catch { return {}; } };
+const authed = () => { try { return sessionStorage.getItem('br.auth') === PROFILE; } catch { return false; } };
+async function pwHash(pw, saltB64) {
+  const salt = saltB64 ? Uint8Array.from(atob(saltB64), (c) => c.charCodeAt(0)) : crypto.getRandomValues(new Uint8Array(16));
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+  const bits = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 120000, hash: 'SHA-256' }, base, 256));
+  return { salt: btoa(String.fromCharCode(...salt)), hash: btoa(String.fromCharCode(...bits)) };
+}
+function switchProfile(face) {
+  try { if (face) localStorage.setItem('br.profile', face); else localStorage.removeItem('br.profile'); sessionStorage.setItem('br.auth', face || ''); } catch {}
+  location.reload();
+}
+function afterUnlock() {
+  if (accessType() === 'guest' && !PROFILE) { showProfiles(false); return; }
+  if (GUEST && !authed()) { showProfilePw(PROFILE); return; }
   playIntro();
 }
+function faceSrc(f) { const nm = assets.config.faceMap?.[f]?.normal || f; return (assets.images[nm] || assets.images[f])?.src || ''; }
+let profCancelable = false;
+function showProfiles(cancelable = true) {
+  game = null; scene = null; setHud(false); screen = 'profiles'; profCancelable = cancelable;
+  const faces = ['him', ...(assets.config.allGuests || [])].filter((f) => assets.images[f] || assets.images[assets.config.faceMap?.[f]?.normal]);
+  const st = profStore();
+  const tiles = [];
+  if (accessType() === 'main') tiles.push(`<button class="prof-tile kimi" data-face=""><img src="${faceSrc('kimi') || assets.images.her_front?.src || ''}" alt=""><span>${assets.config.name || 'Kimi'}</span></button>`);
+  for (const f of faces) tiles.push(`<button class="prof-tile" data-face="${f}"><img src="${faceSrc(f)}" alt=""><span>${guestName(f)}</span>${st[f] ? '<span class="lock">🔒</span>' : ''}</button>`);
+  $('prof-grid').innerHTML = tiles.join('');
+  $('btn-prof-cancel').classList.toggle('hidden', !cancelable);
+  show('scr-profiles');
+}
+$('prof-grid').addEventListener('click', (e) => {
+  const t = e.target.closest('.prof-tile'); if (!t) return;
+  initAudio(); sfx('tap');
+  const f = t.dataset.face;
+  if (!f) { switchProfile(''); return; } // zurück zu Kim (nur auf Kims Gerät)
+  showProfilePw(f);
+});
+$('btn-prof-cancel').addEventListener('click', () => (profCancelable ? toMenu() : null));
+let ppFace = null;
+function showProfilePw(f) {
+  ppFace = f; screen = 'profpw';
+  const has = !!profStore()[f];
+  $('pp-face').src = faceSrc(f);
+  $('pp-title').textContent = `Hallo ${guestName(f)}! 👋`;
+  $('pp-text').textContent = has ? 'Gib dein Passwort ein.' : 'Leg dir ein eigenes Passwort fest (mind. 4 Zeichen). Es wird nur auf diesem Handy gespeichert.';
+  $('pp-pw2').classList.toggle('hidden', has);
+  $('pp-pw').value = ''; $('pp-pw2').value = ''; $('pp-error').classList.add('hidden');
+  $('pp-go').textContent = has ? "Los geht's" : 'Passwort speichern';
+  show('scr-profpw'); setTimeout(() => $('pp-pw').focus(), 50);
+}
+$('pp-other').addEventListener('click', () => showProfiles(!!PROFILE || accessType() === 'main'));
+$('pp-form').addEventListener('submit', async (e) => {
+  e.preventDefault(); initAudio();
+  const pw = $('pp-pw').value.trim(), st = profStore(), f = ppFace;
+  const err = (m) => { $('pp-error').textContent = m; $('pp-error').classList.remove('hidden'); sfx('no'); };
+  if (st[f]) {
+    const h = await pwHash(pw, st[f].salt);
+    if (h.hash !== st[f].hash) { err('Falsches Passwort. 🙃'); $('pp-pw').select(); return; }
+  } else {
+    if (pw.length < 4) { err('Bitte mindestens 4 Zeichen.'); return; }
+    if (pw !== $('pp-pw2').value.trim()) { err('Die beiden Passwörter sind nicht gleich.'); return; }
+    st[f] = await pwHash(pw); try { localStorage.setItem(PROF_STORE, JSON.stringify(st)); } catch {}
+  }
+  if (f === PROFILE) { try { sessionStorage.setItem('br.auth', f); } catch {} playIntro(); return; }
+  switchProfile(f);
+});
+$('btn-who').addEventListener('click', () => { initAudio(); showProfiles(true); });
 // Intro nach dem Entsperren (Reißverschluss, Retro-Kimi, Titel); nach dem Sieg mit Party
 function playIntro() {
   if (new URLSearchParams(location.search).has('nointro')) { toMenu(); return; }
@@ -746,7 +826,7 @@ $('lock-form').addEventListener('submit', async (e) => {
   btn.disabled = true;
   try {
     const ok = await unlockWithPassword($('lock-input').value);
-    if (ok) { $('lock-input').blur(); playIntro(); }
+    if (ok) { $('lock-input').blur(); if (ok === 'main' && PROFILE) { switchProfile(''); return; } afterUnlock(); }
     else { $('lock-error').classList.remove('hidden'); sfx('no'); $('lock-input').select(); }
   } catch (err) {
     $('lock-error').textContent = `Fehler: ${err.message}`; $('lock-error').classList.remove('hidden');

@@ -54,6 +54,30 @@
   </div>
 </section>
 
+<!-- Gäste: Wer bist du? -->
+<section id="scr-profiles" class="screen hidden">
+  <div class="panel profiles">
+    <h2>👋 Wer bist du?</h2>
+    <p class="hint">Such dich aus – dann spielst du mit deinem eigenen Gesicht.</p>
+    <div id="prof-grid" class="prof-grid"></div>
+    <button class="btn hidden" id="btn-prof-cancel">Zurück</button>
+  </div>
+</section>
+<section id="scr-profpw" class="screen hidden">
+  <div class="panel profpw">
+    <img id="pp-face" class="pp-face" alt="">
+    <h2 id="pp-title">Hallo!</h2>
+    <p id="pp-text" class="hint"></p>
+    <form id="pp-form" autocomplete="off">
+      <input id="pp-pw" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Dein Passwort">
+      <input id="pp-pw2" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Passwort wiederholen" class="hidden">
+      <button class="btn primary" type="submit" id="pp-go">Los geht's</button>
+    </form>
+    <p id="pp-error" class="error hidden"></p>
+    <button class="chip" id="pp-other">Andere Person wählen</button>
+  </div>
+</section>
+
 <!-- Menü -->
 <section id="scr-menu" class="screen hidden">
   <div class="menu-wrap">
@@ -73,6 +97,7 @@
         <button class="btn" id="btn-shake" title="Schüttel mich!">📳</button>
         <button class="btn" id="btn-mute">🔊</button>
       </div>
+      <button class="chip hidden" id="btn-who">👥 Wer spielt?</button>
     </div>
     <p id="menu-hint" class="hint"></p>
   </div>

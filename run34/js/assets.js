@@ -2,7 +2,7 @@
 // Gesichter bereit. Fehlt ein Foto, wird ein gezeichneter Platzhalter genutzt.
 import { DEFAULT_CONFIG } from './config.js';
 
-const KEY_STORE = 'br.key.v1';
+const KEY_STORE = 'br.key.v1', ACCESS_STORE = 'br.access';
 export const assets = {
   config: structuredClone(DEFAULT_CONFIG),
   images: {},      // name -> HTMLImageElement
@@ -46,20 +46,33 @@ async function decryptWith(key) {
   return JSON.parse(new TextDecoder().decode(plain));
 }
 
+/** Entsperrt mit Kims Passwort ('main') oder dem Gäste-Passwort ('guest'); sonst false. */
 export async function unlockWithPassword(password) {
   if (!crypto?.subtle) throw new Error('Kein sicherer Kontext (HTTPS nötig)');
+  const pw = password.trim();
   try {
-    const key = await deriveKey(password.trim());
+    const key = await deriveKey(pw);
     const payload = await decryptWith(key);
     const raw = new Uint8Array(await crypto.subtle.exportKey('raw', key));
-    try { localStorage.setItem(KEY_STORE, bytesToB64(raw)); } catch {}
+    try { localStorage.setItem(KEY_STORE, bytesToB64(raw)); localStorage.setItem(ACCESS_STORE, 'main'); } catch {}
     await applyPayload(payload);
-    return true;
+    return 'main';
   } catch (e) {
     if (e.message?.startsWith('Kein sicherer')) throw e;
-    return false;
   }
+  const gw = bundleJson?.guest; if (!gw) return false;
+  try { // Gäste-Zugang: Schlüssel ist mit dem Gäste-Passwort eingepackt
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+    const gk = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64ToBytes(gw.salt), iterations: bundleJson.iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+    const raw = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToBytes(gw.iv) }, gk, b64ToBytes(gw.data)));
+    const key = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+    const payload = await decryptWith(key);
+    try { localStorage.setItem(KEY_STORE, bytesToB64(raw)); localStorage.setItem(ACCESS_STORE, 'guest'); } catch {}
+    await applyPayload(payload);
+    return 'guest';
+  } catch { return false; }
 }
+export const accessType = () => { try { return localStorage.getItem(ACCESS_STORE) || 'main'; } catch { return 'main'; } };
 
 export async function unlockWithStoredKey() {
   let stored = null;
@@ -111,6 +124,15 @@ const placeholderCache = {};
 /** Liefert {img, exact} – exact=false heißt: Ausdruck wird per Effekt simuliert. */
 export function getFace(key, expr = 'normal') {
   const im = assets.images;
+  // Gäste-Profil: der Gast spielt mit seinem eigenen Gesicht; Kim selbst erscheint als 'kimi'
+  if (assets.player) {
+    if (key === 'her') {
+      const kid = assets.kidMode && im[`${assets.player}_kid`] ? `${assets.player}_kid` : null;
+      const nm = kid || assets.config.faceMap?.[assets.player]?.normal || assets.player;
+      if (im[nm]) return { img: im[nm], exact: expr === 'normal', name: nm };
+    }
+    if (key === 'kimi') key = 'her';
+  } else if (key === 'kimi') key = 'her';
   // Kindheits-Level: Kimi immer mit Kinderfoto – auch beim Verlieren (skeptisches Kinderfoto)
   if (key === 'her' && assets.kidMode) {
     const k = ['sad', 'shock', 'skeptic', 'meh', 'hammer', 'childSad'].includes(expr) ? 'her_child_skeptic' : (assets.kidFace && im[assets.kidFace] ? assets.kidFace : 'her_child');

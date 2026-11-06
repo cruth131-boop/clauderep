@@ -94,6 +94,8 @@ export class Game {
     // Heidi versteckt sich im Geburtstags-Modus (und im Finale) hinter einem Busch -> Antippen = Pilzwald
     this.heidiOn = mode === 'birthday' || level === 'L38'; this.heidiPeek = null; this.nextHeidi = rand(12, 55); this.heidiDone = false; // nur ein einziger Auftritt pro Lauf, Zeitpunkt zufällig
     this.miniDone = false;
+    // Running Gag: Heidi jagt Hagen mit dem Wischmopp zum Aufräumen (einmal pro Lauf, zufälliger Zeitpunkt)
+    this.nextClean = ['birthday', 'endless', 'level'].includes(mode) && !this.horror && !this.lv?.noFamily && !this.lvP?.kid ? rand(22, 55) : Infinity; this.cleanDone = false;
     this.omaRide = null; this.nextOma = ['birthday', 'endless', 'roadtrip'].includes(mode) ? rand(26, 34) : Infinity;
     this.hero = null; this.nextHero = ['birthday', 'endless', 'roadtrip', 'horror'].includes(mode) ? rand(16, 24) : Infinity;
     this.prevBiome = null; this.biomeFade = 1; this.nextBiomeAt = 60;
@@ -134,10 +136,12 @@ export class Game {
   guestList(P, part) {
     const all = this.cfg.allGuests || [];
     const lines = this.cfg.partyLines || ['Juhu!'];
-    if (P.guests === 'all') return shuffle(all.map((f) => ({ face: f, line: pick(lines) })));
-    let g = (P.guests || []).filter((c) => c.face || c.emoji);
+    const me = assets.player; // Gäste-Profil: sich selbst nicht als Gast zeigen, dafür feuert Kimi an
+    const kimi = me ? [{ face: 'kimi', line: pick(this.cfg.kimiCheer || ['Lauf!! 💕', 'Du schaffst das! 🎉', 'Go, go, go! 🏃']) }] : [];
+    if (P.guests === 'all') return shuffle(all.filter((f) => f !== me).map((f) => ({ face: f, line: pick(lines) })).concat(kimi));
+    let g = (P.guests || []).filter((c) => (c.face || c.emoji) && c.face !== me);
     if (P.part2 && part != null) g = part ? g.slice(P.part2) : g.slice(0, P.part2);
-    return g;
+    return me && !P.kid ? g.concat(kimi) : g;
   }
 
   initLevel(startAt) {
@@ -410,8 +414,13 @@ export class Game {
       }
     }
     this.items = this.items.filter((it) => it.x > -60 && !it.taken);
-    for (const c of this.cameos) { c.x -= dx; c.t += dt; }
+    for (const c of this.cameos) { c.x -= dx + (c.vx || 0) * dt; c.t += dt; }
     this.cameos = this.cameos.filter((c) => c.x > -80);
+    if (!this.cleanDone && this.state === 'run' && (this.nextClean -= dt) <= 0) {
+      this.cleanDone = true;
+      const cc = this.cfg.cleanChase || {}, run = cc.runner || this.cfg.chaser?.face, ch = cc.chaser || this.cfg.family?.fan?.face;
+      if (run && ch && run !== assets.player && ch !== assets.player) this.cameos.push({ cleanChase: true, face: run, chaser: ch, x: this.V.w + 70, t: 0, vx: 40, said: false, line: pick(cc.lines || ['Aufräumen!! 🧹', 'Die Spülmaschine räumt sich nicht von selbst aus!', 'Erst putzen, dann Fernsehen!', 'Wer hat hier gekrümelt?!', 'Staubsaugen – JETZT! 🧽']), reply: pick(cc.replies || ['Ich muss noch… äh… weg! 💨', 'Gleich, Schatz!', 'Hilfeee! 😱']) });
+    }
     if (this.heidiOn && !this.heidiDone && this.state === 'run' && !this.horror) {
       if (this.heidiPeek) { const h = this.heidiPeek; h.x -= dx * 0.55; h.t += dt; if (h.x < -70) { this.heidiPeek = null; this.heidiDone = true; } }
       else if ((this.nextHeidi -= dt) <= 0) this.heidiPeek = { x: this.V.w + 60, t: 0 };
@@ -1463,6 +1472,27 @@ export class Game {
       if (st === 'impact' && !c.plumped) { c.plumped = true; sfx('smash'); this.fx.text(c.x - 40, V.groundY - 80, 'PLUMPS! 💥', { color: '#ffd23f', size: 18 }); }
       if (st === 'twerk') c.plumped = false;
       if (c.said && c.sayT < 2 && c.line) speech(g, c.x + 12, V.groundY - 154, c.line);
+      return;
+    }
+    if (c.cleanChase) { // Hagen flüchtet, Heidi mit Wischmopp + Seifenblasen hinterher
+      const gap = 70 + Math.sin(c.t * 3) * 8, gy = V.groundY - 6;
+      g.save(); g.translate(c.x, 0); g.scale(-1, 1); g.translate(-c.x, 0);
+      drawPerson(g, c.x, gy, { faceKey: c.face, t: c.t * 1.6, color: '#1f7a3a', scale: CAMEO_SCALE, run: true, expr: 'shock', suit: 'track' });
+      g.restore();
+      g.fillStyle = 'rgba(120,190,255,0.9)'; for (let i = 0; i < 3; i++) { const k = (c.t * 2 + i / 3) % 1; g.beginPath(); g.ellipse(c.x - 14 + i * 9, V.groundY - 118 + k * 20, 2, 3, 0, 0, 7); g.fill(); } // Angstschweiß
+      const hx = c.x + gap, hop = Math.abs(Math.sin(c.t * 9)) * 5;
+      g.save(); g.translate(hx, 0); g.scale(-1, 1); g.translate(-hx, 0);
+      drawPerson(g, hx, gy - hop, { faceKey: c.chaser, t: c.t * 1.6, color: '#d55b8f', scale: CAMEO_SCALE, run: true, expr: 'happy' });
+      g.restore();
+      // Wischmopp nach vorn gestreckt
+      const sw = Math.sin(c.t * 10) * 0.15, mx = hx - 16, my = V.groundY - 56 - hop;
+      g.save(); g.translate(mx, my); g.rotate(-1.35 + sw);
+      g.fillStyle = '#c8a26a'; g.fillRect(-1.5, -50, 3, 54);
+      g.fillStyle = '#1e88e5'; g.fillRect(-10, -56, 20, 6);
+      g.strokeStyle = '#e3f2fd'; g.lineWidth = 2; for (let i = 0; i < 7; i++) { g.beginPath(); g.moveTo(-9 + i * 3, -56); g.lineTo(-11 + i * 3.4 + Math.sin(c.t * 12 + i) * 2, -70); g.stroke(); }
+      g.restore();
+      g.fillStyle = 'rgba(255,255,255,0.75)'; for (let i = 0; i < 6; i++) { const k = (c.t * 0.8 + i / 6) % 1; g.beginPath(); g.arc(hx - 30 - i * 6, V.groundY - 90 - k * 60, 3 + (i % 3), 0, 7); g.fill(); g.strokeStyle = 'rgba(160,200,255,0.8)'; g.lineWidth = 0.8; g.stroke(); } // Seifenblasen
+      if (c.said && c.sayT < 4.5) { speech(g, hx + 12, V.groundY - 160, c.line); if (c.sayT > 1.6) speech(g, c.x - 10, V.groundY - 140, c.reply); }
       return;
     }
     if (c.chasedBy) { // läuft weg – dahinter rennt jemand verliebt hinterher

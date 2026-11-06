@@ -3,6 +3,8 @@
 //
 //   PASSWORT="geheim" node tools/build.mjs            -> verschlüsseln
 //   PASSWORT="geheim" node tools/build.mjs --decrypt  -> private/ aus dem Bundle wiederherstellen
+//   GAST_PASSWORT="…" zusätzlich setzen -> Gäste-Zugang (Schlüssel wird mit dem Gäste-Passwort eingepackt);
+//   ohne GAST_PASSWORT bleibt ein vorhandener Gäste-Zugang erhalten.
 //
 // Das Repo ist öffentlich: Nur assets/bundle.enc wird committet, private/ steht in .gitignore.
 import { webcrypto as crypto } from 'node:crypto';
@@ -49,10 +51,25 @@ if (process.argv.includes('--decrypt')) {
   try { const old = JSON.parse(fs.readFileSync(OUT, 'utf8')); if (old.iter === ITER && old.salt) salt = new Uint8Array(Buffer.from(old.salt, 'base64')); } catch {}
   if (!salt || salt.length !== 16) salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const k = await key(salt);
+  // Rohschlüssel ableiten (gleich wie im Browser), damit er für den Gäste-Zugang eingepackt werden kann
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password.trim()), 'PBKDF2', false, ['deriveBits']);
+  const raw = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: ITER, hash: 'SHA-256' }, base, 256));
+  const k = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt']);
   const data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(JSON.stringify({ config, files })));
+  let guest = null;
+  const gpw = (process.env.GAST_PASSWORT || '').trim();
+  if (gpw) {
+    const gsalt = crypto.getRandomValues(new Uint8Array(16)), giv = crypto.getRandomValues(new Uint8Array(12));
+    const gb = await crypto.subtle.importKey('raw', new TextEncoder().encode(gpw), 'PBKDF2', false, ['deriveKey']);
+    const gk = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: gsalt, iterations: ITER, hash: 'SHA-256' }, gb, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+    const wrapped = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: giv }, gk, raw);
+    guest = { salt: Buffer.from(gsalt).toString('base64'), iv: Buffer.from(giv).toString('base64'), data: Buffer.from(wrapped).toString('base64') };
+  } else {
+    try { const old = JSON.parse(fs.readFileSync(OUT, 'utf8')); if (old.guest && old.salt === Buffer.from(salt).toString('base64')) guest = old.guest; } catch {}
+  }
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
-  fs.writeFileSync(OUT, JSON.stringify({ v: 1, iter: ITER, salt: Buffer.from(salt).toString('base64'), iv: Buffer.from(iv).toString('base64'), data: Buffer.from(data).toString('base64') }));
+  fs.writeFileSync(OUT, JSON.stringify({ v: 1, iter: ITER, salt: Buffer.from(salt).toString('base64'), iv: Buffer.from(iv).toString('base64'), data: Buffer.from(data).toString('base64'), ...(guest ? { guest } : {}) }));
+  if (guest) console.log(gpw ? 'Gäste-Zugang: neu eingepackt' : 'Gäste-Zugang: übernommen');
   const kb = (fs.statSync(OUT).size / 1024).toFixed(0);
   console.log(`assets/bundle.enc geschrieben (${kb} KB, ${Object.keys(files).length} Dateien: ${Object.keys(files).join(', ') || '-'})`);
 }
