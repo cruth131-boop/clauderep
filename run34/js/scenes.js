@@ -124,8 +124,8 @@ export class LoseScene {
       const i1 = assets.images.injury_op, i2 = assets.images.injury_wheelchair;
       photoCard(g, i1, cx - W * 0.45 * ease(t / 0.6), cy - 6, W, -0.08, 'Not-OP!');
       if (t > 1.0) photoCard(g, i2, cx + W * 0.5, cy + 8 - (1 - ease((t - 1) / 0.5)) * V.h, W, 0.07, 'Reha: 6 Wochen');
-      caption(g, V, `Diagnose: ${pick(['Messlatte überschätzt', 'zu wenig Anlauf', 'Kerzen-Trauma'])}`, V.h * 0.9, 18);
-      this.diag ||= null;
+      this.diag ||= pick(['Messlatte überschätzt', 'zu wenig Anlauf', 'Kerzen-Trauma']); // einmal auswählen, nicht jedes Bild neu (sonst flackert der Text)
+      caption(g, V, `Diagnose: ${this.diag}`, V.h * 0.9, 18);
     } else if (this.kind === 'katha') { // geschockte beste Freundin springt ins Bild
       const k = ease(t / 0.35), h = S * 0.5 * (0.6 + 0.4 * k), sh = t < 0.6 ? Math.sin(t * 60) * 6 * (1 - t / 0.6) : 0;
       drawFaceAt(g, 'katha_shock', 'normal', cx + sh, cy, h, Math.sin(t * 3) * 0.04);

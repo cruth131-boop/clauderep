@@ -97,6 +97,7 @@ export class Game {
     this.hero = null; this.nextHero = ['birthday', 'endless', 'roadtrip', 'horror'].includes(mode) ? rand(16, 24) : Infinity;
     this.prevBiome = null; this.biomeFade = 1; this.nextBiomeAt = 60;
     this.wingsT = 0; this.dayBanner = null;
+    this.crawlers = []; this.crawlLeft = this.horror ? 2 : 0; this.nextCrawl = rand(10, 22); // Horror: 2× krabbelt eine Spinne übers Display
     if (mode === 'roadtrip') { // feste Etappen nach dem Geschenk-Ablauf; startAt = Etappen-Index (Tages-Checkpoint)
       this.rtIdx = Math.max(0, Math.min(RT_STAGES.length - 1, startAt | 0));
       this.rtT = RT_STAGES.slice(0, this.rtIdx).reduce((a, x) => a + x.dur, 0);
@@ -355,6 +356,9 @@ export class Game {
     this.fips = Math.max(0, this.fips - dt);
     this.hammer = Math.max(0, this.hammer - dt);
     this.wingsT = Math.max(0, this.wingsT - dt);
+    if (this.crawlLeft > 0 && this.state === 'run' && !this.story && (this.nextCrawl -= dt) <= 0) this.spawnCrawler();
+    for (const c of this.crawlers) this.updateCrawler(c, dt);
+    this.crawlers = this.crawlers.filter((c) => !c.gone);
     if (this.dayBanner && (this.dayBanner.t += dt) > 3.2) this.dayBanner = null;
 
     if (this.state === 'run') {
@@ -620,7 +624,7 @@ export class Game {
       // Item in der Lücke
       const gapX = V.w + 40 + this.nextGap * 0.5;
       if (Math.random() < this.M.bad) {
-        this.items.push(this.makeItem(pick(this.badItems || ['fig', 'shrimp']), gapX, pick([12, 12, 70])));
+        this.items.push(this.makeItem(pick(this.badItems || (this.horror ? ['fig', 'shrimp', 'spider', 'spider'] : ['fig', 'shrimp'])), gapX, pick([12, 12, 70])));
       } else if (Math.random() < this.M.items) {
         const food = this.biome?.items || ['wine', 'pizza', 'burger', 'nachos'];
         const type2 = this.biome?.bonus && Math.random() < 0.55 ? this.biome.bonus : Math.random() < 0.07 ? 'egg' : pick(food);
@@ -732,6 +736,29 @@ export class Game {
       this.nextDash -= dt;
       if (this.nextDash <= 0) { this.nextDash = this.state === 'idle' ? rand(7, 10) : this.lv ? freqT(this.lvP.freq?.cat || 'normal') : rand(18, 28); this.dash = { x: -50, y: 0, t: 0 }; }
     }
+  }
+
+  spawnCrawler() {
+    const V = this.V;
+    this.crawlLeft--; this.nextCrawl = rand(22, 40);
+    // quer übers ganze Display, von einer Kante zur gegenüberliegenden
+    const fromLeft = Math.random() < 0.5, diag = Math.random() < 0.5;
+    const y0 = diag ? rand(-30, V.h * 0.3) : rand(V.h * 0.2, V.h * 0.7);
+    const y1 = diag ? rand(V.h * 0.7, V.h + 30) : rand(V.h * 0.2, V.h * 0.7);
+    const sx = fromLeft ? -70 : V.w + 70, ex = fromLeft ? V.w + 70 : -70;
+    this.crawlers.push({ x: sx, y: y0, sx, sy: y0, ex, ey: y1, u: 0, t: 0, pause: 0, paused: false, len: Math.hypot(ex - sx, y1 - y0) });
+    sfx('violin'); this.shake = Math.max(this.shake, 4);
+  }
+
+  updateCrawler(c, dt) {
+    c.t += dt;
+    if (!c.paused && c.u > 0.42) { c.paused = true; c.pause = 0.8; sfx('dun'); this.shake = Math.max(this.shake, 6); } // kurz innehalten… 😱
+    if (c.pause > 0) { c.pause -= dt; return; }
+    c.u += (190 / c.len) * dt * (c.u > 0.42 ? 1.5 : 1);
+    const wob = Math.sin(c.t * 3) * 18;
+    const nx = c.sx + (c.ex - c.sx) * c.u, ny = c.sy + (c.ey - c.sy) * c.u + wob;
+    c.ang = Math.atan2(ny - c.y, nx - c.x); c.x = nx; c.y = ny;
+    if (c.u >= 1) c.gone = true;
   }
 
   updateRoadtrip(dt) {
@@ -1281,6 +1308,7 @@ export class Game {
     }
     this.fx.draw(g);
     for (const pl of this.polaroids) this.drawPolaroid(g, pl);
+    for (const c of this.crawlers) drawSpider(g, c.x, c.y, (c.ang ?? 0) + Math.PI / 2, 2.6, c.pause > 0 ? 0 : c.t, true);
     if (this.dayBanner) { // Tages-Banner im Roadtrip
       const k = this.dayBanner.t / 3.2, a = Math.min(1, k * 6, (1 - k) * 5);
       g.save(); g.globalAlpha = Math.max(0, a); g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -1694,6 +1722,29 @@ function drawJackhammer(g, x, y, t, blink) {
   for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(x + 34 + Math.random() * 6, y + 10 + Math.random() * 6, 2 + Math.random() * 2, 0, 7); g.fill(); }
 }
 
+// Spinne (von oben gesehen); rot = Blickrichtung nach oben. big = Display-Krabbler mit Schatten
+function drawSpider(g, x, y, rot, s, t, big) {
+  g.save(); g.translate(x, y); g.rotate(rot); g.scale(s, s);
+  if (big) { g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(3, 4, 13, 16, 0, 0, Math.PI * 2); g.fill(); }
+  g.strokeStyle = big ? '#3a2420' : '#1a1110'; g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = 2;
+  if (big) { g.shadowColor = 'rgba(255,60,60,0.8)'; g.shadowBlur = 6; }
+  for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
+    const ph = Math.sin(t * 18 + i * 1.6 + (side > 0 ? Math.PI : 0)) * 0.28;
+    const a = (-0.95 + i * 0.62 + ph) , kx = side * (8 + Math.cos(a) * 6), ky = Math.sin(a) * 9 - 2;
+    const fx = side * (14 + Math.cos(a) * 4), fy = ky + (i < 2 ? -7 : 7) + ph * 6;
+    g.beginPath(); g.moveTo(side * 3, -1 + i * 1.5); g.lineTo(kx, ky - 3); g.lineTo(fx, fy); g.stroke();
+  }
+  if (big) { g.shadowColor = 'rgba(255,60,60,0.9)'; g.shadowBlur = 10; }
+  g.fillStyle = '#2b1d1a'; g.beginPath(); g.ellipse(0, 6, 7, 9, 0, 0, Math.PI * 2); g.fill();
+  g.shadowBlur = 0; g.strokeStyle = 'rgba(255,190,170,0.55)'; g.lineWidth = 0.8; g.stroke();
+  g.fillStyle = '#3a2824'; g.beginPath(); g.ellipse(0, -5, 4.6, 4.2, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#8a1c1c'; g.beginPath(); g.moveTo(0, 2); g.lineTo(2.4, 6); g.lineTo(0, 10); g.lineTo(-2.4, 6); g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.ellipse(-2.5, 3, 1.6, 3, 0.3, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#ff3b3b'; for (const ex of [-1.6, 1.6]) { g.beginPath(); g.arc(ex, -7, 1, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = '#ffeded'; for (const ex of [-0.8, 0.8]) { g.beginPath(); g.arc(ex, -8.2, 0.55, 0, Math.PI * 2); g.fill(); }
+  g.restore();
+}
+
 function drawWings(g, x, footY, t, flying) {
   const flap = Math.sin(t * (flying ? 22 : 8)) * (flying ? 0.5 : 0.2);
   for (const s of [-1, 1]) {
@@ -1782,6 +1833,9 @@ export function drawItemIcon(g, type, t = 0) {
     g.fillStyle = '#6b2d6b'; g.beginPath(); g.moveTo(0, -12); g.quadraticCurveTo(12, 0, 8, 8); g.quadraticCurveTo(0, 14, -8, 8); g.quadraticCurveTo(-12, 0, 0, -12); g.fill();
     g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.ellipse(-4, 0, 2, 4, 0.3, 0, 7); g.fill();
     g.strokeStyle = '#4a7a2a'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(0, -11); g.lineTo(1, -15); g.stroke();
+    skull(g, 9, -9);
+  } else if (type === 'spider') {
+    drawSpider(g, 0, 1, 0, 0.62, t, false);
     skull(g, 9, -9);
   } else if (type === 'shrimp') {
     g.strokeStyle = '#ff8a6b'; g.lineWidth = 7; g.lineCap = 'round';

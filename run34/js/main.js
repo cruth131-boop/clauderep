@@ -911,7 +911,8 @@ function showIntro(id) {
   $('lvi-icon').textContent = def.icon;
   $('lvi-num').textContent = id === 'G' ? 'Geheimes Level' : `Level ${lvNum(id)} · ${l.phase}`;
   $('lvi-title').textContent = l.title;
-  $('lvi-ctx').textContent = l.ctx || '';
+  $('lvi-ctx').textContent = ''; // keine Level-Beschreibungen im Einführungsbildschirm
+  $('lvi-ctx').classList.add('hidden');
   $('lvi-quest').textContent = `🎯 ${l.quest || 'Komm ins Ziel!'}`;
   const faces = l.guests === 'all' ? (assets.config.allGuests || []).slice(0, 18) : (l.guests || []).map((c) => c.face).filter(Boolean);
   $('lvi-faces').innerHTML = [...new Set(faces)].map((f) => {

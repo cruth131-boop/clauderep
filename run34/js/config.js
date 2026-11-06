@@ -15,6 +15,7 @@ export const DEFAULT_CONFIG = {
   ],
   // Sprüche je nach Hindernis
   obstacleLines: {
+    spider: ['Eine Spinne. Natürlich eine Spinne. 🕷️', 'Acht Beine, null Gnade.', 'Die Spinne war schneller. Und haariger.'],
     candles: ['Von Geburtstagskerzen besiegt. Peinlich.', 'Zu viele Kerzen, zu wenig Sprungkraft.'],
     shirt: ['Ausgerechnet ein grünes T-Shirt…', 'Grün. Warum immer grün?!'],
     flyshirt: ['Angriff des fliegenden grünen T-Shirts!', 'Ducken wäre eine Option gewesen.'],
@@ -76,6 +77,7 @@ export const DEFAULT_CONFIG = {
     nachos: { label: 'Nachos', points: 5 },
     fig: { label: 'Feige', points: -10, bad: true, line: 'Igitt, eine Feige!' },
     shrimp: { label: 'Garnele', points: -10, bad: true, line: 'Garnele?! Allergie!' },
+    spider: { label: 'Spinne', points: -10, bad: true, line: 'IIIIH, EINE SPINNE! 🕷️' },
     egg: { label: 'Eierkopf', points: 15 },
     monkey: { label: 'Affe', points: 10 },
     poffertjes: { label: 'Poffertjes', points: 5 },
