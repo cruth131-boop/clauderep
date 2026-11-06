@@ -43,7 +43,11 @@ if (process.argv.includes('--decrypt')) {
     if (!type) continue;
     files[name] = { type, data: fs.readFileSync(path.join(dir, name)).toString('base64') };
   }
-  const salt = crypto.getRandomValues(new Uint8Array(16));
+  // Salt aus dem bisherigen Bundle weiterverwenden: gleiches Passwort -> gleicher Schlüssel,
+  // so bleibt der gespeicherte Schlüssel auf dem Handy nach Updates gültig (kein erneutes Passwort).
+  let salt = null;
+  try { const old = JSON.parse(fs.readFileSync(OUT, 'utf8')); if (old.iter === ITER && old.salt) salt = new Uint8Array(Buffer.from(old.salt, 'base64')); } catch {}
+  if (!salt || salt.length !== 16) salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const k = await key(salt);
   const data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(JSON.stringify({ config, files })));
