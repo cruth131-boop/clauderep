@@ -872,9 +872,23 @@ export const SCENES = {
   // New York im Advent: Rockefeller-Baum mit Stern, Eisbahn mit goldener Prometheus-Statue, Empire State Building, Schnee
   nyc(g, V, off, t, lv) {
     const gy = V.groundY;
-    sky(g, V, '#0d1b3d', '#3a4f8c');
-    once(V, off, 0.06, 1600, 600, (x) => { g.fillStyle = '#1c2541'; g.fillRect(x, gy - 300, 40, 300); g.fillRect(x + 8, gy - 330, 24, 30); g.fillRect(x + 16, gy - 370, 8, 40); g.fillStyle = '#ffd23f'; for (let i = 0; i < 20; i++) g.fillRect(x + 5 + (i % 4) * 9, gy - 290 + Math.floor(i / 4) * 30, 4, 6); });
-    rep(V, off, 0.2, 110, (x, k) => { const h = 150 + ((k * 47) % 90 + 90) % 90; g.fillStyle = '#1f2a4d'; g.fillRect(x, gy - h, 100, h); g.fillStyle = '#ffe28a'; for (let r = 0; r < h / 18; r++) for (let i = 0; i < 6; i++) if ((r * 7 + i * 3 + k) % 4) g.fillRect(x + 6 + i * 16, gy - h + 8 + r * 18, 6, 8); });
+    // Nachthimmel wie über Manhattan: Wolken orange von den Stadtlichtern angestrahlt
+    sky(g, V, '#161226', '#8a5530');
+    for (let i = 0; i < 6; i++) { const cx = wrap(i * 190 - off * 0.04, V.w + 260) - 130, cy = 30 + (i % 3) * 32; g.fillStyle = `rgba(${150 + i * 8},${90 + i * 4},50,0.45)`; g.beginPath(); g.ellipse(cx, cy, 120, 18, 0, 0, TAU); g.ellipse(cx + 60, cy - 10, 70, 14, 0, 0, TAU); g.fill(); }
+    // dichte Skyline von Lower Manhattan mit erleuchteten Fenstern
+    rep(V, off, 0.12, 70, (x, k) => { const h = 120 + ((k * 61) % 120 + 120) % 120, w = 52 + (k % 3) * 8; g.fillStyle = ['#1e2740', '#26304a', '#1b2238'][((k % 3) + 3) % 3]; g.fillRect(x, gy - h - 40, w, h); g.fillStyle = k % 4 ? '#ffd98a' : '#cfe6ff'; for (let r = 0; r < h / 10 - 1; r++) for (let i = 0; i < Math.floor(w / 9); i++) if ((r * 7 + i * 3 + k) % 5 > 1) g.fillRect(x + 4 + i * 9, gy - h - 34 + r * 10, 4, 5); if (k % 5 === 0) { g.fillStyle = '#ffd98a'; g.fillRect(x + w / 2 - 1, gy - h - 58, 2, 18); } });
+    // One World Trade Center mit leuchtender Spitze
+    once(V, off, 0.05, 1500, 760, (x) => {
+      const top = gy - 232;
+      g.fillStyle = '#2a3550'; g.beginPath(); g.moveTo(x, gy); g.lineTo(x + 6, top); g.lineTo(x + 44, top); g.lineTo(x + 50, gy); g.fill();
+      g.fillStyle = 'rgba(200,225,255,0.85)'; g.fillRect(x + 23, top, 4, gy - top); g.fillRect(x + 6, top, 2, 120); g.fillRect(x + 42, top, 2, 120);
+      g.fillStyle = 'rgba(220,235,255,0.45)'; for (let r = 0; r < 22; r++) for (let c = 0; c < 4; c++) if ((r + c) % 3) g.fillRect(x + 9 + c * 9, top + 6 + r * 10, 5, 4);
+      g.fillStyle = '#dfe9ff'; g.fillRect(x + 21, top - 8, 8, 8); g.fillRect(x + 24, top - 44, 2, 36);
+      g.fillStyle = `rgba(255,255,255,${0.6 + Math.sin(t * 3) * 0.4})`; g.beginPath(); g.arc(x + 25, top - 45, 2.2, 0, TAU); g.fill();
+    });
+    // East River mit Lichtspiegelungen
+    g.fillStyle = '#141a2e'; g.fillRect(0, gy - 42, V.w, 42);
+    for (let i = 0; i < 40; i++) { const rx = wrap(i * 37 - off * 0.2, V.w), ry = gy - 38 + (i % 6) * 6; g.fillStyle = i % 3 ? 'rgba(255,200,120,0.55)' : 'rgba(200,225,255,0.45)'; g.fillRect(rx, ry, 10 + (i % 4) * 4, 1.5); }
     // Freiheitsstatue auf ihrer Insel im Hafen
     once(V, off, 0.28, 1500, 1150, (x) => {
       g.fillStyle = '#16305e'; g.fillRect(x - 120, gy - 52, 360, 34); g.strokeStyle = 'rgba(255,255,255,0.25)'; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(x - 110 + i * 30, gy - 40 + (i % 2) * 8); g.lineTo(x - 90 + i * 30, gy - 40 + (i % 2) * 8); g.stroke(); }
@@ -889,19 +903,29 @@ export const SCENES = {
       const fl = 0.7 + Math.sin(t * 8) * 0.3; const fg = g.createRadialGradient(x + 65, gy - 177, 1, x + 65, gy - 177, 14); fg.addColorStop(0, `rgba(255,220,120,${fl})`); fg.addColorStop(1, 'rgba(255,180,60,0)'); g.fillStyle = fg; g.beginPath(); g.arc(x + 65, gy - 177, 14, 0, TAU); g.fill();
       g.fillStyle = '#ffd23f'; g.beginPath(); g.moveTo(x + 62, gy - 174); g.quadraticCurveTo(x + 65, gy - 186, x + 68, gy - 174); g.fill();
     });
-    // Brooklyn Bridge über den East River: zwei Steintürme mit Spitzbögen, Tragseile, Hänger
-    once(V, off, 0.3, 1500, 400, (x) => {
-      g.fillStyle = '#132a52'; g.fillRect(x - 60, gy - 46, 520, 28);
-      g.fillStyle = 'rgba(255,226,138,0.25)'; for (let i = 0; i < 12; i++) g.fillRect(x - 50 + i * 42, gy - 40 + (i % 3) * 6, 18, 2);
-      const deckY = gy - 70, T1 = x + 90, T2 = x + 310, top = deckY - 110;
-      g.strokeStyle = '#c9c2b0'; g.lineWidth = 1.6;
-      const cable = (ax, bx, sagY) => { g.beginPath(); g.moveTo(ax, top + 8); g.quadraticCurveTo((ax + bx) / 2, sagY, bx, top + 8); g.stroke(); };
-      cable(T1, T2, deckY + 40); cable(x - 60, T1, deckY - 10); cable(T2, x + 460, deckY - 10);
-      g.lineWidth = 0.6; g.strokeStyle = 'rgba(220,214,200,0.7)'; for (let i = 1; i < 22; i++) { const px = T1 + i * 10, u = i / 22, cy = (1 - u) * (1 - u) * (top + 8) + 2 * (1 - u) * u * (deckY + 40) + u * u * (top + 8); g.beginPath(); g.moveTo(px, cy); g.lineTo(px, deckY); g.stroke(); }
-      for (let i = 0; i < 8; i++) { g.beginPath(); g.moveTo(T1, top + 12); g.lineTo(T1 + 14 + i * 12, deckY); g.moveTo(T2, top + 12); g.lineTo(T2 - 14 - i * 12, deckY); g.stroke(); }
-      g.fillStyle = '#3a3f55'; g.fillRect(x - 60, deckY, 520, 7);
-      for (const tx of [T1, T2]) { g.fillStyle = '#b8a88a'; g.fillRect(tx - 15, top, 30, deckY - top + 52); g.fillStyle = '#0d1b3d'; for (const ox of [-9, 3]) { g.beginPath(); g.moveTo(tx + ox, top + 62); g.lineTo(tx + ox, top + 26); g.lineTo(tx + ox + 3, top + 18); g.lineTo(tx + ox + 6, top + 26); g.lineTo(tx + ox + 6, top + 62); g.closePath(); g.fill(); } g.fillStyle = '#d6c8a8'; g.fillRect(tx - 17, top - 4, 34, 5); }
-      g.fillStyle = '#ffe28a'; for (let i = 0; i < 26; i++) { g.beginPath(); g.arc(x - 50 + i * 20, deckY - 2, 1.2, 0, TAU); g.fill(); }
+    // Brooklyn Bridge (nach Foto): helle Granittürme mit zwei hohen Spitzbögen, Tragseile + Schrägseile, beleuchtete Fahrbahn
+    once(V, off, 0.3, 1400, 420, (x) => {
+      const deckY = gy - 60, T1 = x + 110, T2 = x + 470, top = gy - 212;
+      g.strokeStyle = 'rgba(210,205,190,0.85)'; g.lineWidth = 1.8;
+      const cable = (ax, ay, bx, by, sagY) => { g.beginPath(); g.moveTo(ax, ay); g.quadraticCurveTo((ax + bx) / 2, sagY, bx, by); g.stroke(); };
+      cable(T1, top + 14, T2, top + 14, deckY + 60); cable(x - 120, deckY - 4, T1, top + 14, deckY - 20); cable(T2, top + 14, x + 700, deckY - 4, deckY - 20);
+      g.lineWidth = 0.6; g.strokeStyle = 'rgba(220,214,200,0.6)';
+      for (let i = 1; i < 36; i++) { const u = i / 36, px = T1 + u * (T2 - T1), cy = (1 - u) * (1 - u) * (top + 14) + 2 * (1 - u) * u * (deckY + 60) + u * u * (top + 14); g.beginPath(); g.moveTo(px, cy); g.lineTo(px, deckY); g.stroke(); }
+      for (let i = 0; i < 12; i++) { g.beginPath(); g.moveTo(T1, top + 18); g.lineTo(T1 + 16 + i * 13, deckY); g.moveTo(T2, top + 18); g.lineTo(T2 - 16 - i * 13, deckY); g.moveTo(T1, top + 18); g.lineTo(T1 - 16 - i * 10, deckY); g.moveTo(T2, top + 18); g.lineTo(T2 + 16 + i * 10, deckY); g.stroke(); }
+      // Fahrbahn mit orangen Lichtern
+      g.fillStyle = '#2b2a35'; g.fillRect(x - 120, deckY, 820, 9);
+      g.fillStyle = '#ffb35a'; for (let i = 0; i < 60; i++) { g.beginPath(); g.arc(x - 115 + i * 14, deckY + 2, 1.4, 0, TAU); g.fill(); }
+      g.fillStyle = 'rgba(255,180,90,0.35)'; for (let i = 0; i < 30; i++) g.fillRect(x - 110 + i * 27, deckY + 14 + (i % 3) * 6, 12, 1.5); // Spiegelung
+      for (const tx of [T1, T2]) {
+        const tw = 56;
+        g.fillStyle = '#b9b2a2'; g.fillRect(tx - tw / 2, top, tw, gy - 18 - top);
+        g.fillStyle = '#8f897b'; g.fillRect(tx + tw / 2 - 10, top, 10, gy - 18 - top);
+        g.fillStyle = '#d2cbbb'; g.fillRect(tx - tw / 2 - 3, top - 6, tw + 6, 8); g.fillRect(tx - tw / 2 - 2, top + 70, tw + 4, 5);
+        g.fillStyle = '#20202e'; for (const ox of [-21, 3]) { g.beginPath(); g.moveTo(tx + ox, top + 150); g.lineTo(tx + ox, top + 98); g.lineTo(tx + ox + 9, top + 80); g.lineTo(tx + ox + 18, top + 98); g.lineTo(tx + ox + 18, top + 150); g.closePath(); g.fill(); }
+        g.fillStyle = 'rgba(255,200,130,0.3)'; for (const ox of [-21, 3]) g.fillRect(tx + ox + 2, top + 140, 14, 10);
+        g.strokeStyle = 'rgba(0,0,0,0.12)'; g.lineWidth = 1; for (let r = 0; r < 20; r++) { g.beginPath(); g.moveTo(tx - tw / 2, top + 10 + r * 12); g.lineTo(tx + tw / 2, top + 10 + r * 12); g.stroke(); }
+        g.fillStyle = 'rgba(255,240,210,0.25)'; g.fillRect(tx - tw / 2, top, 6, gy - 18 - top); // angestrahlt
+      }
     });
     once(V, off, 0.35, 1100, 400, (x) => { xmasTree(g, x + 100, gy - 20, 230, t); g.fillStyle = '#cfe8ff'; g.beginPath(); g.ellipse(x + 100, gy - 10, 180, 14, 0, 0, TAU); g.fill(); g.fillStyle = '#d4a017'; g.beginPath(); g.ellipse(x + 250, gy - 50, 22, 10, -0.3, 0, TAU); g.fill(); g.beginPath(); g.arc(x + 262, gy - 62, 6, 0, TAU); g.fill(); g.fillStyle = '#b07d10'; g.fillRect(x + 230, gy - 40, 44, 20); for (let i = 0; i < 4; i++) emoji(g, '⛸️', x + 30 + ((i * 60 + t * 40) % 200), gy - 16, 12); });
     // Alteingesessene Bierkneipe im East Village: Backstein, dunkelgrüne Front mit Goldschrift, warmes Licht
@@ -921,26 +945,53 @@ export const SCENES = {
     snowfall(g, V, t, off);
     floor(g, V, '#dfe8f2', '#ffffff', off, () => { g.fillStyle = 'rgba(150,170,200,0.3)'; for (let i = 0; i < 20; i++) g.fillRect(wrap(i * 67 - off, V.w + 40) - 20, gy + 10 + (i % 4) * 9, 10, 2); });
   },
-  // Dyker Heights (Brooklyn): Wohnhäuser über und über mit Lichtern, riesige Nussknacker, Spielzeugsoldaten, Santa-Figuren
+  // Dyker Heights (nach Foto): Häuser mit Lichterketten an allen Giebeln, Balkon mit leuchtenden Schneeflocken,
+  // Nussknacker & Santa auf dem Balkon, Lichterbogen über dem Eingang, leuchtende Büsche, Draht-Rentiere, Zuckerstangen
   dyker(g, V, off, t) {
     const gy = V.groundY;
-    sky(g, V, '#0a1430', '#24345e');
-    for (let i = 0; i < 30; i++) { g.fillStyle = `rgba(255,255,255,${0.3 + ((i * 7) % 5) / 8})`; g.fillRect((i * 97) % V.w, (i * 53) % (gy - 160), 2, 2); }
+    sky(g, V, '#070b1c', '#1d2546');
+    for (let i = 0; i < 30; i++) { g.fillStyle = `rgba(255,255,255,${0.3 + ((i * 7) % 5) / 8})`; g.fillRect((i * 97) % V.w, (i * 53) % (gy - 180), 2, 2); }
     const bulbs = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#ff80ab', '#ffffff'];
-    rep(V, off, 0.45, 330, (x, k) => {
-      const w = 170, h = 90, top = gy - 34 - h;
-      g.fillStyle = '#7a4b3a'; g.fillRect(x, top, w, h); // Backsteinhaus
-      g.fillStyle = '#4a2f26'; g.beginPath(); g.moveTo(x - 10, top); g.lineTo(x + w / 2, top - 50); g.lineTo(x + w + 10, top); g.closePath(); g.fill();
-      g.fillStyle = '#ffe0a0'; for (const wx of [18, 64, 110]) g.fillRect(x + wx, top + 18, 30, 26); g.fillStyle = '#5d4037'; g.fillRect(x + 72, top + 52, 26, 38);
-      // Lichterketten entlang Dach, Fenstern & Säulen
-      const tw = (i) => (Math.floor(t * 3 + i) % 3 ? 1 : 0.35);
-      for (let i = 0; i <= 20; i++) { const u = i / 20; const px = x - 10 + u * (w + 20), py = u < 0.5 ? top - u * 2 * 50 : top - (1 - u) * 2 * 50; g.globalAlpha = tw(i + k); g.fillStyle = bulbs[(i + k) % 6]; g.beginPath(); g.arc(px, py - 2, 2.4, 0, TAU); g.fill(); }
-      for (let i = 0; i < 18; i++) { g.globalAlpha = tw(i); g.fillStyle = bulbs[(i * 2 + k) % 6]; g.beginPath(); g.arc(x + (i * 10) % w, top + 2 + (i % 2) * 2, 2, 0, TAU); g.fill(); }
+    const tw = (i) => (Math.floor(t * 3 + i) % 3 ? 1 : 0.4);
+    const lightLine = (x1, y1, x2, y2, n, warm, k = 0) => { for (let i = 0; i <= n; i++) { const u = i / n; g.globalAlpha = tw(i + k); g.fillStyle = warm ? (i % 2 ? '#ffe9a8' : '#fff4d0') : bulbs[(i + k) % 6]; g.beginPath(); g.arc(x1 + (x2 - x1) * u, y1 + (y2 - y1) * u, 1.9, 0, TAU); g.fill(); } g.globalAlpha = 1; };
+    const glow = (x, y, r, c) => { const gr = g.createRadialGradient(x, y, 2, x, y, r); gr.addColorStop(0, c); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); };
+    rep(V, off, 0.45, 380, (x, k) => {
+      const w = 230, base = gy - 22, h1 = 70, h2 = 60, y1 = base - h1, y2 = y1 - h2;
+      glow(x + w / 2, base - 80, 190, 'rgba(255,190,90,0.22)');
+      // Haus: unten Stein, oben Backstein + Erker
+      g.fillStyle = '#c9bca4'; g.fillRect(x, y1, w, h1);
+      g.fillStyle = '#7d6a5c'; g.fillRect(x + 10, y2, w - 20, h2);
+      g.fillStyle = '#5d4e44'; g.beginPath(); g.moveTo(x, y2); g.lineTo(x + w * 0.62, y2 - 64); g.lineTo(x + w, y2); g.fill(); // Hauptgiebel
+      g.fillStyle = '#6e5e52'; g.beginPath(); g.moveTo(x + 12, y2 + 4); g.lineTo(x + 52, y2 - 40); g.lineTo(x + 92, y2 + 4); g.fill(); // Erkergiebel
+      lightLine(x, y2, x + w * 0.62, y2 - 64, 22, true, k); lightLine(x + w * 0.62, y2 - 64, x + w, y2, 14, true, k);
+      lightLine(x + 12, y2 + 4, x + 52, y2 - 40, 10, true); lightLine(x + 52, y2 - 40, x + 92, y2 + 4, 10, true);
+      // Fenster mit Kränzen und roten Schleifen
+      for (const wx of [24, 62, 140, 178]) { g.fillStyle = '#ffd98a'; g.fillRect(x + wx, y2 + 12, 24, 30); g.fillStyle = '#b71c1c'; g.beginPath(); g.moveTo(x + wx + 12, y2 + 20); g.lineTo(x + wx + 6, y2 + 16); g.lineTo(x + wx + 6, y2 + 24); g.closePath(); g.moveTo(x + wx + 12, y2 + 20); g.lineTo(x + wx + 18, y2 + 16); g.lineTo(x + wx + 18, y2 + 24); g.closePath(); g.fill(); lightLine(x + wx, y2 + 11, x + wx + 24, y2 + 11, 6, false, wx); }
+      g.strokeStyle = '#2e7d32'; g.lineWidth = 4; g.beginPath(); g.arc(x + w * 0.62, y2 - 24, 10, 0, TAU); g.stroke(); g.fillStyle = '#d32f2f'; g.beginPath(); g.arc(x + w * 0.62, y2 - 15, 3, 0, TAU); g.fill();
+      // Neon-Schild
+      g.strokeStyle = '#ff3355'; g.lineWidth = 2; g.shadowColor = '#ff3355'; g.shadowBlur = 8; roundRect(g, x + 14, y1 + 48, 60, 14, 7); g.stroke(); g.shadowBlur = 0;
+      g.fillStyle = '#7dff9a'; g.font = '900 9px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('Christmas', x + 44, y1 + 58);
+      // Balkon mit leuchtenden blauen Schneeflocken-Paneelen, Nussknacker & Santa
+      g.fillStyle = '#e8e2d6'; g.fillRect(x - 4, y1 - 4, w + 8, 6);
+      for (let i = 0; i < 9; i++) { const px = x + 4 + i * 25; g.fillStyle = '#1a237e'; g.fillRect(px, y1 - 24, 20, 20); g.strokeStyle = '#9fe0ff'; g.lineWidth = 1.2; g.shadowColor = '#40c4ff'; g.shadowBlur = 6; for (let a = 0; a < 3; a++) { const an = a * Math.PI / 3; g.beginPath(); g.moveTo(px + 10 - Math.cos(an) * 7, y1 - 14 - Math.sin(an) * 7); g.lineTo(px + 10 + Math.cos(an) * 7, y1 - 14 + Math.sin(an) * 7); g.stroke(); } g.shadowBlur = 0; }
+      const nut = (nx, ny, s) => { g.save(); g.translate(nx, ny); g.scale(s, s); g.fillStyle = '#c62828'; g.fillRect(-6, -30, 12, 20); g.fillStyle = '#1a237e'; g.fillRect(-5, -10, 4, 10); g.fillRect(1, -10, 4, 10); g.fillStyle = '#ffccbc'; g.fillRect(-5, -40, 10, 10); g.fillStyle = '#111'; g.fillRect(-6, -54, 12, 14); g.fillStyle = '#ffd740'; g.fillRect(-6, -42, 12, 2); g.restore(); };
+      for (const nx of [30, 70, 160, 200]) nut(x + nx, y1 - 24, 0.8);
+      emoji(g, '🎅', x + 115, y1 - 40, 30);
+      // Erdgeschoss: Fenster + großer Lichterbogen über dem Eingang
+      g.fillStyle = '#ffd98a'; g.fillRect(x + 20, y1 + 14, 34, 30); g.fillRect(x + w - 54, y1 + 14, 34, 30);
+      g.fillStyle = '#6d4c41'; g.fillRect(x + w / 2 - 14, y1 + 18, 28, h1 - 18);
+      for (let i = 0; i <= 30; i++) { const a = Math.PI + (i / 30) * Math.PI, ax = x + w / 2 + Math.cos(a) * 50, ay = base - 6 + Math.sin(a) * 62; g.globalAlpha = tw(i); g.fillStyle = bulbs[i % 6]; g.beginPath(); g.arc(ax, ay, 2.6, 0, TAU); g.fill(); g.fillStyle = '#2e5d32'; g.globalAlpha = 0.6; g.beginPath(); g.arc(ax + 2, ay + 2, 2.4, 0, TAU); g.fill(); }
       g.globalAlpha = 1;
-      // Vorgarten: zwei riesige Nussknacker, Spielzeugsoldat, Santa
-      const nut = (nx, s) => { g.save(); g.translate(nx, gy - 34); g.scale(s, s); g.fillStyle = '#c62828'; g.fillRect(-9, -46, 18, 30); g.fillStyle = '#1a237e'; g.fillRect(-8, -16, 6, 16); g.fillRect(2, -16, 6, 16); g.fillStyle = '#ffccbc'; g.fillRect(-7, -60, 14, 14); g.fillStyle = '#fff'; g.fillRect(-7, -50, 14, 4); g.fillStyle = '#111'; g.fillRect(-8, -80, 16, 20); g.fillStyle = '#ffd740'; g.fillRect(-8, -64, 16, 3); for (const by of [-42, -34, -26]) { g.beginPath(); g.arc(0, by, 1.4, 0, TAU); g.fill(); } g.restore(); };
-      nut(x + 190, 1.25); nut(x + 230, 1.25);
-      emoji(g, '🎅', x + 280, gy - 58, 40); emoji(g, '⛄', x + 306, gy - 50, 28);
+      // leuchtende runde Büsche
+      for (const [bx, r] of [[x + 14, 18], [x + w - 14, 20], [x + w + 30, 14]]) { g.fillStyle = '#1f4d2a'; g.beginPath(); g.arc(bx, base - r, r, 0, TAU); g.fill(); for (let i = 0; i < 16; i++) { const a = i * 2.4, rr = r * (0.3 + (i % 4) * 0.2); g.globalAlpha = tw(i); g.fillStyle = bulbs[(i + k) % 6]; g.beginPath(); g.arc(bx + Math.cos(a) * rr, base - r + Math.sin(a) * rr, 1.8, 0, TAU); g.fill(); } g.globalAlpha = 1; }
+      // Draht-Rentier
+      const rx = x + w + 70, ry = base;
+      g.strokeStyle = '#fff6d8'; g.lineWidth = 1.6; g.shadowColor = '#fff6d8'; g.shadowBlur = 6;
+      g.beginPath(); g.ellipse(rx, ry - 26, 16, 8, 0, 0, TAU); g.moveTo(rx - 10, ry - 20); g.lineTo(rx - 12, ry); g.moveTo(rx + 10, ry - 20); g.lineTo(rx + 12, ry); g.moveTo(rx + 14, ry - 30); g.lineTo(rx + 20, ry - 46); g.stroke();
+      g.beginPath(); g.arc(rx + 22, ry - 48, 4, 0, TAU); g.moveTo(rx + 20, ry - 52); g.lineTo(rx + 16, ry - 62); g.moveTo(rx + 24, ry - 52); g.lineTo(rx + 28, ry - 62); g.stroke(); g.shadowBlur = 0;
+      g.fillStyle = '#ff3b3b'; g.beginPath(); g.arc(rx + 26, ry - 48, 1.6, 0, TAU); g.fill();
+      // Zaun mit Zuckerstangen
+      for (let i = 0; i < 12; i++) { const cx = x - 10 + i * 26; g.strokeStyle = '#fff'; g.lineWidth = 3; g.beginPath(); g.moveTo(cx, base + 2); g.lineTo(cx, base - 16); g.arc(cx + 4, base - 16, 4, Math.PI, 0); g.stroke(); g.strokeStyle = '#e53935'; g.lineWidth = 3; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(cx, base + 2); g.lineTo(cx, base - 16); g.stroke(); g.setLineDash([]); }
     });
     snowfall(g, V, t, off, 40);
     floor(g, V, '#e3ecf5', '#ffffff', off, () => { g.fillStyle = 'rgba(150,170,200,0.3)'; for (let i = 0; i < 20; i++) g.fillRect(wrap(i * 67 - off, V.w + 40) - 20, gy + 10 + (i % 4) * 9, 10, 2); });
