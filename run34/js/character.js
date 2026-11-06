@@ -492,6 +492,10 @@ function torsoPieces(o, topCol, extras) {
         g.fillStyle = shade(topCol, 0.78); g.beginPath(); g.moveTo(1, -37); g.lineTo(5, -14); g.lineTo(2.5, -24); g.lineTo(-1, -30); g.closePath(); g.fill();
         g.beginPath(); g.moveTo(11, -37); g.lineTo(edgeAt(-20)[1], -20); g.lineTo(edgeAt(-26)[1] - 2.5, -27); g.closePath(); g.fill();
         g.fillStyle = '#d4af37'; for (const by of [-12, -6]) { g.beginPath(); g.arc(6.5, by, 1, 0, 7); g.fill(); }
+        if (extras.has('sweep')) { // Schornsteinfeger: zweireihige Goldknöpfe + Rußflecken
+          g.fillStyle = '#e8c547'; for (const by of [-30, -24, -18, -12, -6]) for (const bx of [2.5, 10]) { g.beginPath(); g.arc(bx, by, 1.2, 0, 7); g.fill(); }
+          g.fillStyle = 'rgba(0,0,0,0.35)'; for (const [sx, sy, r] of [[-6, -18, 3], [9, -3, 2.4], [-2, -6, 2]]) { g.beginPath(); g.arc(sx, sy, r, 0, 7); g.fill(); }
+        }
         g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(-3, -8); g.lineTo(4, -8); g.stroke();
         g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(-6, -28, 4, 2.4);
       },
@@ -811,7 +815,29 @@ function drawHead(g, neck, lean, expr, faceKey, extras, t, opt = {}) {
   if (extras.has('chef')) drawChefHat(g, 0, -h / 2 + 5, w);
   if (extras.has('beanie')) drawBeanie(g, w, h);
   if (extras.has('cowboyhat')) drawCowboyHat(g, w, h);
+  if (extras.has('tophat')) drawTopHat(g, w, h);
+  if (extras.has('sweep')) drawSweepGear(g, w, h, t);
   g.restore();
+}
+// Schornsteinfeger-Zylinder (sitzt oberhalb der Stirn, Gesicht bleibt frei)
+function drawTopHat(g, w, h) {
+  const y = -h * 0.26;
+  g.fillStyle = '#16161a'; g.beginPath(); g.ellipse(0, y, w * 0.62, h * 0.07, -0.06, 0, 7); g.fill();
+  roundRect(g, -w * 0.34, y - h * 0.5, w * 0.68, h * 0.5, 3); g.fill();
+  g.fillStyle = '#2c2c34'; g.fillRect(-w * 0.3, y - h * 0.48, w * 0.1, h * 0.44);
+  g.fillStyle = '#8a1c1c'; g.fillRect(-w * 0.34, y - h * 0.12, w * 0.68, h * 0.07);
+  g.strokeStyle = OL; g.lineWidth = 1.1; g.beginPath(); g.ellipse(0, y, w * 0.62, h * 0.07, -0.06, 0, 7); g.stroke();
+}
+// Seil mit Kugel-Kehrbesen über der Schulter + Glücksklee
+function drawSweepGear(g, w, h, t) {
+  g.strokeStyle = '#3a3a3a'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(-w * 0.35, h * 0.62); g.quadraticCurveTo(w * 0.1, h * 0.5, w * 0.5, h * 0.72); g.stroke();
+  g.beginPath(); g.arc(w * 0.42, h * 0.78, 5, 0, 7); g.stroke();
+  const bx = w * 0.62, by = h * 0.95 + Math.sin(t * 6) * 1.5;
+  g.strokeStyle = '#555'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(w * 0.5, h * 0.72); g.lineTo(bx, by); g.stroke();
+  g.strokeStyle = '#111'; g.lineWidth = 1.2; for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + Math.cos(a) * 7, by + Math.sin(a) * 7); g.stroke(); }
+  g.fillStyle = '#222'; g.beginPath(); g.arc(bx, by, 2.4, 0, 7); g.fill();
+  g.fillStyle = '#2e9d48'; for (const [dx, dy] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) { g.beginPath(); g.arc(-w * 0.22 + dx, h * 0.8 + dy, 1.9, 0, 7); g.fill(); }
 }
 // Strickmütze mit Umschlag und kleinem Etikett (Workwear-Style)
 function drawBeanie(g, w, h) {
@@ -1054,10 +1080,85 @@ export function drawTwerkFall(g, x, footY, lt, o = {}) {
 }
 
 // Kinder in Kindheits-Leveln: kleiner Körper, relativ großer Kopf
+
+// ---------------------------------------------------------------------------
+// Karnevalskostüme für Gäste (Tiere, Clowns, Gemüse) – Gesicht bleibt immer frei
+// ---------------------------------------------------------------------------
+const COSTUME_OF = {};
+export function setCostumes(map) { for (const k of Object.keys(COSTUME_OF)) delete COSTUME_OF[k]; Object.assign(COSTUME_OF, map || {}); }
+export const GUEST_COSTUMES = {
+  cow: { body: '#fafafa', legs: '#fafafa' },
+  tiger: { body: '#f28c28', legs: '#f28c28' },
+  frog: { body: '#5cb85c', legs: '#4a9d4a' },
+  bee: { body: '#ffd23f', legs: '#2a2a2a' },
+  unicorn: { body: '#f6f0ff', legs: '#d9c8ff' },
+  clown: { body: '#ff4f6d', legs: '#3d7bd9' },
+  carrot: { body: '#f57c00', legs: '#e06c00' },
+  broccoli: { body: '#4caf50', legs: '#2e7d32' },
+  banana: { body: '#ffe135', legs: '#f2cf1d' },
+  flamingo: { body: '#ff8fb1', legs: '#ff8fb1' },
+};
+// Muster auf dem Rumpf (Rumpf-Rechteck -13,-74 … 13,-36)
+function costumeBody(g, k, t) {
+  g.save(); g.beginPath(); roundRect(g, -13, -74, 26, 38, 8); g.clip();
+  if (k === 'cow') { g.fillStyle = '#1d1d1d'; for (const [x, y, r] of [[-7, -66, 5], [6, -58, 6], [-4, -45, 4], [9, -70, 3]]) { g.beginPath(); g.ellipse(x, y, r * 1.2, r, 0.4, 0, 7); g.fill(); } }
+  if (k === 'tiger') { g.strokeStyle = '#1d1d1d'; g.lineWidth = 2.2; for (let y = -70; y < -38; y += 7) { g.beginPath(); g.moveTo(-13, y); g.quadraticCurveTo(-7, y + 3, -3, y + 1); g.moveTo(13, y + 2); g.quadraticCurveTo(7, y + 5, 3, y + 3); g.stroke(); } }
+  if (k === 'frog') { g.fillStyle = '#c8e6a0'; g.beginPath(); g.ellipse(0, -52, 8, 11, 0, 0, 7); g.fill(); }
+  if (k === 'bee') { g.fillStyle = '#1d1d1d'; for (let y = -66; y < -36; y += 10) g.fillRect(-13, y, 26, 5); }
+  if (k === 'unicorn') { const rb = ['#ff6b6b', '#ffd23f', '#6bd66b', '#6bb5ff', '#b36bff']; rb.forEach((c, i) => { g.fillStyle = c; g.fillRect(-13, -50 + i * 3, 26, 3); }); }
+  if (k === 'clown') { const dc = ['#ffd23f', '#3d7bd9', '#4caf50', '#fff']; for (let i = 0; i < 9; i++) { g.fillStyle = dc[i % 4]; g.beginPath(); g.arc(-9 + (i % 3) * 9, -68 + Math.floor(i / 3) * 11, 2.6, 0, 7); g.fill(); } g.fillStyle = '#fff'; for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(-11 + i * 4.4, -73, 3.2, 0, 7); g.fill(); } }
+  if (k === 'carrot') { g.strokeStyle = 'rgba(120,50,0,0.45)'; g.lineWidth = 1.2; for (let y = -68; y < -38; y += 6) { g.beginPath(); g.moveTo(-8 + (y % 4), y); g.lineTo(-1 + (y % 4), y + 1); g.stroke(); } }
+  if (k === 'broccoli') { g.fillStyle = '#7cc576'; for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(-8 + (i % 3) * 8, -66 + Math.floor(i / 3) * 9, 4, 0, 7); g.fill(); } }
+  if (k === 'banana') { g.strokeStyle = 'rgba(140,110,0,0.4)'; g.lineWidth = 1.2; for (const x of [-6, 0, 6]) { g.beginPath(); g.moveTo(x, -74); g.quadraticCurveTo(x + 3, -55, x, -36); g.stroke(); } g.fillStyle = '#7a5a1a'; g.beginPath(); g.arc(4, -48, 1.3, 0, 7); g.arc(-5, -62, 1, 0, 7); g.fill(); }
+  if (k === 'flamingo') { g.fillStyle = '#ffb3c9'; for (let i = 0; i < 5; i++) { g.beginPath(); g.ellipse(-8 + i * 4, -50 + (i % 2) * 4, 4, 6, 0.5, 0, 7); g.fill(); } }
+  g.restore();
+  if (k === 'bee') { g.fillStyle = 'rgba(220,240,255,0.75)'; for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * 15, -66 + Math.sin(t * 30) * 1.5, 8, 5, s * 0.6, 0, 7); g.fill(); } }
+  if (k === 'tiger' || k === 'cow') { g.strokeStyle = k === 'tiger' ? '#f28c28' : '#fafafa'; g.lineWidth = 3; g.beginPath(); g.moveTo(-12, -40); g.quadraticCurveTo(-24, -40 + Math.sin(t * 5) * 4, -22, -54); g.stroke(); g.fillStyle = k === 'tiger' ? '#1d1d1d' : '#1d1d1d'; g.beginPath(); g.arc(-22, -55, 2.4, 0, 7); g.fill(); }
+}
+// Kopfschmuck: nur oberhalb/seitlich des Gesichts (Ohren, Fühler, Blätter …); Koordinaten wie die acc-Extras (w=40,h=58)
+function costumeHead(g, k, t, back = false) {
+  const w = 40, h = 58, top = -h * 0.36;
+  if (k === 'cow') { g.fillStyle = '#f2e3c6'; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 8, top + 2); g.quadraticCurveTo(s * 13, top - 10, s * 9, top - 13); g.quadraticCurveTo(s * 10, top - 4, s * 4, top + 2); g.fill(); } g.fillStyle = '#fafafa'; for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * 21, top + 8, 7, 3.6, s * 0.4, 0, 7); g.fill(); g.fillStyle = '#ffb3c1'; g.beginPath(); g.ellipse(s * 21, top + 8, 4, 1.8, s * 0.4, 0, 7); g.fill(); g.fillStyle = '#fafafa'; } }
+  if (k === 'tiger') for (const s of [-1, 1]) { g.fillStyle = '#f28c28'; g.beginPath(); g.arc(s * 13, top + 1, 7, 0, 7); g.fill(); g.fillStyle = '#1d1d1d'; g.beginPath(); g.arc(s * 13, top + 1, 3.4, 0, 7); g.fill(); }
+  if (k === 'frog') for (const s of [-1, 1]) { g.fillStyle = '#5cb85c'; g.beginPath(); g.arc(s * 9, top - 3, 7.5, 0, 7); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(s * 9, top - 4, 5, 0, 7); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.arc(s * 9 + 1, top - 4, 2.4, 0, 7); g.fill(); }
+  if (k === 'bee') for (const s of [-1, 1]) { g.strokeStyle = '#1d1d1d'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(s * 5, top + 3); g.quadraticCurveTo(s * 8, top - 12, s * 13 + Math.sin(t * 6) * 1.5, top - 16); g.stroke(); g.fillStyle = '#1d1d1d'; g.beginPath(); g.arc(s * 13 + Math.sin(t * 6) * 1.5, top - 16, 2.6, 0, 7); g.fill(); }
+  if (k === 'unicorn') { g.fillStyle = '#ffd23f'; g.beginPath(); g.moveTo(-4, top + 2); g.lineTo(0, top - 20); g.lineTo(4, top + 2); g.fill(); g.strokeStyle = '#e0a800'; g.lineWidth = 0.8; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(-3 + i * 0.6, top - i * 5); g.lineTo(3 - i * 0.6, top - 3 - i * 5); g.stroke(); } const rb = ['#ff6b6b', '#ffd23f', '#6bd66b', '#6bb5ff', '#b36bff']; rb.forEach((c, i) => { g.fillStyle = c; g.beginPath(); g.ellipse(14 + i * 1.2, top + 4 + i * 6, 4, 5, 0.5, 0, 7); g.fill(); }); for (const s of [-1, 1]) { g.fillStyle = '#f6f0ff'; g.beginPath(); g.moveTo(s * 10, top + 2); g.lineTo(s * 13, top - 8); g.lineTo(s * 15, top + 3); g.fill(); } }
+  if (k === 'clown') { const cs = ['#ff4f6d', '#ffd23f', '#3d7bd9', '#4caf50', '#b36bff']; for (const s of [-1, 1]) for (let i = 0; i < 5; i++) { g.fillStyle = cs[i]; g.beginPath(); g.arc(s * (19 + (i % 2) * 4), top + 2 + i * 5, 5, 0, 7); g.fill(); } if (!back) { g.fillStyle = '#ff1f3d'; g.beginPath(); g.arc(0, h * 0.06, 4.2, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,0.7)'; g.beginPath(); g.arc(-1.3, h * 0.06 - 1.4, 1.2, 0, 7); g.fill(); } g.fillStyle = '#3d7bd9'; g.beginPath(); g.moveTo(-7, top + 1); g.lineTo(0, top - 18); g.lineTo(7, top + 1); g.fill(); g.fillStyle = '#ffd23f'; g.beginPath(); g.arc(0, top - 18, 3, 0, 7); g.fill(); }
+  if (k === 'carrot') for (let i = -2; i <= 2; i++) { g.fillStyle = i % 2 ? '#2e7d32' : '#43a047'; g.save(); g.translate(i * 3, top + 1); g.rotate(i * 0.3 + Math.sin(t * 4 + i) * 0.08); g.beginPath(); g.ellipse(0, -9, 3, 10, 0, 0, 7); g.fill(); g.restore(); }
+  if (k === 'broccoli') { const cs = ['#2e7d32', '#388e3c', '#43a047']; for (let i = 0; i < 7; i++) { g.fillStyle = cs[i % 3]; g.beginPath(); g.arc(-15 + i * 5, top - 3 - Math.sin(i / 6 * Math.PI) * 9, 6.5, 0, 7); g.fill(); } }
+  if (k === 'banana') { g.fillStyle = '#ffe135'; g.beginPath(); g.moveTo(-6, top + 2); g.quadraticCurveTo(0, top - 8, 6, top + 2); g.fill(); g.fillStyle = '#6d4c1a'; g.fillRect(-2, top - 14, 4, 9); }
+  if (k === 'flamingo') { g.strokeStyle = '#ff8fb1'; g.lineWidth = 4; g.beginPath(); g.moveTo(6, top + 2); g.bezierCurveTo(18, top - 10, -6, top - 18, 6, top - 30); g.stroke(); g.fillStyle = '#ff8fb1'; g.beginPath(); g.arc(7, top - 31, 5, 0, 7); g.fill(); g.fillStyle = '#fff3e0'; g.beginPath(); g.moveTo(10, top - 32); g.lineTo(17, top - 29); g.lineTo(11, top - 28); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.moveTo(15, top - 30); g.lineTo(18, top - 27); g.lineTo(14, top - 27.5); g.fill(); g.beginPath(); g.arc(7, top - 32.5, 1, 0, 7); g.fill(); }
+}
+/** Gast von hinten (Rücken zur Kamera), z.B. beim Pinkeln an der Wand. */
+export function drawPersonBack(g, x, footY, { scale = 1, color = '#5b7bd5', costume = null, hair = '#5a3d2b', t = 0, pee = false } = {}) {
+  const C = GUEST_COSTUMES[costume];
+  const body = C?.body || color, legs = C?.legs || '#333a4a';
+  g.save(); g.translate(x, footY); g.scale(scale * 1.16, scale);
+  seg(g, -6, -40, -7, -4, 9, legs); seg(g, 6, -40, 7, -4, 9, legs);
+  g.fillStyle = '#222'; roundRect(g, -14, -6, 12, 6, 3); g.fill(); roundRect(g, 2, -6, 12, 6, 3); g.fill();
+  g.fillStyle = body; roundRect(g, -13, -74, 26, 38, 8); g.fill();
+  if (costume) costumeBody(g, costume, t);
+  seg(g, -12, -68, -6, -46, 8, body); seg(g, 12, -68, 6, -46, 8, body); // Arme nach vorn
+  g.scale(1 / 1.16, 1);
+  g.fillStyle = hair; g.beginPath(); g.ellipse(0, -90, 13, 15, 0, 0, 7); g.fill();
+  g.fillStyle = 'rgba(0,0,0,0.12)'; g.beginPath(); g.ellipse(0, -84, 10, 8, 0, 0, 7); g.fill();
+  g.fillStyle = SKIN; for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * 12.5, -89, 2.6, 4, 0, 0, 7); g.fill(); }
+  if (costume) { g.save(); g.translate(0, -88); costumeHead(g, costume, t, true); g.restore(); }
+  g.restore();
+  if (pee) { // gelber Bogen vor ihm an die Wand + Pfütze
+    g.save(); g.translate(x, footY); g.scale(scale, scale);
+    g.strokeStyle = 'rgba(255,214,0,0.9)'; g.lineWidth = 2.2; g.setLineDash([5, 3]); g.lineDashOffset = -t * 40;
+    g.beginPath(); g.moveTo(2, -42); g.quadraticCurveTo(16, -52, 22, -18); g.stroke(); g.setLineDash([]);
+    g.fillStyle = 'rgba(255,214,0,0.45)'; g.beginPath(); g.ellipse(20, -1, 10 + Math.min(8, t * 2), 2.4, 0, 0, 7); g.fill();
+    g.restore();
+  }
+}
+
 const KID_FACES = new Set();
 export function setKidFaces(list) { KID_FACES.clear(); for (const f of list || []) KID_FACES.add(f); }
-export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wave = true, oma = false, scale = 1, expr = 'happy', run = false, pet = false, emojiHead = null, acc = null, twerk = false, suit = null }) {
+export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wave = true, oma = false, scale = 1, expr = 'happy', run = false, pet = false, emojiHead = null, acc = null, twerk = false, suit = null, costume = null }) {
   const fixed = assets.config.guestColors?.[faceKey]; if (fixed) color = fixed; // Lieblingsfarbe einer Person
+  costume ||= COSTUME_OF[faceKey] || null; const COS = GUEST_COSTUMES[costume]; if (COS) color = COS.body;
   const kid = !pet && KID_FACES.has(faceKey); if (kid) scale *= 0.76;
   const track = suit === 'track'; if (track) color = '#1f7a3a';
   const tstripe = (x1, y1, x2, y2, side) => { if (!track) return; for (const off of [1.6, 3, 4.4]) { const dx = x2 - x1, dy = y2 - y1, l = Math.hypot(dx, dy) || 1, nx = -dy / l * off * side, ny = dx / l * off * side; g.strokeStyle = '#ffffff'; g.lineWidth = 0.9; g.lineCap = 'butt'; g.beginPath(); g.moveTo(x1 + nx * 0.6, y1 + ny * 0.6); g.lineTo(x2 + nx * 0.6, y2 + ny * 0.6); g.stroke(); } g.lineCap = 'round'; };
@@ -1094,11 +1195,12 @@ export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wav
   const face = (fx, fy) => {
     g.save(); g.translate(fx, 0); g.scale(1 / BW, 1); g.translate(-fx, 0);
     if (faceKey) drawFaceOn(g, faceKey, expr, fx, fy, kid ? 26 : 21); else if (emojiHead) emoji(g, emojiHead, fx, fy - 18, 40);
+    if (COS) { g.save(); g.translate(fx, fy - 17); costumeHead(g, costume, t); g.restore(); }
     if (acc?.length) { g.save(); g.translate(fx, fy - 21 + 4); const set = new Set(acc); const w = 40, h = 58; if (set.has('afro')) drawAfro(g, w, h, t); if (set.has('starshades')) drawStarShades(g, w, h, t); if (set.has('stache')) drawStache(g, w, h); if (set.has('boa')) drawBoa(g, w, h, t); if (set.has('cowboyhat')) drawCowboyHat(g, w, h); if (set.has('hearteyes')) drawHeartEyes(g, w, h, t); if (set.has('sequins')) { for (let k = 0; k < 14; k++) { const tw = (Math.sin(t * 6 + k * 1.7) + 1) / 2; g.fillStyle = `rgba(255,255,255,${0.3 + tw * 0.7})`; const sx = ((k * 37) % 26) - 13, sy = 26 + ((k * 23) % 36); g.beginPath(); g.arc(sx, sy, 1 + tw * 1.4, 0, 7); g.fill(); } } if (set.has('choco')) { g.fillStyle = 'rgba(74,42,23,0.92)'; for (let k = 0; k < 6; k++) { g.beginPath(); g.arc(Math.sin(k * 2.3) * w * 0.25, h * 0.05 + Math.cos(k * 1.7) * h * 0.2, w * (0.12 + (k % 2) * 0.06), 0, 7); g.fill(); } } g.restore(); }
     g.restore();
   };
   g.scale(BW, 1);
-  const legC = track ? '#1f7a3a' : oma ? '#6b5b4b' : '#333a4a';
+  const legC = COS ? COS.legs : track ? '#1f7a3a' : oma ? '#6b5b4b' : '#333a4a';
   if (run) {
     const ph = t * 14, bob = Math.abs(Math.sin(ph)) * 3;
     g.translate(0, 3 - bob); g.rotate(0.12); // Füße auf den Boden
@@ -1110,6 +1212,7 @@ export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wav
       g.fillStyle = track ? '#f4f4f4' : '#222'; roundRect(g, f[0] - 5, f[1] - 3, 13, 6, 3); g.fill();
     }
     g.fillStyle = color; roundRect(g, -13, -74, 26, 38, 8); g.fill();
+    if (COS) costumeBody(g, costume, t);
     if (track) { g.fillStyle = '#ffffff'; g.fillRect(-0.6, -72, 1.4, 34); g.fillRect(-13, -40, 26, 2); g.fillRect(-7, -75, 14, 2.4); }
     for (const off of [0, Math.PI]) {
       const a = -Math.sin(ph + off) * 0.9, e = pt(0, -68, a, 15), h = pt(e[0], e[1], a + 1.4, track ? 11 : 13);
@@ -1127,6 +1230,7 @@ export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wav
   g.fillStyle = oma ? '#8a5aa8' : color;
   if (oma) { g.beginPath(); g.moveTo(-14, -72); g.lineTo(14, -72); g.lineTo(18, -30); g.lineTo(-18, -30); g.closePath(); g.fill(); }
   else { roundRect(g, -13, -74, 26, 38, 8); g.fill(); }
+  if (COS) costumeBody(g, costume, t);
   // Arme
   const w = wave ? Math.sin(t * 9) * 0.5 : 0;
   seg(g, -12, -68, -20, -46, 8, oma ? '#8a5aa8' : color);
@@ -1202,7 +1306,7 @@ export function drawHero(g, x, y, { pose = 'fly', t = 0, zombie = false, scale =
     C.drawTop?.(g, hx, hy - 42, t);
   };
   const heldHook = (fx, fy) => { if (C.held) emoji(g, C.held, fx + 4, fy - 4, 16); };
-  const wings = (cx, cy) => { if (!C.wings) return; g.fillStyle = 'rgba(255,255,255,0.92)'; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx, cy); g.quadraticCurveTo(cx + s * 30, cy - 34 + Math.sin(t * 10) * 4, cx + s * 40, cy - 6); g.quadraticCurveTo(cx + s * 22, cy - 2, cx, cy + 10); g.fill(); g.strokeStyle = '#cfd8dc'; g.lineWidth = 1; g.stroke(); } };
+  const wings = (cx, cy) => { if (!C.wings) return; g.fillStyle = C.wingCol || 'rgba(255,255,255,0.92)'; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx, cy); g.quadraticCurveTo(cx + s * 30, cy - 34 + Math.sin(t * 10) * 4, cx + s * 40, cy - 6); g.quadraticCurveTo(cx + s * 22, cy - 2, cx, cy + 10); g.fill(); g.strokeStyle = '#cfd8dc'; g.lineWidth = 1; g.stroke(); } };
   const capePiece = (sx, sy, ex, ey, wave) => ({
     path: (g) => {
       g.moveTo(sx - 7, sy);

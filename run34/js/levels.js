@@ -762,16 +762,82 @@ export const SCENES = {
   },
 
   // Köln: Dom mit Doppeltürmen, Hohenzollernbrücke über den Rhein, Karnevalszug
-  koeln(g, V, off, t) {
+  // Köln, Karnevalsabend: Altstadt-Giebelhäuser (Fischmarkt/Frankenwerft-Stil), Groß St. Martin, Dom,
+  // Kneipen mit warmem Licht und Musik aus den Türen, dazwischen ab und zu das Lommerzheim (Lommi, Deutz)
+  koeln(g, V, off, t, lv) {
     const gy = V.groundY;
-    sky(g, V, '#88c4ec', '#eef6ff'); clouds(g, V, off);
-    once(V, off, 0.1, 1500, 400, (x) => { const c = '#4a4a52'; gothicSpire(g, x, gy - 40, 34, 270, c); gothicSpire(g, x + 90, gy - 40, 34, 270, c); g.fillStyle = c; g.fillRect(x + 20, gy - 160, 90, 120); g.fillRect(x + 110, gy - 130, 140, 90); g.beginPath(); g.moveTo(x + 110, gy - 130); g.lineTo(x + 180, gy - 175); g.lineTo(x + 250, gy - 130); g.fill(); g.fillStyle = 'rgba(255,210,120,0.4)'; g.beginPath(); g.arc(x + 62, gy - 120, 18, 0, TAU); g.fill(); });
-    sea(g, V, off, t, gy - 40, '#5b7d8c', '#8fb0bd');
-    rep(V, off, 0.22, 600, (x) => { g.strokeStyle = '#6f8f86'; g.lineWidth = 3; for (let a = 0; a < 3; a++) { g.beginPath(); g.moveTo(x + a * 120, gy - 40); g.quadraticCurveTo(x + a * 120 + 60, gy - 110, x + a * 120 + 120, gy - 40); g.stroke(); for (let i = 1; i < 6; i++) { const u = i / 6; g.beginPath(); g.moveTo(x + a * 120 + u * 120, gy - 40); g.lineTo(x + a * 120 + u * 120, gy - 40 - 280 * u * (1 - u) * 0.85 * 0.85); g.stroke(); } } g.fillStyle = '#6f8f86'; g.fillRect(x, gy - 44, 360, 5); });
-    rep(V, off, 0.55, 500, (x) => { g.fillStyle = '#e53935'; roundRect(g, x, gy - 70, 150, 46, 6); g.fill(); g.fillStyle = '#fff'; for (let i = 0; i < 5; i++) g.fillRect(x + 10 + i * 28, gy - 66, 14, 38); emoji(g, '🤡', x + 75, gy - 92, 34); g.fillStyle = '#222'; g.beginPath(); g.arc(x + 30, gy - 22, 10, 0, TAU); g.arc(x + 120, gy - 22, 10, 0, TAU); g.fill(); });
-    for (let i = 0; i < 30; i++) { g.fillStyle = ['#e53935', '#fff', '#ffd23f', '#1e88e5'][i % 4]; g.fillRect(wrap(i * 41 - off * 0.3 + Math.sin(t + i) * 8, V.w), wrap(i * 29 + t * 50, gy), 3, 3); }
-    crowd(g, V, off, 0.5, t, '#5a2a3a', 10, 4, -6);
-    cobble(g, V, off);
+    sky(g, V, '#1d2a5c', '#e58a6a');
+    g.fillStyle = 'rgba(255,255,255,0.8)'; for (let i = 0; i < 20; i++) { g.beginPath(); g.arc((i * 97) % V.w, (i * 37) % (gy * 0.4), 0.9, 0, TAU); g.fill(); }
+    // Dom (zwei Türme) + Groß St. Martin (Vierungsturm mit vier schlanken Ecktürmchen)
+    once(V, off, 0.08, 1700, 520, (x) => {
+      const c = '#2f2b3d'; gothicSpire(g, x, gy - 40, 34, 280, c); gothicSpire(g, x + 92, gy - 40, 34, 280, c);
+      g.fillStyle = c; g.fillRect(x + 20, gy - 170, 92, 130); g.fillRect(x + 112, gy - 130, 150, 90); g.beginPath(); g.moveTo(x + 112, gy - 130); g.lineTo(x + 186, gy - 178); g.lineTo(x + 262, gy - 130); g.fill();
+      g.fillStyle = 'rgba(255,200,110,0.35)'; g.beginPath(); g.arc(x + 66, gy - 125, 16, 0, TAU); g.fill();
+    });
+    once(V, off, 0.1, 1300, 120, (x) => {
+      const c = '#4a3f4f';
+      g.fillStyle = c; g.fillRect(x, gy - 200, 60, 200);
+      g.beginPath(); g.moveTo(x - 4, gy - 200); g.lineTo(x + 30, gy - 250); g.lineTo(x + 64, gy - 200); g.fill();
+      for (const tx of [x - 10, x + 58]) { g.fillRect(tx, gy - 220, 12, 140); g.beginPath(); g.moveTo(tx - 2, gy - 220); g.lineTo(tx + 6, gy - 248); g.lineTo(tx + 14, gy - 220); g.fill(); }
+      g.fillStyle = 'rgba(255,214,140,0.5)'; for (let i = 0; i < 3; i++) g.fillRect(x + 12 + i * 14, gy - 180, 7, 18);
+    });
+    // Reihe schmaler bunter Giebelhäuser mit Licht in den Fenstern
+    const cols = ['#e8c35a', '#e48a8a', '#9cc3d8', '#a8c98a', '#f0d9b0', '#d97b57', '#c6a8d6', '#f2a65a'];
+    rep(V, off, 0.3, 64, (x, k) => {
+      const i = ((k % 8) + 8) % 8, h = 120 + ((k * 37 % 50) + 50) % 50, top = gy - h;
+      g.fillStyle = cols[i]; g.fillRect(x, top, 62, h);
+      // Giebel: abwechselnd Treppen- und Spitzgiebel
+      g.beginPath();
+      if (k % 2) { g.moveTo(x, top); for (let st = 0; st < 3; st++) { g.lineTo(x + st * 8, top - st * 9 - 9); g.lineTo(x + st * 8 + 8, top - st * 9 - 9); } g.lineTo(x + 31, top - 34); for (let st = 2; st >= 0; st--) { g.lineTo(x + 62 - st * 8 - 8, top - st * 9 - 9); g.lineTo(x + 62 - st * 8, top - st * 9 - 9); } g.lineTo(x + 62, top); }
+      else { g.moveTo(x, top); g.lineTo(x + 31, top - 30); g.lineTo(x + 62, top); }
+      g.fill();
+      g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(x + 60, top, 2, h);
+      for (let r = 0; r < Math.floor((h - 50) / 26); r++) for (let c = 0; c < 2; c++) {
+        const on = ((k * 7 + r * 3 + c) % 5) !== 0, wx = x + 12 + c * 24, wy = top + 10 + r * 26;
+        g.fillStyle = on ? '#ffd98a' : '#3a3550'; g.fillRect(wx, wy, 14, 18);
+        if (on) { g.fillStyle = 'rgba(255,200,110,0.25)'; g.fillRect(wx - 3, wy - 3, 20, 24); }
+        g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(wx + 6.5, wy, 1, 18);
+      }
+      // Karnevalswimpel rot-weiß zwischen den Häusern
+      g.fillStyle = k % 2 ? '#d62828' : '#fff'; g.beginPath(); g.moveTo(x, top + 4); g.lineTo(x + 10, top + 4); g.lineTo(x + 5, top + 14); g.fill();
+    });
+    // Kneipen im Erdgeschoss: warmes Licht, offene Tür, Musiknoten schweben heraus
+    const pubs = S(lv, 'pubs', null) || ['BRAUHAUS', 'KÖLSCH', 'ZUM KÖBES', 'EM KÜMPCHE', 'FRÜH'];
+    rep(V, off, 0.45, 300, (x, k) => {
+      const name = pubs[((k % pubs.length) + pubs.length) % pubs.length];
+      g.fillStyle = '#5b3a24'; g.fillRect(x + 10, gy - 70, 170, 70);
+      g.fillStyle = '#ffcf7a'; g.fillRect(x + 20, gy - 58, 50, 36); g.fillRect(x + 120, gy - 58, 50, 36);
+      g.fillStyle = 'rgba(80,40,10,0.45)'; for (const wx of [x + 20, x + 120]) { g.fillRect(wx + 24, gy - 58, 2, 36); g.fillRect(wx, gy - 42, 50, 2); }
+      g.fillStyle = '#ffb347'; g.fillRect(x + 80, gy - 56, 30, 56);
+      const gl = g.createRadialGradient(x + 95, gy - 20, 4, x + 95, gy - 20, 70); gl.addColorStop(0, 'rgba(255,200,110,0.5)'); gl.addColorStop(1, 'rgba(255,200,110,0)'); g.fillStyle = gl; g.beginPath(); g.arc(x + 95, gy - 20, 70, 0, TAU); g.fill();
+      sign(g, name, x + 95, gy - 82, { bg: '#2a1a10', fg: '#ffd98a', size: 11 });
+      g.font = '900 14px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center';
+      for (let i = 0; i < 4; i++) { const u = (t * 0.45 + i * 0.25 + k * 0.13) % 1; g.globalAlpha = 1 - u; g.fillStyle = ['#ffd23f', '#ff8fb1', '#fff', '#8fd3ff'][i]; g.fillText(i % 2 ? '♪' : '♫', x + 95 + Math.sin(u * 7 + i) * 16, gy - 50 - u * 90); }
+      g.globalAlpha = 1;
+    });
+    // Lommerzheim: bewusst schäbige alte Fassade, braunes Holz, „Päffgen Kölsch“, Licht brennt noch
+    once(V, off, 0.45, 2200, 900, (x) => {
+      g.fillStyle = '#b7a58c'; g.fillRect(x, gy - 170, 200, 170);
+      g.fillStyle = 'rgba(80,60,40,0.25)'; for (const [px, py, r] of [[30, -150, 14], [150, -130, 18], [90, -110, 10], [170, -160, 8]]) { g.beginPath(); g.ellipse(x + px, gy + py, r * 1.4, r, 0.3, 0, TAU); g.fill(); }
+      g.fillStyle = '#c9b89e'; g.fillRect(x - 4, gy - 176, 208, 8);
+      for (let c = 0; c < 4; c++) { g.fillStyle = '#ffd98a'; g.fillRect(x + 18 + c * 46, gy - 150, 24, 30); g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(x + 18 + c * 46, gy - 150, 24, 6); }
+      g.fillStyle = '#4b2e1a'; g.fillRect(x, gy - 92, 200, 92);
+      g.fillStyle = '#3a2213'; for (let i = 0; i < 200; i += 12) g.fillRect(x + i, gy - 92, 2, 92);
+      g.fillStyle = '#ffcf7a'; g.fillRect(x + 16, gy - 74, 54, 40); g.fillRect(x + 130, gy - 74, 54, 40);
+      g.fillStyle = 'rgba(255,255,255,0.55)'; for (const wx of [x + 16, x + 130]) for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(wx + 5 + i * 9, gy - 74, 4.5, 0, Math.PI); g.fill(); } // Gardinen
+      g.fillStyle = '#ffb347'; g.fillRect(x + 84, gy - 70, 32, 70);
+      const gl = g.createRadialGradient(x + 100, gy - 40, 4, x + 100, gy - 40, 90); gl.addColorStop(0, 'rgba(255,200,110,0.55)'); gl.addColorStop(1, 'rgba(255,200,110,0)'); g.fillStyle = gl; g.beginPath(); g.arc(x + 100, gy - 40, 90, 0, TAU); g.fill();
+      g.fillStyle = '#2a1a10'; roundRect(g, x + 30, gy - 112, 140, 18, 3); g.fill();
+      g.fillStyle = '#f2e6c8'; g.font = 'italic 900 13px serif'; g.textAlign = 'center'; g.fillText('Lommerzheim', x + 100, gy - 98);
+      g.fillStyle = '#c8102e'; roundRect(g, x + 150, gy - 136, 44, 18, 9); g.fill(); g.fillStyle = '#fff'; g.font = '900 6px sans-serif'; g.fillText('PÄFFGEN', x + 172, gy - 128); g.fillText('KÖLSCH', x + 172, gy - 121);
+      g.font = '900 16px ui-rounded, system-ui, sans-serif';
+      for (let i = 0; i < 5; i++) { const u = (t * 0.5 + i * 0.2) % 1; g.globalAlpha = 1 - u; g.fillStyle = ['#ffd23f', '#ff8fb1', '#fff', '#8fd3ff', '#b2ff8f'][i]; g.fillText(i % 2 ? '♪' : '♫', x + 100 + Math.sin(u * 6 + i) * 22, gy - 60 - u * 110); }
+      g.globalAlpha = 1;
+    });
+    // Konfetti in Kölner Farben
+    for (let i = 0; i < 30; i++) { g.fillStyle = ['#d62828', '#fff', '#ffd23f', '#1e88e5'][i % 4]; g.fillRect(wrap(i * 41 - off * 0.3 + Math.sin(t + i) * 8, V.w), wrap(i * 29 + t * 50, gy), 3, 3); }
+    crowd(g, V, off, 0.5, t, '#3a1f35', 10, 4, -6);
+    cobble(g, V, off, '#7d7a80', '#5c5960');
   },
 
   // Spieleabend: Tisch mit Siedler-Spielbrett und Canasta-Karten
@@ -1499,6 +1565,12 @@ function hatSanta(g, x, y, c = '#d62839') { g.fillStyle = c; g.beginPath(); g.mo
 function hatChef(g, x, y) { g.fillStyle = '#fff'; g.fillRect(x - 9, y - 10, 18, 10); g.beginPath(); g.arc(x - 6, y - 14, 7, 0, TAU); g.arc(x + 6, y - 14, 7, 0, TAU); g.arc(x, y - 18, 8, 0, TAU); g.fill(); }
 function hatCowboy(g, x, y) { g.fillStyle = '#8d5a33'; g.beginPath(); g.ellipse(x, y, 20, 4, 0, 0, TAU); g.fill(); roundRect(g, x - 10, y - 14, 20, 14, 5); g.fill(); g.fillStyle = '#5d3a1f'; g.fillRect(x - 10, y - 5, 20, 3); }
 function halo(g, x, y, t) { g.strokeStyle = '#ffd23f'; g.lineWidth = 2.5; g.shadowColor = '#ffd23f'; g.shadowBlur = 10; g.beginPath(); g.ellipse(x, y - 6 + Math.sin(t * 3), 12, 3.5, 0, 0, TAU); g.stroke(); g.shadowBlur = 0; }
+function flamingoHead(g, x, y, t) { // Flamingohals wächst aus dem Kopf nach oben, Gesicht bleibt frei
+  g.strokeStyle = '#ff8fb1'; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath(); g.moveTo(x + 4, y + 2); g.bezierCurveTo(x + 18, y - 10, x - 8, y - 20, x + 6, y - 34 + Math.sin((t || 0) * 4) * 2); g.stroke();
+  g.fillStyle = '#ff8fb1'; g.beginPath(); g.arc(x + 7, y - 35, 6, 0, TAU); g.fill();
+  g.fillStyle = '#fff3e0'; g.beginPath(); g.moveTo(x + 11, y - 37); g.lineTo(x + 20, y - 33); g.lineTo(x + 12, y - 31); g.fill();
+  g.fillStyle = '#111'; g.beginPath(); g.moveTo(x + 17, y - 34.5); g.lineTo(x + 21, y - 31); g.lineTo(x + 16, y - 31.5); g.fill(); g.beginPath(); g.arc(x + 8, y - 37, 1.2, 0, TAU); g.fill();
+}
 function catEars(g, x, y) { g.fillStyle = '#e8843a'; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(x + s * 4, y + 2); g.lineTo(x + s * 13, y - 12); g.lineTo(x + s * 14, y + 4); g.fill(); } }
 export const COSTUMES = {
   classic: {},
@@ -1530,6 +1602,7 @@ export const COSTUMES = {
   groom: { suit: '#111', suit2: '#000', cape: '#111', trunk: '#111', belt: '#fff', emblem: '💍', held: '💐' },
   waiter: { suit: '#111', suit2: '#000', cape: '#fafafa', trunk: '#111', belt: '#fff', held: '🍽️' },
   kerb: { suit: '#1565c0', suit2: '#0d47a1', cape: '#fafafa', trunk: '#1565c0', belt: '#ffd23f', held: '🏳️' },
+  flamingo: { suit: '#ff8fb1', suit2: '#f06292', cape: '#ff8fb1', trunk: '#f06292', belt: '#fff', wings: 1, wingCol: 'rgba(255,170,200,0.95)', draw: flamingoHead, held: '🍻' },
   stars: { suit: '#1e3a8a', suit2: '#162d6b', cape: '#b22234', trunk: '#b22234', belt: '#fff', emblem: '★', draw: hatCowboy, held: '🗽' },
   pirate: { suit: '#fafafa', suit2: '#d6d6d6', cape: '#111', trunk: '#111', belt: '#c9a227', hat: '🏴‍☠️', held: '🗡️' },
   winzer: { suit: '#6b8e23', suit2: '#556b1f', cape: '#7b1f3a', trunk: '#556b1f', held: '🍷' },
@@ -1563,7 +1636,7 @@ export const LEVELS = {
   L15: { icon: '🎄', scene: ['xmasRoom', 'omaXmas'], music: 'deckhalls', len: 105, obstacles: { gift: 3, snowman: 2, smalltree: 2, candlebig: 2 }, items: ['eierlikoer', 'cookie2', 'wine'], quest: { item: 'cookie2', n: 12 }, hero: 'santa' },
   L16: { icon: '🎡', scene: 'plaerrer', music: 'volksfest', len: 105, obstacles: { 'maß': 3, hayball: 2, carousel: 1, target: 2, dartboard: 2 }, items: ['brezn', 'lebherz', 'domsign'], quest: { item: 'domsign', n: 6 }, hero: 'lederhosen', party: 1, goalRain: '👶' },
   L17: { icon: '🏖️', scene: ['sicily', 'apulia'], music: 'mobile', len: 105, obstacles: { sandcastle: 2, crab: 2, gull: 3, wave: 2, vespa: 2 }, items: ['gelato', 'pizza', 'mussel', 'cocktail'], badItems: ['fig'], bad: 0.3, quest: { avoid: 'fig' }, hero: 'baywatch', figStory: 1 },
-  L18: { icon: '🎭', scene: 'koeln', music: 'cancan', len: 105, obstacles: { confetti: 2, dancer: 2, clown: 2, flyball: 3 }, items: ['kamelle', 'struessjer', 'koelsch'], quest: { item: 'kamelle', n: 15 }, hero: 'prince', party: 1 },
+  L18: { icon: '🎭', scene: 'koeln', music: 'cancan', len: 105, obstacles: { confetti: 2, dancer: 2, clown: 2, flyball: 3 }, items: ['kamelle', 'struessjer', 'koelsch'], quest: { item: 'kamelle', n: 15 }, hero: 'flamingo', party: 1, outfit: { top: 'blazer', topColor: 'd', bottom: 'matrose', socks: 'none', shoes: 'docs', extra: ['tophat', 'sweep'] } }, // Kim als Schornsteinfegerin, Christoph als Flamingo
   L19: { icon: '🎲', scene: 'gameNight', music: 'tetris', len: 120, obstacles: { dice: 3, robber: 2, hourfly: 3 }, items: ['card'], quest: { set: ['wood', 'clay', 'woolres', 'grain', 'ore'] }, hero: 'joker' },
   L20: { icon: '⏳', scene: 'timeclash', world: 'party', music: 'retro', mp3: 'teenage', len: 150, superDrink: 'superdrink', obstacles: { speaker: 3, crate: 3, hourglass: 2, discoball: 3 }, items: ['cocktail2', 'water'], quest: { survive: 1 }, hero: 'dj', checkpoint: 1, party: 1 },
   L21: { icon: '🐒', scene: 'serengeti', world: 'zoo', music: 'safari', len: 105, obstacles: { banana: 3, fence: 2, jeep: 2, parrot: 3, zebra: 1 }, items: ['monkey'], quest: { item: 'monkey', n: 8 }, hero: 'tarzan' },

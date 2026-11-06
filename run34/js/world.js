@@ -1,5 +1,5 @@
 // Spiellogik: Physik, Hindernisse, Items, Power-ups, Cameos, Hintergründe.
-import { drawCharacter, drawCat, drawPerson, drawHero, drawFan, drawRollatorOma, star, roundRect, setKidFaces, setCatStyle, drawTwerkFall } from './character.js';
+import { drawCharacter, drawCat, drawPerson, drawHero, drawFan, drawRollatorOma, star, roundRect, setKidFaces, setCatStyle, drawTwerkFall, setCostumes, drawPersonBack } from './character.js';
 import { assets, getFace } from './assets.js';
 import { Particles } from './fx.js';
 import { sfx } from './audio.js';
@@ -89,6 +89,7 @@ export class Game {
     this.green = this.outfit.top === 'green' && mode !== 'horror';
     this.hour = new Date().getHours();
     this.boxSpawned = false; this.fipsT = 0; this.savedBiome = null;
+    setCostumes(mode !== 'attract' && Array.isArray(this.lvP?.guests) ? Object.fromEntries(this.lvP.guests.filter((c) => c.costume).map((c) => [c.face, c.costume])) : {});
     if (mode !== 'attract') { setKidFaces(this.lvP?.kids); assets.kidMode = !!this.lvP?.kid; assets.kidFace = this.lvP?.kidFace || null; setCatStyle({ boots: this.lv?.catBoots }); } else { assets.kidMode = false; setCatStyle({}); }
     // Heidi versteckt sich im Geburtstags-Modus (und im Finale) hinter einem Busch -> Antippen = Pilzwald
     this.heidiOn = mode === 'birthday' || level === 'L38'; this.heidiPeek = null; this.nextHeidi = rand(12, 55); this.heidiDone = false; // nur ein einziger Auftritt pro Lauf, Zeitpunkt zufällig
@@ -1436,6 +1437,16 @@ export class Game {
   drawCameo(g, c) {
     const V = this.V;
     if (c.mini && !this.miniDone) { g.globalAlpha = 0.6 + Math.sin(c.t * 6) * 0.4; emoji(g, '👟', c.x + 22, V.groundY - 150, 18); emoji(g, '✨', c.x - 20, V.groundY - 140, 14); g.globalAlpha = 1; }
+    if (c.pee) { // steht mit dem Rücken zu uns an der Litfaßsäule und pinkelt 🙈
+      const lx = c.x + 30, gy = V.groundY;
+      g.fillStyle = '#6b7f6a'; roundRect(g, lx - 2, gy - 118, 34, 118, 4); g.fill();
+      g.fillStyle = '#56685a'; g.fillRect(lx - 6, gy - 124, 42, 8); g.beginPath(); g.moveTo(lx - 6, gy - 124); g.quadraticCurveTo(lx + 15, gy - 144, lx + 36, gy - 124); g.fill();
+      for (const [py, col] of [[-108, '#ffd23f'], [-80, '#ff8fb1'], [-52, '#8fd3ff']]) { g.fillStyle = col; g.fillRect(lx + 2, gy + py, 26, 22); }
+      g.fillStyle = '#d62828'; g.font = '900 7px sans-serif'; g.textAlign = 'center'; g.fillText('ALAAF', lx + 15, gy - 94);
+      drawPersonBack(g, c.x, gy - 6, { scale: CAMEO_SCALE, costume: c.costume, hair: c.hair || '#5a3d2b', t: c.t, pee: true });
+      if (c.said && c.sayT < 3.2 && c.line) speech(g, c.x - 6, gy - 150, c.line);
+      return;
+    }
     if (c.twerkfall) { // twerkt am Rand, fällt um, rappelt sich auf (Endlosschleife)
       const st = drawTwerkFall(g, c.x, V.groundY - 6, c.t, { faceKey: c.face, color: c.color, acc: c.acc, scale: CAMEO_SCALE });
       if (st === 'impact' && !c.plumped) { c.plumped = true; sfx('smash'); this.fx.text(c.x - 40, V.groundY - 80, 'PLUMPS! 💥', { color: '#ffd23f', size: 18 }); }
