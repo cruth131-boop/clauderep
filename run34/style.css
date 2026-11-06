@@ -356,3 +356,9 @@ input[type=password] {
 @media (max-width: 600px) { #scr-over { flex-direction: column; gap: 10px; } .over-photo { width: min(44vw, 170px); margin: 0; } }
 @media (max-height: 500px) { .over-photo { width: min(28vw, 190px); } }
 #over-line { white-space: pre-line; }
+
+.lvi-videos { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 4px 0 2px; }
+.lvi-videos.hidden { display: none; }
+.lvi-videos .btn { font-size: 14px; padding: 8px 12px; }
+.panel.lvintro { max-height: calc(100vh - 12px); max-height: calc(100dvh - 12px); overflow-y: auto; }
+@media (max-height: 430px) { .panel.lvintro .big-emoji { font-size: 30px; margin: 0; } .panel.lvintro h2 { margin: 2px 0; } .panel.lvintro .faces img { width: 30px; height: 30px; } }

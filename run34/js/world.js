@@ -42,7 +42,7 @@ function weighted(obj) {
 }
 
 export class Game {
-  constructor(mode, { outfit, mercy = 0, events = {}, eggHead = false, album = [], level = null, startAt = 0, endlessLevels = null, seenVideos = false } = {}) {
+  constructor(mode, { outfit, mercy = 0, events = {}, eggHead = false, album = [], level = null, startAt = 0, endlessLevels = null, seenVideos = false, replay = null } = {}) {
     this.seenVideos = seenVideos;
     this.mode = mode;
     this.M = { ...MODES[mode] };
@@ -114,7 +114,14 @@ export class Game {
       if (this.levelPool.length) { this.worldList = shuffle(this.levelPool.slice()); this.biome = this.worldList[0]; this.stats.worlds = new Set(); }
     }
     if (this.lv) this.initLevel(startAt);
-    if (this.lv && this.lvP.introVideo && !startAt) this.beginStory({ ...this.lvP.introVideo, kind: 'scene', cinema: 1 });
+    if (this.lv && replay) { // nur Intro bzw. Outro (Abspann) nochmal ansehen, danach zurück zum Level-Bildschirm
+      this.replayOnly = true;
+      const P = this.lvP;
+      const q = replay === 'intro' ? [P.introVideo && { ...P.introVideo, kind: 'scene', cinema: 1 }]
+        : (P.events || []).filter((e) => ['scene', 'party', 'fipsplay'].includes(e.kind)).map((e) => ({ ...e })).concat(P.outroVideo ? [{ ...P.outroVideo, kind: 'scene', cinema: 1, outro: 1 }] : []);
+      this.endQueue = q.filter(Boolean);
+      if (this.endQueue.length) this.beginStory(this.endQueue.shift()); else this.replayEnd = true;
+    } else if (this.lv && this.lvP.introVideo && !startAt) this.beginStory({ ...this.lvP.introVideo, kind: 'scene', cinema: 1 });
   }
 
   levelBiome(id) {
@@ -304,6 +311,7 @@ export class Game {
         const wasCinema = !!this.story.ev.cinema;
         this.story = null;
         if (this.endQueue?.length) this.beginStory(this.endQueue.shift());
+        else if (this.replayOnly) { this.state = 'replayEnd'; this.replayEnd = true; }
         else if (this.goalReached) { this.state = 'goal'; this.goalPhase = 'cheer'; this.goalT = 0; this.speed = 0; p.expr = 'party'; p.exprT = 99; }
         else { this.state = 'run'; p.invuln = Math.max(p.invuln, wasCinema ? 0.5 : 3); this.obstacles = []; }
         if (wasCinema && !this.story) this.events.onCinema?.(false);
@@ -353,6 +361,7 @@ export class Game {
       if (this.state === 'finale' && this.speed <= 0 && !this.finaleSent) { this.finaleSent = true; this.events.onFinale?.(); }
     }
     this.biomeFade = Math.min(1, this.biomeFade + dt / 1.6);
+    if (this.replayEnd && !this.replaySent) { this.replaySent = true; this.events.onReplayDone?.(); return; }
     p.exprT -= dt; if (p.exprT <= 0) p.expr = this.state === 'dying' ? 'sad' : this.hammer > 0 ? 'vacuum' : this.baseExpr;
     p.invuln = Math.max(0, p.invuln - dt);
     p.swell = Math.max(0, p.swell - dt / 4);

@@ -181,7 +181,7 @@ $('btn-mute').addEventListener('click', async () => {
 });
 
 // ----------------------------------------------------------------- Spiel
-function startGame(mode, { level = null, startAt = 0 } = {}) {
+function startGame(mode, { level = null, startAt = 0, replay = null } = {}) {
   if (mode === 'roadtrip') lastRtStart = startAt;
   if (!isIOS) goFullscreen();
   show(null); screen = 'play'; scene = null; paused = false;
@@ -190,12 +190,12 @@ function startGame(mode, { level = null, startAt = 0 } = {}) {
   const endlessLevels = mode === 'endless' ? lvOrder().map((l) => l.id).filter((id) => id !== 'L13').concat(save.secretFound ? ['G'] : []) : null;
   input.left = input.right = input.fire = false;
   game = new Game(mode, {
-    outfit: save.outfit, mercy, eggHead, album: save.album, level, startAt, endlessLevels, seenVideos: !!(level && save.levels[level]?.done),
+    outfit: save.outfit, mercy, eggHead, album: save.album, level, startAt, endlessLevels, seenVideos: !!(level && save.levels[level]?.done) || !!replay, replay,
     events: {
-      onLevelDone,
+      onLevelDone, onReplayDone,
       onGod: (on) => { $('god-ctl').classList.toggle('hidden', !on); toast(on ? '⚡ GODMODE AN! ◀ ▶ laufen · 🚀 schießen' : 'Godmode aus', 2600); if (on) unlockAch('god'); },
       onSecret: () => { if (!save.secretFound) { save.secretFound = true; persist(); unlockAch('secret'); toast('🌿 Psst… Geheimes Level freigeschaltet!', 3200); } },
-      onCinema: (on) => { if (screen !== 'play' || !game || game.state === 'goal') return; setHud(!on); if (!on) tapHint('Tippen = Springen  ·  ⬇ = Ducken', 2600); },
+      onCinema: (on) => { if (screen !== 'play' || !game || game.state === 'goal' || game.replayOnly) return; setHud(!on); if (!on) tapHint('Tippen = Springen  ·  ⬇ = Ducken', 2600); },
       onGoal: () => { $('god-ctl').classList.add('hidden'); setHud(false); },
       onDeath: onDeath,
       onFinale: onFinale,
@@ -921,9 +921,18 @@ function showIntro(id) {
   }).join('');
   const st = save.levels[id]?.stars || 0;
   $('lvi-stars').innerHTML = lvDone(id) ? `${stars(st)} <small>Bestwert ${save.levels[id].best || 0}</small>` : '<small>⭐ Ziel · ⭐ Quest · ⭐ ohne Treffer</small>';
+  // geschaffte Level: Intro & Outro (Abspann) nochmal ansehen
+  const canIn = !!l.introVideo, canOut = !!(l.outroVideo || (l.events || []).some((e) => REPLAY_KINDS.includes(e.kind)));
+  const vids = (lvDone(id) || DEV) && (canIn || canOut);
+  $('lvi-videos').classList.toggle('hidden', !vids);
+  $('btn-lvi-intro').classList.toggle('hidden', !canIn); $('btn-lvi-outro').classList.toggle('hidden', !canOut);
   show('scr-lvintro');
 }
 $('btn-lvi-go').addEventListener('click', () => { initAudio(); startGame('level', { level: introId }); });
+const REPLAY_KINDS = ['scene', 'party', 'fipsplay'];
+$('btn-lvi-intro').addEventListener('click', () => { initAudio(); startGame('level', { level: introId, replay: 'intro' }); });
+$('btn-lvi-outro').addEventListener('click', () => { initAudio(); startGame('level', { level: introId, replay: 'outro' }); });
+function onReplayDone() { const id = introId; scene = null; game = new Game('attract', { outfit: save.outfit }); setHud(false); playMusic('menu'); showIntro(id); }
 $('btn-lvi-back').addEventListener('click', showLevels);
 
 let doneId = null;
