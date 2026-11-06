@@ -22,6 +22,7 @@ function label(g, text, x, y, size = 8, col = '#fff', bg = '#c0392b') {
 //   fly: fliegt (Ducken/Springen), move: Eigengeschwindigkeit, stack: übereinander, lab: Schild, spin: rollt
 // ---------------------------------------------------------------------------
 const EO = {
+  gator: ['🐊', 64, { draw: 'gator', move: 45 }], knee: ['🪵', 34, { draw: 'knee' }], mosquito: ['🦟', 24, { fly: 1 }],
   wool: ['🧶', 28, { spin: 1, move: 40 }], teapot: ['🫖', 30], slipper: ['🩴', 26], couch: ['🛋️', 40], pillows: ['🛏️', 36],
   bobbycar: ['🚗', 32, { move: 70, flip: 1 }], football: ['⚽', 24, { spin: 1, move: 110 }], bucket: ['🪣', 26],
   schoolbag: ['🎒', 32], trafficlight: ['🚦', 34, { tall: 1 }], lift: ['🛗', 36], sale: ['🏷️', 30, { lab: '-50%' }],
@@ -92,6 +93,25 @@ export function drawSmoker(g, x, y, s = 1, t = 0) {
   g.restore();
 }
 const CUSTOM = {
+  gator(g, x, b, o) { // Alligator kriecht heran und schnappt
+    const snap = Math.max(0, Math.sin(o.t * 5)) * 0.45, wig = Math.sin(o.t * 8) * 2;
+    g.fillStyle = 'rgba(0,0,0,0.2)'; g.beginPath(); g.ellipse(x + 34, b - 1, 32, 3, 0, 0, TAU); g.fill();
+    g.fillStyle = '#4f6b2f'; g.beginPath(); g.moveTo(x + 60, b - 6); g.quadraticCurveTo(x + 76, b - 8 + wig, x + 86, b - 3); g.quadraticCurveTo(x + 72, b - 2, x + 58, b - 2); g.fill(); // Schwanz
+    g.beginPath(); g.ellipse(x + 40, b - 8, 22, 7, 0, 0, TAU); g.fill();
+    g.fillStyle = '#3e5524'; for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(x + 24 + i * 7, b - 14); g.lineTo(x + 27 + i * 7, b - 18); g.lineTo(x + 30 + i * 7, b - 14); g.fill(); } // Rückenzacken
+    for (const lx of [26, 50]) { g.fillStyle = '#44602a'; g.fillRect(x + lx, b - 4, 5, 4); }
+    g.save(); g.translate(x + 20, b - 8); // Kopf mit Schnappmaul
+    g.fillStyle = '#4f6b2f'; g.beginPath(); g.moveTo(0, 0); g.lineTo(-20, 3); g.lineTo(-20, 6); g.lineTo(0, 6); g.fill();
+    g.save(); g.rotate(snap); g.beginPath(); g.moveTo(0, 0); g.lineTo(-21, -1); g.lineTo(-21, 3); g.lineTo(0, 4); g.fill();
+    g.fillStyle = '#fff'; for (let i = 0; i < 5; i++) { g.beginPath(); g.moveTo(-18 + i * 4, 3); g.lineTo(-16.5 + i * 4, 5.5); g.lineTo(-15 + i * 4, 3); g.fill(); }
+    g.fillStyle = '#e8d35a'; g.beginPath(); g.arc(-4, -1, 2.6, 0, TAU); g.fill(); g.fillStyle = '#111'; g.fillRect(-4.4, -2.6, 0.9, 3.4);
+    g.restore();
+    if (snap > 0.05) { g.fillStyle = '#c94a4a'; g.beginPath(); g.moveTo(0, 3); g.lineTo(-17, 3 - snap * 10); g.lineTo(-17, 4); g.fill(); }
+    g.restore();
+  },
+  knee(g, x, b) { // Zypressen-Knie aus dem Sumpfboden
+    for (const [dx, h, w] of [[4, 22, 9], [15, 30, 11], [27, 18, 8]]) { g.fillStyle = '#6d5236'; g.beginPath(); g.moveTo(x + dx - w / 2, b); g.quadraticCurveTo(x + dx - 2, b - h, x + dx, b - h); g.quadraticCurveTo(x + dx + 2, b - h, x + dx + w / 2, b); g.fill(); g.fillStyle = 'rgba(0,0,0,0.15)'; g.fillRect(x + dx, b - h + 4, 1.4, h - 4); }
+  },
   ice4(g, x, b, o) { // Eiswürfel mit eingefrorener „4“
     const cx = x + o.w / 2; const ig = g.createLinearGradient(cx - 15, b - 28, cx + 15, b); ig.addColorStop(0, '#e1f5fe'); ig.addColorStop(1, '#81d4fa');
     g.fillStyle = ig; roundRect(g, cx - 15, b - 28, 30, 28, 5); g.fill(); g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1.5; g.strokeRect(cx - 13, b - 26, 26, 24);
@@ -160,6 +180,8 @@ for (const [key, [ch, size, op = {}]] of Object.entries(EO)) {
       if (op.draw === 'parade') { o.w = 140; o.rects[0] = { x: 6, w: 126, y0: 0, y1: 22 }; }
       if (op.draw === 'puddle') { o.rects[0] = { x: 6, w: size - 12, y0: 0, y1: 6 }; }
       if (op.draw === 'facewalk') { o.rects[0] = { x: 4, w: 24, y0: 0, y1: 62 }; }
+      if (op.draw === 'gator') { o.w = 86; o.rects[0] = { x: 2, w: 66, y0: 0, y1: 15 }; }
+      if (op.draw === 'knee') { o.rects[0] = { x: 2, w: 30, y0: 0, y1: 26 }; }
     },
     draw: (g, x, b, o) => {
       if (op.draw && CUSTOM[op.draw]) { CUSTOM[op.draw](g, x, b, o); return; }
@@ -1060,22 +1082,127 @@ export const SCENES = {
     snowfall(g, V, t, off, 40);
     floor(g, V, '#e3ecf5', '#ffffff', off, () => { g.fillStyle = 'rgba(150,170,200,0.3)'; for (let i = 0; i < 20; i++) g.fillRect(wrap(i * 67 - off, V.w + 40) - 20, gy + 10 + (i % 4) * 9, 10, 2); });
   },
-  nycDay(g, V, off, t) {
+  nycDay(g, V, off, t) { // New York bei Tag: Skyline mit One World Trade Center, Brooklyn Bridge über dem East River, Taxis
     const gy = V.groundY;
-    sky(g, V, '#8ec8f2', '#eaf4ff'); clouds(g, V, off);
-    once(V, off, 0.08, 1500, 300, (x) => { g.fillStyle = '#8a9bb0'; g.fillRect(x, gy - 280, 40, 280); g.fillRect(x + 8, gy - 310, 24, 30); g.fillRect(x + 17, gy - 350, 6, 40); g.fillStyle = '#9fb0c4'; g.fillRect(x + 200, gy - 240, 36, 240); g.beginPath(); g.moveTo(x + 200, gy - 240); g.lineTo(x + 218, gy - 300); g.lineTo(x + 236, gy - 240); g.fill(); });
-    rep(V, off, 0.2, 110, (x, k) => { const h = 140 + ((k * 47) % 90 + 90) % 90; g.fillStyle = ['#b0bec5', '#a1887f', '#cfd8dc', '#90a4ae'][((k % 4) + 4) % 4]; g.fillRect(x, gy - h, 100, h); g.fillStyle = '#e3f2fd'; for (let r = 0; r < h / 18; r++) for (let i = 0; i < 6; i++) g.fillRect(x + 6 + i * 16, gy - h + 8 + r * 18, 6, 8); });
+    sky(g, V, '#7fb8ea', '#eaf4ff'); clouds(g, V, off);
+    rep(V, off, 0.12, 70, (x, k) => { const h = 120 + ((k * 61) % 120 + 120) % 120, w = 52 + (k % 3) * 8; g.fillStyle = ['#9fb1c4', '#b4c2d0', '#8fa2b6'][((k % 3) + 3) % 3]; g.fillRect(x, gy - h - 40, w, h); g.fillStyle = 'rgba(230,242,252,0.85)'; for (let r = 0; r < h / 10 - 1; r++) for (let i = 0; i < Math.floor(w / 9); i++) if ((r * 7 + i * 3 + k) % 4) g.fillRect(x + 4 + i * 9, gy - h - 34 + r * 10, 4, 5); });
+    once(V, off, 0.05, 1500, 760, (x) => { const top = gy - 232; const gr = g.createLinearGradient(x, 0, x + 50, 0); gr.addColorStop(0, '#9cc3e6'); gr.addColorStop(0.5, '#e6f2fb'); gr.addColorStop(1, '#7ea9cf'); g.fillStyle = gr; g.beginPath(); g.moveTo(x, gy - 40); g.lineTo(x + 6, top); g.lineTo(x + 44, top); g.lineTo(x + 50, gy - 40); g.fill(); g.strokeStyle = 'rgba(80,110,140,0.5)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, gy - 40); g.lineTo(x + 44, top); g.moveTo(x + 50, gy - 40); g.lineTo(x + 6, top); g.stroke(); g.fillStyle = '#d8e4ee'; g.fillRect(x + 21, top - 8, 8, 8); g.fillRect(x + 24, top - 44, 2, 36); });
+    g.fillStyle = '#5b86a8'; g.fillRect(0, gy - 42, V.w, 42); g.strokeStyle = 'rgba(255,255,255,0.4)'; g.lineWidth = 1; for (let r = 0; r < 3; r++) { g.beginPath(); for (let x = 0; x <= V.w; x += 12) g.lineTo(x, gy - 34 + r * 12 + Math.sin((x + off * 0.2) * 0.05 + t * 2) * 1.5); g.stroke(); }
+    once(V, off, 0.3, 1400, 420, (x) => {
+      const deckY = gy - 60, T1 = x + 110, T2 = x + 470, top = gy - 212;
+      g.strokeStyle = 'rgba(90,90,90,0.85)'; g.lineWidth = 1.8;
+      const cable = (ax, ay, bx, by, sagY) => { g.beginPath(); g.moveTo(ax, ay); g.quadraticCurveTo((ax + bx) / 2, sagY, bx, by); g.stroke(); };
+      cable(T1, top + 14, T2, top + 14, deckY + 60); cable(x - 120, deckY - 4, T1, top + 14, deckY - 20); cable(T2, top + 14, x + 700, deckY - 4, deckY - 20);
+      g.lineWidth = 0.6; g.strokeStyle = 'rgba(90,90,90,0.55)';
+      for (let i = 1; i < 36; i++) { const u = i / 36, px = T1 + u * (T2 - T1), cy = (1 - u) * (1 - u) * (top + 14) + 2 * (1 - u) * u * (deckY + 60) + u * u * (top + 14); g.beginPath(); g.moveTo(px, cy); g.lineTo(px, deckY); g.stroke(); }
+      for (let i = 0; i < 12; i++) { g.beginPath(); g.moveTo(T1, top + 18); g.lineTo(T1 + 16 + i * 13, deckY); g.moveTo(T2, top + 18); g.lineTo(T2 - 16 - i * 13, deckY); g.stroke(); }
+      g.fillStyle = '#4a4f5a'; g.fillRect(x - 120, deckY, 820, 9);
+      for (const tx of [T1, T2]) { const tw = 56; g.fillStyle = '#c8bfa8'; g.fillRect(tx - tw / 2, top, tw, gy - 18 - top); g.fillStyle = '#a69c86'; g.fillRect(tx + tw / 2 - 10, top, 10, gy - 18 - top); g.fillStyle = '#ddd5c2'; g.fillRect(tx - tw / 2 - 3, top - 6, tw + 6, 8); g.fillStyle = '#6f8aa6'; for (const ox of [-21, 3]) { g.beginPath(); g.moveTo(tx + ox, top + 150); g.lineTo(tx + ox, top + 98); g.lineTo(tx + ox + 9, top + 80); g.lineTo(tx + ox + 18, top + 98); g.lineTo(tx + ox + 18, top + 150); g.closePath(); g.fill(); } }
+    });
     rep(V, off, 0.5, 400, (x) => { g.fillStyle = '#fdd835'; roundRect(g, x, gy - 40, 70, 22, 6); g.fill(); roundRect(g, x + 14, gy - 54, 40, 16, 5); g.fill(); g.fillStyle = '#222'; g.fillRect(x + 4, gy - 30, 62, 3); g.beginPath(); g.arc(x + 16, gy - 18, 7, 0, TAU); g.arc(x + 54, gy - 18, 7, 0, TAU); g.fill(); g.fillStyle = '#fff'; g.font = '900 6px sans-serif'; g.textAlign = 'center'; g.fillText('TAXI', x + 34, gy - 57); });
     asphalt(g, V, off);
   },
   // New Orleans French Quarter: pastellfarbene Häuser mit schmiedeeisernen Balkonen, Jazz
-  nola(g, V, off, t) {
+  nola(g, V, off, t) { // Bourbon Street in der Abenddämmerung (nach Fotos): Galerien mit Gusseisen-Spitze, Farnkörbe, Neon, Gaslaternen
     const gy = V.groundY;
-    sky(g, V, '#ffb38a', '#ffe9c4');
-    rep(V, off, 0.3, 140, (x, k) => { const c = ['#f7c6c7', '#bde0d6', '#f9e3a3', '#c9c2f0', '#a8d8f0'][((k % 5) + 5) % 5]; g.fillStyle = c; g.fillRect(x, gy - 190, 132, 190); for (const fy of [gy - 130, gy - 60]) { g.fillStyle = '#2b2b2b'; g.fillRect(x - 4, fy, 140, 4); g.strokeStyle = '#2b2b2b'; g.lineWidth = 1.2; for (let i = 0; i < 18; i++) { g.beginPath(); g.moveTo(x - 2 + i * 8, fy); g.lineTo(x - 2 + i * 8, fy - 20); g.stroke(); g.beginPath(); g.arc(x + 2 + i * 8, fy - 14, 3, 0, TAU); g.stroke(); } g.fillRect(x - 4, fy - 22, 140, 2); } g.fillStyle = '#4e6b5b'; for (let r = 0; r < 3; r++) for (let i = 0; i < 3; i++) g.fillRect(x + 14 + i * 40, gy - 180 + r * 66, 18, 36); emoji(g, '🌿', x + 20, gy - 140, 16); });
-    rep(V, off, 0.55, 380, (x) => emoji(g, '🎷', x + 40, gy - 70 + Math.sin(t * 4) * 3, 28));
-    neon(g, 'BOURBON ST', V.w * 0.25, 28, '#ff4fa3', 14, t, 1);
-    cobble(g, V, off, '#8d8173', '#6d6357');
+    sky(g, V, '#3d4a8c', '#f2a36b');
+    // Hochhäuser des Central Business District im Hintergrund
+    rep(V, off, 0.08, 120, (x, k) => { const h = 130 + ((k * 53) % 110 + 110) % 110; g.fillStyle = '#7f8db0'; g.fillRect(x, gy - h - 60, 46, h); g.fillStyle = 'rgba(255,240,200,0.6)'; for (let r = 0; r < h / 12; r++) for (let i = 0; i < 4; i++) if ((r + i + k) % 3) g.fillRect(x + 5 + i * 10, gy - h - 54 + r * 12, 5, 5); if (k % 4 === 0) { g.fillStyle = '#8f9cbf'; g.fillRect(x + 18, gy - h - 80, 10, 20); g.beginPath(); g.moveTo(x + 16, gy - h - 80); g.lineTo(x + 23, gy - h - 96); g.lineTo(x + 30, gy - h - 80); g.fill(); } });
+    const lace = (x, y, w) => { // Gusseisen-Geländer mit Bögen
+      g.fillStyle = '#26282c'; g.fillRect(x, y, w, 3); g.fillRect(x, y - 22, w, 2);
+      g.strokeStyle = '#2f3237'; g.lineWidth = 1; for (let i = 0; i < w; i += 7) { g.beginPath(); g.moveTo(x + i, y); g.lineTo(x + i, y - 22); g.stroke(); g.beginPath(); g.arc(x + i + 3.5, y - 15, 3, 0, TAU); g.stroke(); }
+      g.strokeStyle = '#3a3d42'; g.lineWidth = 1.3; for (let i = 0; i < w; i += 28) { g.beginPath(); g.arc(x + i + 14, y - 22, 14, 0, Math.PI); g.stroke(); }
+    };
+    const fern = (x, y) => { g.strokeStyle = '#555'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(x, y - 12); g.lineTo(x, y); g.stroke(); g.fillStyle = '#6b4b2a'; g.beginPath(); g.arc(x, y + 3, 5, 0, Math.PI); g.fill(); for (let i = 0; i < 9; i++) { const a = Math.PI * (0.05 + i / 8 * 0.9); g.strokeStyle = i % 2 ? '#3f8f3a' : '#5bb04e'; g.lineWidth = 2.2; g.beginPath(); g.moveTo(x, y + 3); g.quadraticCurveTo(x + Math.cos(a) * 10, y + 2 + Math.sin(a) * 4, x + Math.cos(a) * 14, y + 6 + Math.sin(a) * 14); g.stroke(); } };
+    const cols = ['#7d3b2e', '#c9a27c', '#5f7a8c', '#a85a4a', '#d8c4a0', '#6b4a6b'];
+    const neons = ['JAZZ', 'BAR', 'OYSTERS', 'BLUES', 'LIVE MUSIC', 'HURRICANES'];
+    const ncol = ['#ff4fa3', '#3ee6b4', '#ffd23f', '#7cc6ff', '#ff7a45', '#b388ff'];
+    rep(V, off, 0.32, 150, (x, k) => {
+      const i = ((k % 6) + 6) % 6, h = 190;
+      g.fillStyle = cols[i]; g.fillRect(x, gy - h, 146, h);
+      g.fillStyle = 'rgba(0,0,0,0.12)'; for (let r = 0; r < 18; r++) g.fillRect(x, gy - h + r * 11, 146, 1);
+      for (const [fy, lit] of [[gy - 128, 1], [gy - 60, 1]]) {
+        for (let j = 0; j < 3; j++) { g.fillStyle = lit ? '#ffcf7a' : '#2a2a2a'; g.fillRect(x + 14 + j * 44, fy - 52, 22, 40); g.fillStyle = '#2e5b46'; g.fillRect(x + 10 + j * 44, fy - 52, 4, 40); g.fillRect(x + 36 + j * 44, fy - 52, 4, 40); } // Fensterläden
+        g.fillStyle = '#2b2d31'; g.fillRect(x - 6, fy, 158, 4);
+        lace(x - 6, fy, 158);
+        for (const px of [x - 4, x + 70, x + 146]) g.fillRect(px, fy, 3, 60);
+        for (let j = 0; j < 3; j++) fern(x + 20 + j * 52, fy + 6);
+      }
+      // Neon-Schild + Gaslaterne
+      neon(g, neons[i], x + 73, gy - 18, ncol[i], 12, t + k, 1);
+      g.fillStyle = '#222'; g.fillRect(x + 140, gy - 70, 3, 70); g.fillStyle = `rgba(255,200,110,${0.75 + Math.sin(t * 9 + k) * 0.15})`; g.beginPath(); g.arc(x + 141.5, gy - 74, 5, 0, TAU); g.fill();
+      if (k % 3 === 0) { g.fillStyle = '#ccc'; g.fillRect(x + 6, gy - h + 6, 1.5, 30); g.fillStyle = '#b22234'; g.fillRect(x + 7.5, gy - h + 6, 20, 13); g.fillStyle = '#fff'; for (let r = 0; r < 3; r++) g.fillRect(x + 7.5, gy - h + 8 + r * 4, 20, 1.6); g.fillStyle = '#3c3b6e'; g.fillRect(x + 7.5, gy - h + 6, 8, 7); }
+    });
+    // das berühmte rote Eckhaus mit drei umlaufenden Galerien voller Farne (zieht ab und zu vorbei)
+    once(V, off, 0.45, 1800, 700, (x) => {
+      const w = 260, h = 230;
+      g.fillStyle = '#b5523b'; g.fillRect(x, gy - h, w, h);
+      for (const fy of [gy - 168, gy - 100, gy - 36]) {
+        for (let j = 0; j < 5; j++) { g.fillStyle = '#ffe0a8'; g.beginPath(); g.moveTo(x + 14 + j * 50, fy); g.lineTo(x + 14 + j * 50, fy - 44); g.arc(x + 30 + j * 50, fy - 44, 16, Math.PI, 0); g.lineTo(x + 46 + j * 50, fy); g.fill(); g.fillStyle = '#2e5b46'; g.fillRect(x + 10 + j * 50, fy - 44, 4, 44); g.fillRect(x + 46 + j * 50, fy - 44, 4, 44); }
+        if (fy < gy - 40) { g.fillStyle = '#d8d4cc'; g.fillRect(x - 12, fy, w + 24, 5); lace(x - 12, fy, w + 24); g.fillStyle = '#d8d4cc'; for (let j = 0; j < 7; j++) g.fillRect(x - 10 + j * 46, fy, 3, 68); for (let j = 0; j < 6; j++) { g.strokeStyle = '#d8d4cc'; g.lineWidth = 1.2; g.beginPath(); g.arc(x + 13 + j * 46, fy + 68, 22, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); } for (let j = 0; j < 6; j++) fern(x + 12 + j * 46, fy + 10); }
+      }
+      g.fillStyle = '#e8e2d6'; g.fillRect(x - 14, gy - h - 6, w + 28, 8); lace(x - 14, gy - h + 2, w + 28);
+    });
+    stringLights(g, V, off, 0.45, 26, t, 240, 20, ['#ffd23f', '#ff4fa3', '#3ee6b4', '#fff']);
+    rep(V, off, 0.55, 420, (x) => emoji(g, '🎷', x + 40, gy - 96 + Math.sin(t * 4) * 3, 22));
+    cobble(g, V, off, '#6f655c', '#544c45');
+  },
+  // Sumpftour im Bayou (nach Foto): Zypressen mit Spanischem Moos, dunkelgrünes Wasser mit Spiegelungen,
+  // Airboat mit großem Käfig-Propeller, Alligatoren, die auftauchen, Seerosen, Reiher – Kimi läuft über den Holzsteg
+  swamp(g, V, off, t) {
+    const gy = V.groundY;
+    sky(g, V, '#a7c7a0', '#e3ecd2');
+    // ferner Waldrand
+    g.fillStyle = '#5d7a45'; g.beginPath(); g.moveTo(0, gy - 60); for (let x = 0; x <= V.w + 10; x += 12) g.lineTo(x, gy - 120 - Math.sin((x + off * 0.08) * 0.03) * 14 - Math.sin((x + off * 0.08) * 0.11) * 8); g.lineTo(V.w, gy - 60); g.fill();
+    // Sumpfwasser mit Spiegelungen
+    const wy = gy - 62; const wg = g.createLinearGradient(0, wy, 0, gy); wg.addColorStop(0, '#4b5e3a'); wg.addColorStop(1, '#2f3d27'); g.fillStyle = wg; g.fillRect(0, wy, V.w, gy - wy);
+    g.strokeStyle = 'rgba(220,230,200,0.25)'; g.lineWidth = 1; for (let r = 0; r < 5; r++) { g.beginPath(); for (let x = 0; x <= V.w; x += 10) g.lineTo(x, wy + 6 + r * 11 + Math.sin(x * 0.05 + t * 1.5 + r) * 1.5); g.stroke(); }
+    // Zypressen mit Spanischem Moos
+    rep(V, off, 0.25, 170, (x, k) => {
+      const tx = x + 60, th = 170 + (k % 3) * 20;
+      g.fillStyle = '#4e3d2c'; g.beginPath(); g.moveTo(tx - 16, wy + 4); g.quadraticCurveTo(tx - 6, wy - 30, tx - 5, wy - th); g.lineTo(tx + 5, wy - th); g.quadraticCurveTo(tx + 6, wy - 30, tx + 16, wy + 4); g.fill();
+      g.strokeStyle = '#4e3d2c'; g.lineWidth = 4; for (const [dx, dy] of [[-40, -th + 30], [44, -th + 46], [-30, -th + 80]]) { g.beginPath(); g.moveTo(tx, wy + dy + 10); g.lineTo(tx + dx, wy + dy); g.stroke(); }
+      for (const [cx, cy, r] of [[tx, wy - th, 40], [tx - 40, wy - th + 26, 28], [tx + 44, wy - th + 42, 30], [tx - 26, wy - th + 74, 22]]) { g.fillStyle = k % 2 ? '#4f7a38' : '#5f8a44'; g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill(); }
+      g.strokeStyle = 'rgba(222,228,206,0.9)'; g.lineWidth = 2.6; // Moos-Vorhänge (Spanisches Moos)
+      for (let m = 0; m < 22; m++) { const mx = tx - 64 + m * 6, my = wy - th + 16 + (m % 4) * 9, len = 38 + ((m * 13 + k * 7) % 34); g.beginPath(); g.moveTo(mx, my); g.quadraticCurveTo(mx + Math.sin(t + m) * 3, my + len / 2, mx + Math.sin(t * 0.8 + m) * 2, my + len); g.stroke(); }
+      g.fillStyle = 'rgba(40,52,32,0.55)'; g.fillRect(tx - 12, wy + 6, 24, 30); // Spiegelung
+    });
+    // Seerosen
+    rep(V, off, 0.4, 90, (x, k) => { g.fillStyle = '#6f9a45'; g.beginPath(); g.ellipse(x + 30, wy + 22 + (k % 3) * 8, 9, 3, 0, 0.3, TAU); g.fill(); if (k % 3 === 0) { g.fillStyle = '#f8d7e6'; g.beginPath(); g.arc(x + 32, wy + 20 + (k % 3) * 8, 2.4, 0, TAU); g.fill(); } });
+    // Alligatoren tauchen auf (Augen + Schnauze, ab und zu Maul auf)
+    rep(V, off, 0.45, 260, (x, k) => {
+      const up = Math.max(0, Math.sin(t * 0.9 + k * 1.7)), ay = wy + 30 + (k % 2) * 10 - up * 4;
+      if (up < 0.15) return;
+      g.globalAlpha = Math.min(1, up * 1.6);
+      g.fillStyle = '#3f5524'; g.beginPath(); g.ellipse(x + 40, ay, 22, 3.5, 0, Math.PI, 0); g.fill();
+      g.fillStyle = '#4f6b2f'; for (const ex of [x + 50, x + 58]) { g.beginPath(); g.arc(ex, ay - 3, 3, 0, TAU); g.fill(); } g.fillStyle = '#e8d35a'; for (const ex of [x + 50, x + 58]) { g.beginPath(); g.arc(ex, ay - 3.5, 1.3, 0, TAU); g.fill(); }
+      g.fillStyle = '#4f6b2f'; g.beginPath(); g.ellipse(x + 70, ay - 1, 10, 2.4, 0, 0, TAU); g.fill();
+      if (up > 0.95) { g.fillStyle = '#c94a4a'; g.beginPath(); g.moveTo(x + 62, ay - 2); g.lineTo(x + 82, ay - 10); g.lineTo(x + 82, ay - 1); g.fill(); g.fillStyle = '#fff'; for (let i = 0; i < 4; i++) g.fillRect(x + 66 + i * 4, ay - 4 - i * 1.5, 1.5, 2); }
+      g.strokeStyle = 'rgba(220,230,200,0.35)'; g.beginPath(); g.ellipse(x + 50, ay + 1, 30, 3, 0, 0, TAU); g.stroke();
+      g.globalAlpha = 1;
+    });
+    // Airboat mit Gästen und großem Käfig-Propeller (fährt hin und her)
+    once(V, off, 0.35, 1300, 500, (x) => {
+      const bx = x + Math.sin(t * 0.6) * 30, by = wy + 26;
+      g.fillStyle = '#e8ecef'; g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + 150, by); g.lineTo(bx + 170, by - 8); g.lineTo(bx + 10, by - 10); g.fill();
+      g.fillStyle = '#5e6a72'; g.fillRect(bx + 4, by - 3, 160, 3);
+      g.fillStyle = '#e8572c'; for (let i = 0; i < 4; i++) g.fillRect(bx + 50 + i * 22, by - 22, 16, 12);
+      const heads = ['#f3c4a2', '#dca47f', '#f3c4a2', '#c98a6a']; for (let i = 0; i < 4; i++) { g.fillStyle = ['#4fc3f7', '#ff8a65', '#81c784', '#ba68c8'][i]; g.fillRect(bx + 52 + i * 22, by - 34, 12, 14); g.fillStyle = heads[i]; g.beginPath(); g.arc(bx + 58 + i * 22, by - 39, 5, 0, TAU); g.fill(); if (i % 2) { g.strokeStyle = heads[i]; g.lineWidth = 2.4; g.beginPath(); g.moveTo(bx + 62 + i * 22, by - 32); g.lineTo(bx + 66 + i * 22, by - 46); g.stroke(); } }
+      g.strokeStyle = '#b0bec5'; g.lineWidth = 1.5; g.strokeRect(bx + 46, by - 26, 92, 16);
+      // Propeller-Käfig
+      const px = bx + 22, py = by - 40;
+      g.strokeStyle = '#8e9aa3'; g.lineWidth = 1; g.beginPath(); g.arc(px, py, 28, 0, TAU); g.stroke(); for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; g.beginPath(); g.moveTo(px, py); g.lineTo(px + Math.cos(a) * 28, py + Math.sin(a) * 28); g.stroke(); }
+      g.strokeStyle = '#8e9aa3'; g.beginPath(); for (let r = 9; r < 28; r += 6) { g.moveTo(px + r, py); g.arc(px, py, r, 0, TAU); } g.stroke();
+      g.fillStyle = 'rgba(60,60,60,0.35)'; g.beginPath(); g.ellipse(px, py, 4, 26, t * 30, 0, TAU); g.fill();
+      g.fillStyle = '#f57c00'; g.beginPath(); g.arc(px, py + 8, 8, 0, TAU); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(px, py + 8, 4.5, 0, TAU); g.fill(); // Rettungsring
+      g.fillStyle = '#5e6a72'; g.fillRect(px - 2, py + 10, 4, by - py - 12);
+      g.fillStyle = 'rgba(240,245,240,0.4)'; for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(bx - 8 - i * 9, by - 2 + Math.sin(t * 6 + i) * 1.5, 3 + i * 0.6, 0, TAU); g.fill(); } // Gischt
+      g.fillStyle = 'rgba(232,236,239,0.18)'; g.fillRect(bx + 6, by + 3, 150, 10); // Spiegelung
+    });
+    // Reiher auf einem Pfahl
+    once(V, off, 0.45, 900, 200, (x) => { g.fillStyle = '#6d5236'; g.fillRect(x, wy - 10, 5, 40); g.fillStyle = '#f4f4f0'; g.beginPath(); g.ellipse(x + 3, wy - 18, 9, 6, -0.3, 0, TAU); g.fill(); g.strokeStyle = '#f4f4f0'; g.lineWidth = 2; g.beginPath(); g.moveTo(x + 8, wy - 22); g.quadraticCurveTo(x + 14, wy - 34, x + 9, wy - 40); g.stroke(); g.fillStyle = '#e0a800'; g.beginPath(); g.moveTo(x + 9, wy - 41); g.lineTo(x + 18, wy - 39); g.lineTo(x + 9, wy - 38); g.fill(); });
+    // Holzsteg als Boden
+    floor(g, V, '#8a6a46', '#5d4530', off, () => { g.fillStyle = 'rgba(0,0,0,0.18)'; rep(V, off, 1, 22, (x) => g.fillRect(x, gy + 3, 2, 60)); g.fillStyle = '#5d4530'; rep(V, off, 1, 120, (x) => g.fillRect(x + 10, gy + 30, 8, 60)); });
   },
   // Nashville Lower Broadway: Honky-Tonks mit Neon-Gitarren, dahinter das „Batman“-Hochhaus
   nashville(g, V, off, t) {
@@ -1764,7 +1891,7 @@ export const LEVELS = {
   L27: { icon: '💍', scene: 'barn', music: 'punk', len: 150, obstacles: { hayball: 3, bench: 2, dancers: 2, bouquet: 3 }, items: ['ring', 'confetti2', 'weddingcake'], quest: { items: ['ring', 'confetti2'], n: 10 }, hero: 'groom', checkpoint: 1, party: 1, fireworks: 1, goalHearts: 1 },
   L28: { icon: '🧅', scene: 'inn', music: 'polka', len: 105, obstacles: { pan: 3, waiter: 2, bubble: 3, pubtable: 1 }, items: ['schnitzel', 'fries2', 'onion'], quest: { item: 'onion', n: 12 }, hero: 'waiter' },
   L29: { icon: '🎺', scene: 'kerb', music: 'kerbmarsch', len: 120, obstacles: { bembel: 3, trumpet: 2, drum: 2, bench: 2 }, items: ['gerippter', 'winktuch', 'saeftchen'], quest: { item: 'gerippter', n: 10 }, hero: 'kerb', party: 1 },
-  L30: { icon: '🤠', scene: ['nycDay', 'nola', 'nashville'], music: 'saints', len: 105, obstacles: { taxi: 2, hydrant: 2, sax: 3, guitar: 2 }, items: ['hotdog', 'beignet', 'cowboyhat', 'boots'], quest: { item: 'boots', n: 6 }, hero: 'stars' },
+  L30: { icon: '🤠', scene: ['nycDay', 'nola', 'swamp', 'nashville'], music: 'saints', len: 130, obstacles: { taxi: 2, hydrant: 2, skater: 1 }, items: ['hotdog', 'boots'], obstacles2: { sax: 3, hydrant: 1, trumpet: 2 }, items2: ['beignet', 'boots'], obstacles3: { gator: 4, knee: 2, mosquito: 2 }, items3: ['beignet', 'boots'], obstacles4: { guitar: 3, drum: 1, hydrant: 1 }, items4: ['cowboyhat', 'boots'], partIntro: [null, null, 'gator', null], quest: { item: 'boots', n: 6 }, hero: 'stars' },
   L31: { icon: '🏴‍☠️', scene: 'pirateBar', music: 'sailor', len: 105, obstacles: { barstool: 3, slot: 2, bottle: 2, dartboard: 2 }, items: ['asbach', 'jaegi', 'cherry'], quest: { item: 'cherry', n: 3 }, hero: 'pirate', party: 1 },
   L32: { icon: '🍷', scene: ['mainzMarkt', 'rheinufer'], music: 'minuet', len: 120, obstacles: { pigeon: 3, flowerpot: 2, umbrella: 2, bike: 2 }, items: ['wine2', 'cheese2', 'weck'], quest: { items: ['wine2', 'cheese2', 'weck'], n: 10 }, hero: 'winzer' },
   L33: { icon: '🌸', scene: 'bluetenfest', music: 'spring', len: 120, obstacles: { hayball: 3, bench: 2, flowerpot: 2, carousel: 1, bembel: 2 }, items: ['blossom', 'los'], quest: { item: 'gerippter', n: 10 }, hero: 'flowers', party: 1 },

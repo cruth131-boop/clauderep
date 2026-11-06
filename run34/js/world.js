@@ -207,6 +207,8 @@ export class Game {
     if (want >= 1 && this.lv.items2) this.biome.items = this.lv.items2;
     if (want >= 2 && this.lv.obstacles3) this.biome.obstacles = this.lv.obstacles3;
     if (want >= 2 && this.lv.items3) this.biome.items = this.lv.items3;
+    if (want >= 3 && this.lv.obstacles4) this.biome.obstacles = this.lv.obstacles4;
+    if (want >= 3 && this.lv.items4) this.biome.items = this.lv.items4;
     const intro = this.lv.partIntro?.[want]; if (intro && !silent) { this.sinceSpawn = 0; this.nextGap = 420; this.forceNext = intro; }
     if (!silent) sfx('memory');
   }
