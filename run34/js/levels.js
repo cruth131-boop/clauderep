@@ -1502,6 +1502,48 @@ export const SCENES = {
 
   // Wohnzimmer der Eltern: Fensterbank voller Pflanzen (Weihnachtsstern), Heizkörper, graubraunes Ecksofa mit Kopfstütze
   // & Recamiere, dunkle Holztruhe als Couchtisch, Vitrinenschrank, Schwingsessel, Laminat & Fliesen – plus Katzensachen
+  // Garten am Abend (nach Fotos): weiß verputztes Haus mit dunkelgrauem Sockel, dunkle Türen, Glas-Vordach,
+  // Wandlaternen an, Palmen & Yucca in Kübeln, Lavendel, Holzkiste & Milchkanne, Rasen, Gartenstühle mit kariertem Polster
+  eveGarden(g, V, off, t) {
+    const gy = V.groundY;
+    sky(g, V, '#3f4f8a', '#f2b27a');
+    g.fillStyle = 'rgba(255,255,255,0.7)'; for (let i = 0; i < 12; i++) { g.beginPath(); g.arc((i * 131) % V.w, (i * 29) % 60 + 8, 0.9, 0, TAU); g.fill(); }
+    rep(V, off, 0.3, 420, (x, k) => {
+      const top = gy - 210;
+      g.fillStyle = '#ece8e0'; g.fillRect(x, top, 412, 210);
+      g.fillStyle = 'rgba(0,0,0,0.04)'; for (let i = 0; i < 60; i++) g.fillRect(x + (i * 67) % 410, top + (i * 41) % 200, 3, 2); // Rauputz
+      g.fillStyle = '#4a4f57'; g.fillRect(x, gy - 34, 412, 34); // Sockel
+      // Fenster oben mit Licht
+      for (const wx of [x + 40, x + 160, x + 300]) { g.fillStyle = '#3b4048'; g.fillRect(wx - 3, top + 16, 62, 44); g.fillStyle = '#ffd98a'; g.fillRect(wx, top + 19, 56, 38); g.fillStyle = '#3b4048'; g.fillRect(wx + 27, top + 19, 2, 38); }
+      // Terrassentür mit Licht, dunkle Haustür mit Glas-Vordach, Wandlaterne
+      g.fillStyle = '#3b4048'; g.fillRect(x + 40, gy - 120, 70, 120); g.fillStyle = '#ffcf7a'; g.fillRect(x + 44, gy - 116, 29, 116); g.fillRect(x + 77, gy - 116, 29, 116);
+      g.fillStyle = '#3a4048'; g.fillRect(x + 210, gy - 104, 38, 104); g.fillStyle = '#2f343b'; g.fillRect(x + 214, gy - 100, 30, 96);
+      g.fillStyle = '#3a4048'; g.fillRect(x + 280, gy - 120, 40, 120); g.fillStyle = '#ffe3a6'; g.fillRect(x + 285, gy - 114, 30, 70);
+      g.fillStyle = 'rgba(200,225,240,0.6)'; g.beginPath(); g.moveTo(x + 262, gy - 132); g.quadraticCurveTo(x + 300, gy - 150, x + 340, gy - 132); g.lineTo(x + 340, gy - 128); g.lineTo(x + 262, gy - 128); g.fill();
+      for (const lx of [x + 130, x + 262]) { g.fillStyle = '#222'; g.fillRect(lx, gy - 140, 8, 14); const lg = g.createRadialGradient(lx + 4, gy - 132, 1, lx + 4, gy - 132, 40); lg.addColorStop(0, 'rgba(255,220,140,0.75)'); lg.addColorStop(1, 'rgba(255,220,140,0)'); g.fillStyle = lg; g.beginPath(); g.arc(lx + 4, gy - 132, 40, 0, TAU); g.fill(); }
+      // Holzregal mit Töpfen & Milchkanne
+      g.fillStyle = '#9c7650'; g.fillRect(x + 345, gy - 60, 50, 40); g.fillStyle = '#7a5a3a'; g.fillRect(x + 345, gy - 42, 50, 3);
+      g.fillStyle = '#b0b6bb'; roundRect(g, x + 352, gy - 82, 14, 22, 3); g.fill(); g.fillRect(x + 355, gy - 86, 8, 4);
+      g.fillStyle = '#5d6a74'; g.fillRect(x + 372, gy - 74, 14, 14);
+      // Weinranke
+      g.strokeStyle = '#4f7a2c'; g.lineWidth = 2; g.beginPath(); g.moveTo(x + 405, gy - 34); g.quadraticCurveTo(x + 395, gy - 120, x + 410, gy - 200); g.stroke();
+      for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#5f9a3c' : '#6fab46'; g.beginPath(); g.arc(x + 398 + (i % 3) * 6, gy - 60 - i * 18, 9, 0, TAU); g.fill(); }
+    });
+    // Kübelpflanzen: Palmen, Yucca, Lavendel
+    rep(V, off, 0.5, 260, (x, k) => {
+      const px = x + 30;
+      g.fillStyle = '#3d4248'; g.beginPath(); g.moveTo(px - 14, gy - 26); g.lineTo(px + 14, gy - 26); g.lineTo(px + 10, gy); g.lineTo(px - 10, gy); g.fill();
+      for (let l = 0; l < 9; l++) { g.save(); g.translate(px, gy - 26); g.rotate(-1.5 + l * 0.37 + Math.sin(t + l) * 0.03); g.fillStyle = l % 2 ? '#4f8a3a' : '#64a14a'; g.beginPath(); g.ellipse(0, -26, 3.5, 28, 0, 0, TAU); g.fill(); g.restore(); }
+      const lx = x + 120; g.fillStyle = '#6d7a80'; g.fillRect(lx - 16, gy - 18, 32, 18);
+      for (let i = 0; i < 14; i++) { const a = -2.6 + i * 0.16; g.strokeStyle = '#7d9a6a'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(lx, gy - 18); g.lineTo(lx + Math.cos(a) * 30, gy - 18 + Math.sin(a) * 30); g.stroke(); g.fillStyle = '#9a7ad6'; g.beginPath(); g.arc(lx + Math.cos(a) * 30, gy - 18 + Math.sin(a) * 30, 2.4, 0, TAU); g.fill(); }
+      // Gartenstuhl mit rot-grau kariertem Polster
+      const cx = x + 190;
+      g.fillStyle = '#3e2f28'; g.fillRect(cx, gy - 30, 46, 4); g.fillRect(cx + 2, gy - 26, 3, 26); g.fillRect(cx + 41, gy - 26, 3, 26);
+      g.fillStyle = '#b5313f'; g.fillRect(cx, gy - 36, 46, 7); g.save(); g.translate(cx + 4, gy - 34); g.rotate(-0.35); g.fillRect(-3, -40, 14, 40); g.fillStyle = 'rgba(70,70,80,0.55)'; for (let j = 4; j < 40; j += 9) g.fillRect(-3, -40 + j, 14, 2.5); g.restore();
+      g.fillStyle = 'rgba(70,70,80,0.55)'; for (let i = 4; i < 46; i += 12) g.fillRect(cx + i, gy - 36, 4, 7);
+    });
+    floor(g, V, '#5f9a3c', '#4f8a32', off, () => { g.fillStyle = 'rgba(0,0,0,0.08)'; rep(V, off, 1, 26, (x) => g.fillRect(x, gy + 6, 2, 40)); g.fillStyle = 'rgba(255,255,255,0.08)'; for (let r = 0; r < 4; r++) g.fillRect(0, gy + 10 + r * 12, V.w, 1); });
+  },
   parentsFlat(g, V, off, t) {
     const gy = V.groundY;
     g.fillStyle = '#f4f1ea'; g.fillRect(0, 0, V.w, gy);
@@ -1941,7 +1983,7 @@ export const LEVELS = {
   L6: { icon: '💸', scene: 'bank', music: 'entertainer', len: 75, obstacles: { invoice: 3, piggy: 2, tax: 2, chartfly: 2 }, items: ['coin', 'money'], quest: { item: 'money', n: 20 }, hero: 'banker', goalRain: '💸' },
   L7: { icon: '🚗', scene: 'driving', music: 'tell', len: 90, obstacles: { cone: 3, blitzer: 2, bike: 2, car: 2 }, items: ['voucher'], quest: { item: 'voucher', n: 8 }, hero: 'racer' },
   L8: { icon: '🍹', scene: 'chococino', music: 'habanera', len: 90, obstacles: { barstool: 3, bottle: 2, trays: 2 }, items: ['bluelagoon', 'bluelagoon', 'cocktail', 'cupid'], quest: { item: 'cupid', n: 10 }, hero: 'barkeeper', goalHearts: 1 },
-  L9: { icon: '🐱', scene: 'parentsFlat', music: 'turca', len: 90, obstacles: { log: 3, wool: 3, tp: 2 }, items: ['treat'], quest: { item: 'treat', n: 15 }, hero: 'catears', fipsBox: 1 },
+  L9: { icon: '🐱', scene: ['parentsFlat', 'eveGarden'], music: 'turca', len: 100, obstacles: { log: 3, wool: 3, tp: 2 }, obstacles2: { flowerpot: 3, wool: 2, gnome: 1 }, items: ['treat'], quest: { item: 'treat', n: 15 }, hero: 'catears', fipsBox: 1, kitten: 1 }, // Baby-Fips, Garten am Abend
   L10: { icon: '📚', scene: 'hola', music: 'mountain', len: 150, obstacles: { books: 3, alarm: 2, ice4: 3, grade6: 1 }, items: ['coffee', 'cheatnote'], quest: { survive: 1 }, hero: 'tutor', checkpoint: 1 },
   L11: { icon: '🎓', scene: 'uni', music: 'ode', len: 90, obstacles: { bench: 2, tray: 3, books: 2 }, items: ['fries2', 'coffee'], quest: { item: 'fries2', n: 10 }, hero: 'graduate' },
   L12: { icon: '⚖️', scene: 'wiesbaden', music: 'toccata', len: 105, obstacles: { folders: 2, barstool: 2, paragraph: 3, facewalk: 1 }, items: ['redbull', 'koelsch', 'akte'], quest: { item: 'akte', n: 8 }, hero: 'angel' },

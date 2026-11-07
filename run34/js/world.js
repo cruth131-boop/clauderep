@@ -91,7 +91,7 @@ export class Game {
     this.boxSpawned = false; this.fipsT = 0; this.savedBiome = null;
     this.fipsBoxRun = Math.random() < 0.33; // Fips' Geheimversteck nur ab und zu (Zufall pro Lauf)
     setCostumes(mode !== 'attract' && Array.isArray(this.lvP?.guests) ? Object.fromEntries(this.lvP.guests.filter((c) => c.costume).map((c) => [c.face, c.costume])) : {});
-    if (mode !== 'attract') { setKidFaces(this.lvP?.kids); assets.kidMode = !!this.lvP?.kid; assets.kidFace = this.lvP?.kidFace || null; setCatStyle({ boots: this.lv?.catBoots }); } else { assets.kidMode = false; setCatStyle({}); }
+    if (mode !== 'attract') { setKidFaces(this.lvP?.kids); assets.kidMode = !!this.lvP?.kid; assets.kidFace = this.lvP?.kidFace || null; setCatStyle({ boots: this.lv?.catBoots, kitten: this.lv?.kitten }); } else { assets.kidMode = false; setCatStyle({}); }
     // Heidi versteckt sich im Geburtstags-Modus (und im Finale) hinter einem Busch -> Antippen = Pilzwald
     this.heidiOn = mode === 'birthday' || level === 'L38'; this.heidiPeek = null; this.nextHeidi = rand(12, 55); this.heidiDone = false; // nur ein einziger Auftritt pro Lauf, Zeitpunkt zufällig
     this.miniDone = false;
@@ -442,6 +442,8 @@ export class Game {
 
   updateLevel(dt) {
     const V = this.V, L = this.lv;
+    // Einspieler / Minispiele mitten im Level (lvP.midEvents: { at: 0..1, …story-Event })
+    if (!this.story && this.state === 'run' && this.lvP.midEvents) { this.midFired ||= []; this.lvP.midEvents.forEach((ev, i) => { if (!this.midFired[i] && this.progress >= ev.at) { this.midFired[i] = true; this.items = this.items.filter((it) => it.quest); this.obstacles = []; this.beginStory({ ...ev }); } }); }
     this.checkSceneSwitch(false);
     const fam = this.cfg.family || {};
     for (const who of ['fan', 'friend']) {

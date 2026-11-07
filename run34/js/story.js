@@ -2,7 +2,8 @@
 // Designregeln: eine Geste pro Spiel, per animierter Hand gezeigt statt erklärt, 6–12 s, kein Scheitern
 // (nur mehr oder weniger Bonuspunkte), viel Feedback, eine Überraschung pro Spiel. Einspieler: zeigen statt erzählen.
 // Die Ereignisse selbst (wer, was, Texte) stehen in der privaten Config: config.levels[i].events.
-import { drawPerson, drawCat, drawHero, drawRollatorOma, roundRect, drawTwerkFall } from './character.js';
+import { drawPerson, drawCat, drawHero, drawRollatorOma, roundRect, drawTwerkFall, drawFaceOn } from './character.js';
+const TAU = Math.PI * 2;
 import { emoji } from './emoji.js';
 import { assets } from './assets.js';
 import { COSTUMES, drawIceToss } from './levels.js';
@@ -63,6 +64,9 @@ export function startStory(game, ev) {
     s.time = ev.time || 30; s.pt = 0; s.hx = V.w * 0.3; s.hy = 0; s.hvy = 0; s.target = s.hx; s.caught = 0; s.golds = 0; s.mush = []; s.dir = 1;
     for (let i = 0; i < 5; i++) s.mush.push(newMush(V, s));
     s.trees = Array.from({ length: 9 }, (_, i) => ({ x: (i + rand(0, 0.6)) * V.w / 8, s: rand(0.7, 1.25), d: i % 2 }));
+  } else if (s.kind === 'laser') { // Laserpointer: Kimi lenkt den roten Punkt, Baby-Fips jagt hinterher
+    s.time = ev.time || 12; s.phase = 'intro'; s.kimiPose = 'stand'; s.catches = 0; s.cool = 0;
+    s.dot = { x: V.w * 0.62, y: V.groundY - 30, tx: V.w * 0.62, ty: V.groundY - 30 }; s.cat = { x: V.w * 0.32, y: 0, vy: 0, dir: 1, spin: 0 };
   } else if (s.kind === 'tapgame') {
     s.n = 0; s.need = ev.n || 15; s.time = ev.time || 6; s.shake = 0;
   } else if (s.kind === 'throw') {
@@ -340,6 +344,7 @@ export function updateStory(game, s, dt) {
   else if (s.kind === 'escalator') updEscalator(game, s, dt);
   else if (s.kind === 'detector') updDetector(game, s, dt);
   else if (s.kind === 'tapgame') updTap(game, s, dt);
+  else if (s.kind === 'laser') updLaser(game, s, dt);
   else if (s.kind === 'mushrooms') updateMushrooms(game, s, dt);
   else if (s.kind === 'sprint') updateSprint(game, s, dt);
   else if (s.kind === 'quiz') {
@@ -517,6 +522,46 @@ function dig(game, s) {
 }
 
 // ---- Schultüte: schnell tippen ------------------------------------------------
+function updLaser(game, s, dt) {
+  const V = game.V, gy = V.groundY, d = s.dot, c = s.cat;
+  if (s.phase === 'intro' && s.t > INTRO) { s.phase = 'play'; s.pt = 0; }
+  if (s.phase === 'play') {
+    s.pt += dt; s.cool = Math.max(0, s.cool - dt);
+    if (!s.touched && Math.floor(s.pt * 0.8) !== s.lastAuto) { s.lastAuto = Math.floor(s.pt * 0.8); d.tx = rand(V.w * 0.2, V.w * 0.9); d.ty = rand(gy - 120, gy - 6); } // ohne Tippen wandert der Punkt allein
+    d.x = lerp(d.x, d.tx, Math.min(1, dt * 9)); d.y = lerp(d.y, d.ty, Math.min(1, dt * 9));
+    const dx = d.x - c.x; c.dir = dx >= 0 ? 1 : -1;
+    if (c.y <= 0) { c.x += clamp(dx, -1, 1) * Math.min(Math.abs(dx), 300 * dt); const h = gy - d.y; if (h > 30 && Math.abs(dx) < 70) { c.vy = Math.sqrt(2 * 1600 * Math.min(h + 10, 150)); c.spin = h > 90 ? 1 : 0; sfx('jump'); } }
+    else c.x += clamp(dx, -1, 1) * Math.min(Math.abs(dx), 200 * dt);
+    c.vy -= 1600 * dt; c.y = Math.max(0, c.y + c.vy * dt); if (c.y === 0) { c.vy = 0; c.spin = 0; }
+    c.x = clamp(c.x, 20, V.w - 20);
+    if (s.cool <= 0 && Math.hypot(c.x - d.x, (gy - c.y - 12) - d.y) < 22) {
+      s.catches++; s.cool = 0.7; sfx('meow'); game.fx.burst(d.x, d.y, { n: 10, colors: ['#ff3b3b', '#ffd23f', '#fff'], speed: 140, size: 2.5 });
+      pop(s, d.x, d.y - 24, pick(['Hab dich! 🐾', 'Miau! 😼', 'Wo ist er hin?!', 'Nochmal!']), '#ffd23f', 16);
+      d.tx = clamp(d.x + rand(-1, 1) * 220, 30, V.w - 30); d.ty = rand(gy - 130, gy - 10); if (s.touched) { d.x = d.tx; d.y = d.ty; }
+    }
+    if (s.pt >= s.time) { s.phase = 'end'; s.endT = s.t; finish(game, s, s.ev.label || '🔴 Laserpointer', `${s.catches}× gefangen`, s.catches * 12, clamp(s.catches / 8, 0, 1)); }
+  }
+  if (s.phase === 'end' && s.t - s.endT > 3) s.done = true;
+}
+function drawLaser(g, game, s) {
+  const V = game.V, gy = V.groundY, d = s.dot, c = s.cat, p = game.p;
+  const air = c.y > 0, k = air && c.spin ? Math.min(1, c.y / 120) : 0;
+  g.save(); const cy = gy - c.y - 10; g.translate(c.x, cy); g.rotate(-c.dir * k * Math.PI * 2); g.translate(-c.x, -cy);
+  drawCat(g, c.x, gy - c.y + 4, { phase: s.t * 18, scale: 1.1, t: s.t, flip: c.dir < 0, pose: air ? 'run' : Math.abs(d.x - c.x) < 10 ? 'sit' : 'run' });
+  g.restore();
+  if (s.phase === 'intro') { banner(g, V, s.ev.text || '🔴 Laserpointer! Tippen & ziehen – Fips jagt den Punkt!', s.t); hand(g, V.w * 0.62, gy - 50, s.t, 'tap'); return; }
+  if (s.phase === 'play') {
+    g.strokeStyle = 'rgba(255,40,40,0.35)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(p.x + 14, gy - 78); g.lineTo(d.x, d.y); g.stroke();
+    const gl = g.createRadialGradient(d.x, d.y, 1, d.x, d.y, 14); gl.addColorStop(0, 'rgba(255,60,60,1)'); gl.addColorStop(1, 'rgba(255,0,0,0)'); g.fillStyle = gl; g.beginPath(); g.arc(d.x, d.y, 14, 0, TAU); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(d.x, d.y, 2, 0, TAU); g.fill();
+    const kk = 1 - s.pt / s.time;
+    g.fillStyle = 'rgba(0,0,0,0.4)'; roundRect(g, V.w / 2 - 80, 34, 160, 10, 5); g.fill();
+    g.fillStyle = kk > 0.3 ? '#3ee6b4' : '#ff5b5b'; roundRect(g, V.w / 2 - 80, 34, Math.max(1, 160 * kk), 10, 5); g.fill();
+    g.fillStyle = '#fff'; g.font = '900 20px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = 'rgba(0,0,0,0.5)';
+    const txt = `🐾 ${s.catches}`; g.strokeText(txt, V.w / 2, 68); g.fillText(txt, V.w / 2, 68);
+  } else resultBanner(g, V, s);
+}
+
 function updTap(game, s, dt) {
   s.shake = Math.max(0, s.shake - dt * 4);
   if (s.phase === 'intro' && s.t > INTRO) { s.phase = 'play'; s.pt = 0; }
@@ -628,6 +673,7 @@ export function storyInput(game, s, type, x, y) {
   const V = game.V;
   if (s.kind === 'mushrooms') { mushInput(game, s, type, x); return; }
   if (s.kind === 'sprint') { if (type === 'down') sprintTap(game, s, x, y); return; }
+  if (s.kind === 'laser') { if ((type === 'down' || type === 'move') && s.phase === 'play') { s.dot.tx = clamp(x, 20, V.w - 20); s.dot.ty = clamp(y, 40, V.groundY - 6); s.touched = true; } return; }
   if (s.kind === 'quiz') { if (type === 'down' && s.phase === 'ask') { const i = quizHit(game, s, x, y); if (i >= 0) { s.pick = i; s.phase = 'reveal'; s.revT = s.t; sfx('tap', 3); } } return; }
   if (s.kind === 'candles' && s.phase === 'play' && (type === 'move' || type === 'down')) {
     for (const c of s.candles) if (c.lit && Math.abs(c.x - x) < 16 && Math.abs(c.y - 12 - y) < 26) { c.lit = false; s.out++; sfx('tap', s.out % 12); game.fx.burst(c.x, c.y - 14, { n: 6, type: 'smoke', colors: ['#ddd', '#fff'], speed: 40, size: 4, gravity: -60 }); }
@@ -813,6 +859,29 @@ const OBJ_UPD = {
 
 // Szenen-Objekte am Boden
 const OBJ_DRAW = {
+  lounger(g, game, s, a, x, y) { // Gartenliege mit rot-grau kariertem Polster: Hagen liegt drauf, Baby-Fips schläft auf seinem Bauch
+    const t = s.t, w = 150;
+    g.fillStyle = '#3e2f28'; g.fillRect(x - w / 2, y - 26, w, 6); for (const lx of [x - w / 2 + 6, x + w / 2 - 10]) g.fillRect(lx, y - 22, 5, 22);
+    const plaid = (px, py, pw, ph) => { g.fillStyle = '#b5313f'; g.fillRect(px, py, pw, ph); g.fillStyle = 'rgba(70,70,80,0.55)'; for (let i = 4; i < pw; i += 14) g.fillRect(px + i, py, 5, ph); for (let j = 3; j < ph; j += 9) g.fillRect(px, py + j, pw, 3); g.fillStyle = 'rgba(255,255,255,0.45)'; for (let i = 10; i < pw; i += 14) g.fillRect(px + i, py, 1.2, ph); };
+    plaid(x - w / 2, y - 34, w, 10); // Liegefläche
+    g.save(); g.translate(x - w / 2 + 8, y - 32); g.rotate(-0.55); plaid(-4, -44, 26, 44); g.restore(); // Rückenlehne
+    // Hagen liegt (Körper grün, Beine nach rechts), Kopf links auf der Lehne
+    g.fillStyle = '#1f7a3a'; roundRect(g, x - 52, y - 50, 62, 18, 8); g.fill();
+    g.fillStyle = '#333a4a'; roundRect(g, x + 6, y - 46, 62, 12, 6); g.fill();
+    g.fillStyle = '#222'; roundRect(g, x + 64, y - 50, 8, 16, 3); g.fill();
+    drawFaceOn(g, a.face || 'papa', 'normal', x - 62, y - 58, 17);
+    // Baby-Fips eingerollt auf dem Bauch, atmet
+    const br = 1 + Math.sin(t * 2.5) * 0.04;
+    g.save(); g.translate(x - 20, y - 54); g.scale(br, br);
+    g.fillStyle = '#e8843a'; g.beginPath(); g.ellipse(0, 0, 14, 8, 0, 0, TAU); g.fill();
+    g.strokeStyle = '#e8843a'; g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); g.moveTo(12, 2); g.quadraticCurveTo(18, 8, 6, 9); g.stroke();
+    g.strokeStyle = '#b8561c'; g.lineWidth = 1.5; for (const sx of [-6, 0, 6]) { g.beginPath(); g.moveTo(sx, -7); g.lineTo(sx + 2, -3); g.stroke(); }
+    g.restore();
+    drawFaceOn(g, 'fips', 'normal', x - 34, y - 58, 9);
+    g.fillStyle = '#fff'; g.font = '900 12px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center';
+    for (let i = 0; i < 3; i++) { const k = (t * 0.5 + i / 3) % 1; g.globalAlpha = 1 - k; g.fillText('z', x - 36 + k * 18 + i * 4, y - 74 - k * 30); }
+    g.globalAlpha = 1;
+  },
   frozen4(g, game, s, a, x, y) { // großer Eisblock, darin eine rote „4“
     if (a.shattered && s.t - a.shatterAt > 0.15) { if (s.t - a.shatterAt < 1.2) { g.globalAlpha = 1 - (s.t - a.shatterAt) / 1.2; g.fillStyle = '#c62828'; g.font = '900 54px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(a.grade || '4', x, y - 30 + (s.t - a.shatterAt) * 120); g.globalAlpha = 1; } return; }
     const k = a.freezeAt == null ? 1 : clamp((s.t - a.freezeAt) / 0.5, 0, 1);
@@ -1072,6 +1141,7 @@ export function drawStory(g, game, s) {
   else if (s.kind === 'escalator') drawEsc(g, game, s);
   else if (s.kind === 'detector') drawDetector(g, game, s);
   else if (s.kind === 'tapgame') drawTap(g, game, s);
+  else if (s.kind === 'laser') drawLaser(g, game, s);
   else if (s.kind === 'mushrooms') drawMushrooms(g, game, s);
   else if (s.kind === 'sprint') drawSprint(g, game, s);
   else if (s.kind === 'quiz') drawQuiz(g, game, s);

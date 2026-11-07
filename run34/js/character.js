@@ -994,13 +994,14 @@ export function roundRect(g, x, y, w, h, r) {
 // Rot getigerter Kater
 // ---------------------------------------------------------------------------
 // Fips-Outfit je Level (z. B. winzige Winterstiefel in New York)
-const CAT_STYLE = { boots: false };
-export function setCatStyle(o = {}) { CAT_STYLE.boots = !!o.boots; }
+const CAT_STYLE = { boots: false, kitten: false };
+export function setCatStyle(o = {}) { CAT_STYLE.boots = !!o.boots; CAT_STYLE.kitten = !!o.kitten; } // kitten: Baby-Fips (klein, großer Kopf)
 const catBoot = (g, x, y) => { g.fillStyle = '#c62828'; roundRect(g, x - 3.2, y - 3.5, 7.5, 5, 2); g.fill(); g.fillStyle = '#fafafa'; g.fillRect(x - 3.4, y - 5.2, 6.4, 2.2); };
 export function drawCat(g, x, footY, { phase = 0, scale = 1, pose = 'run', flip = false, t = 0, coat = null } = {}) {
   const boots = CAT_STYLE.boots && !coat;
   const { img } = getFace('fips', 'normal');
   const hasPhoto = !coat && img && !(img instanceof HTMLCanvasElement); // fremde Katzen (coat) bekommen einen gezeichneten Kopf
+  if (CAT_STYLE.kitten && !coat) scale *= 0.62;
   g.save();
   g.translate(x, footY); g.scale(flip ? -scale : scale, scale);
   const [orange, dark, light] = coat || ['#e8843a', '#b8561c', '#f7c08a'];
@@ -1037,7 +1038,7 @@ export function drawCat(g, x, footY, { phase = 0, scale = 1, pose = 'run', flip 
 
 function drawCatHead(g, x, y, photo, orange, dark, light, front) {
   if (photo) {
-    g.save(); g.translate(x, y + 8);
+    g.save(); g.translate(x, y + 8); if (CAT_STYLE.kitten) { g.translate(0, -3); g.scale(1.35, 1.35); }
     drawFaceOn(g, 'fips', 'normal', 0, 0, 12);
     g.restore();
     return;
