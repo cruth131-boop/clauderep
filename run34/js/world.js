@@ -705,7 +705,7 @@ export class Game {
         const c = list[this.cameoIdx++ % list.length];
         const extra = this.lvP?.drunk === c.face ? { drunk: true, line: this.lvP.drunkLine || 'Hicks! 🍹', prop: '🍹' } : {};
         const glam = this.lv?.glitterGuests ? { acc: [...(c.acc || []), 'sequins'], color: pick(['#d4af37', '#c0c0c0', '#ff4fa3', '#b388ff']) } : {};
-        this.cameos.push({ ...c, x: this.V.w + 60 + i * 46, t: -i * 0.2, said: false, threw: false, color: pick(['#5b7bd5', '#d55b8f', '#3ea37a', '#d58a3e']), ...glam, ...extra });
+        this.cameos.push({ ...c, line: c.lines ? pick(c.lines) : c.line, x: this.V.w + 60 + i * 46, t: -i * 0.2, said: false, threw: false, color: pick(['#5b7bd5', '#d55b8f', '#3ea37a', '#d58a3e']), ...glam, ...extra });
       }
     }
   }
@@ -1456,6 +1456,25 @@ export class Game {
   drawCameo(g, c) {
     const V = this.V;
     if (c.mini && !this.miniDone) { g.globalAlpha = 0.6 + Math.sin(c.t * 6) * 0.4; emoji(g, '👟', c.x + 22, V.groundY - 150, 18); emoji(g, '✨', c.x - 20, V.groundY - 140, 14); g.globalAlpha = 1; }
+    if (c.armchair) { // sitzt im Sessel und will mehr Eierlikör – aus dem Waffelbecher
+      const gy = V.groundY, ax = c.x;
+      g.fillStyle = '#c4501f'; roundRect(g, ax - 30, gy - 92, 60, 60, 10); g.fill(); // Rückenlehne
+      g.save(); g.beginPath(); g.rect(ax - 60, 0, 120, gy - 34); g.clip();
+      drawPerson(g, ax, gy - 16, { faceKey: c.face, t: c.t, color: '#8fb4e8', scale: CAMEO_SCALE * 0.95, wave: false, expr: 'happy' });
+      g.restore();
+      g.fillStyle = 'rgba(255,255,255,0.85)'; for (let i = 0; i < 12; i++) { g.beginPath(); g.arc(ax - 9 + (i % 4) * 6, gy - 82 + Math.floor(i / 4) * 5, 0.9, 0, 7); g.fill(); } // Strass-Muster
+      g.fillStyle = '#d9662b'; roundRect(g, ax - 38, gy - 40, 76, 28, 8); g.fill(); roundRect(g, ax - 44, gy - 62, 16, 52, 6); g.fill(); roundRect(g, ax + 28, gy - 62, 16, 52, 6); g.fill(); // Sitz & Armlehnen
+      g.fillStyle = 'rgba(255,214,120,0.5)'; for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(ax - 30 + i * 12, gy - 28 + (i % 2) * 6, 2.4, 0, 7); g.fill(); }
+      g.fillStyle = '#7a3a14'; g.fillRect(ax - 40, gy - 12, 6, 12); g.fillRect(ax + 34, gy - 12, 6, 12);
+      // Waffel-Shotbecher mit Eierlikör, wird zum Mund gehoben
+      const lift = Math.max(0, Math.sin(c.t * 1.6)) * 14, wx = ax + 18, wy = gy - 66 - lift;
+      g.fillStyle = '#c98a3b'; g.beginPath(); g.moveTo(wx - 6, wy - 10); g.lineTo(wx + 6, wy - 10); g.lineTo(wx + 4, wy + 4); g.lineTo(wx - 4, wy + 4); g.closePath(); g.fill();
+      g.strokeStyle = '#9c6a2a'; g.lineWidth = 0.8; for (let k = -4; k <= 4; k += 3) { g.beginPath(); g.moveTo(wx + k - 2, wy - 10); g.lineTo(wx + k + 2, wy + 4); g.moveTo(wx + k + 2, wy - 10); g.lineTo(wx + k - 2, wy + 4); g.stroke(); }
+      g.fillStyle = '#f6d64a'; g.beginPath(); g.ellipse(wx, wy - 10, 6, 2, 0, 0, 7); g.fill();
+      g.fillStyle = '#f3c4a2'; g.beginPath(); g.arc(wx, wy + 3, 3.5, 0, 7); g.fill();
+      if (c.said) { const k = Math.floor(c.t / 2.4) % 2; if (k === 0) speech(g, ax - 4, gy - 150, c.line); }
+      return;
+    }
     if (c.pee) { // steht mit dem Rücken zu uns an der Litfaßsäule und pinkelt 🙈
       const lx = c.x + 30, gy = V.groundY;
       g.fillStyle = '#6b7f6a'; roundRect(g, lx - 2, gy - 118, 34, 118, 4); g.fill();

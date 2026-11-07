@@ -772,6 +772,36 @@ export const SCENES = {
   },
 
   // Weihnachten bei Carola: Wohnzimmer mit Baum, Kamin, Fenster mit Schnee
+  // Weihnachten bei Carola (nach Foto): gelbe Wände, orange Blumen-Leinwände, orange gemustertes Sofa, Regal mit
+  // Weidenkörben, orange Vorhänge, heller Laminatboden mit Fußmatte – dazu Baum, Lichterkette und Eierlikör auf dem Tisch
+  carolaXmas(g, V, off, t) {
+    const gy = V.groundY;
+    g.fillStyle = '#f2d24a'; g.fillRect(0, 0, V.w, gy);
+    g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(0, 0, V.w, 20);
+    rep(V, off, 0.45, 620, (x) => {
+      // Blumen-Leinwände
+      for (let i = 0; i < 2; i++) { const cx = x + 30 + i * 96; g.fillStyle = '#f08a24'; g.fillRect(cx, gy - 230, 88, 56); for (let j = 0; j < 3; j++) { const fx = cx + 16 + j * 28, fy = gy - 202 + (j % 2) * 8; g.fillStyle = '#d9480f'; for (let a = 0; a < 8; a++) { g.beginPath(); g.ellipse(fx + Math.cos(a * 0.785) * 9, fy + Math.sin(a * 0.785) * 9, 7, 3.5, a * 0.785, 0, TAU); g.fill(); } g.fillStyle = '#ffd23f'; g.beginPath(); g.arc(fx, fy, 4, 0, TAU); g.fill(); } g.strokeStyle = 'rgba(0,0,0,0.15)'; g.lineWidth = 2; g.strokeRect(cx, gy - 230, 88, 56); }
+      // orange gemustertes Sofa
+      const sx = x + 20;
+      g.fillStyle = '#c4501f'; roundRect(g, sx, gy - 96, 190, 50, 10); g.fill(); roundRect(g, sx - 8, gy - 74, 22, 70, 8); g.fill(); roundRect(g, sx + 176, gy - 74, 22, 70, 8); g.fill();
+      g.fillStyle = '#d9662b'; roundRect(g, sx + 10, gy - 50, 170, 34, 6); g.fill();
+      g.fillStyle = 'rgba(255,214,120,0.55)'; for (let i = 0; i < 14; i++) { const px = sx + 14 + (i * 37) % 166, py = gy - 90 + (i * 23) % 64; g.beginPath(); g.moveTo(px, py); g.quadraticCurveTo(px + 5, py - 6, px + 9, py); g.quadraticCurveTo(px + 5, py + 4, px, py); g.fill(); }
+      g.fillStyle = '#7a3a14'; g.fillRect(sx + 4, gy - 16, 6, 16); g.fillRect(sx + 180, gy - 16, 6, 16);
+      // Regal mit Weidenkörben
+      const rx = x + 300;
+      g.fillStyle = '#f4f2ec'; g.fillRect(rx, gy - 210, 80, 210); for (let r = 0; r < 5; r++) { g.fillStyle = '#ddd8cc'; g.fillRect(rx, gy - 210 + r * 42, 80, 4); g.fillStyle = '#b58a52'; g.fillRect(rx + 6, gy - 200 + r * 42, 68, 30); g.strokeStyle = 'rgba(90,60,30,0.45)'; g.lineWidth = 1; for (let k = 0; k < 6; k++) { g.beginPath(); g.moveTo(rx + 6, gy - 196 + r * 42 + k * 5); g.lineTo(rx + 74, gy - 196 + r * 42 + k * 5); g.stroke(); } }
+      // orange Vorhang + Tür
+      g.fillStyle = '#e8601c'; g.beginPath(); g.moveTo(x + 400, 0); g.lineTo(x + 440, 0); g.quadraticCurveTo(x + 430, gy * 0.6, x + 444, gy); g.lineTo(x + 404, gy); g.quadraticCurveTo(x + 392, gy * 0.6, x + 400, 0); g.fill();
+      g.fillStyle = 'rgba(0,0,0,0.12)'; for (let i = 0; i < 4; i++) g.fillRect(x + 408 + i * 8, 0, 2, gy);
+      g.fillStyle = '#f7f5f0'; g.fillRect(x + 450, gy - 180, 70, 180); g.fillStyle = '#e8e4da'; g.fillRect(x + 456, gy - 174, 58, 174);
+      // Weihnachtsbaum & Tisch mit Eierlikör
+      xmasTree(g, x + 560, gy, 150, t); emoji(g, '🎁', x + 532, gy - 12, 22); emoji(g, '🎁', x + 592, gy - 12, 20);
+      g.fillStyle = '#e9e4da'; g.fillRect(x + 220, gy - 40, 70, 5); g.fillRect(x + 226, gy - 35, 4, 35); g.fillRect(x + 280, gy - 35, 4, 35);
+      g.save(); g.translate(x + 238, gy - 52); ITEM_ICONS.eierlikoer(g, 0); g.restore(); emoji(g, '🍪', x + 270, gy - 48, 14);
+    });
+    stringLights(g, V, off, 0.45, 12, t, 240, 16);
+    floor(g, V, '#e2cfa8', '#c9b48a', off, () => { g.fillStyle = 'rgba(120,90,50,0.15)'; rep(V, off, 1, 64, (x, k) => { for (let r = 0; r < 4; r++) g.fillRect(x + (r % 2) * 30, gy + 4 + r * 10, 2, 10); }); for (let r = 0; r < 4; r++) { g.fillStyle = 'rgba(0,0,0,0.06)'; g.fillRect(0, gy + 13 + r * 10, V.w, 1); } rep(V, off, 1, 620, (x) => { g.fillStyle = '#7d7d7d'; g.fillRect(x + 450, gy + 4, 70, 14); }); });
+  },
   xmasRoom(g, V, off, t, lv, variant = 0) {
     const gy = V.groundY;
     wallpaper(g, V, off, variant ? '#e8efe6' : '#f1e3d3', variant ? 'rgba(40,120,60,0.15)' : 'rgba(180,40,50,0.15)');
@@ -2129,7 +2159,7 @@ export const LEVELS = {
   L12: { icon: '⚖️', scene: 'wiesbaden', music: 'toccata', len: 105, obstacles: { folders: 2, barstool: 2, paragraph: 3, facewalk: 1 }, items: ['redbull', 'koelsch', 'akte'], quest: { item: 'akte', n: 8 }, hero: 'angel' },
   L13: { icon: '👻', scene: 'horror', music: 'horror', len: 90, horror: 1, obstacles: { shirt: 2, flyshirt: 3, ghost: 2, stink: 3, rille: 2, fish: 2, merz: 2 }, items: ['candle'], bad: 0.45, quest: { survive: 1 }, hero: 'zombie' },
   L14: { icon: '🪩', scene: 'cocoon', music: 'techno', len: 105, obstacles: { speaker: 3, laser: 3, fog: 2, bouncer: 1 }, items: ['glow', 'water'], quest: { item: 'glow', n: 12 }, hero: 'raver', outfit: { top: 'glitter', topColor: 'f', bottom: 'tutu', socks: 'ringel', shoes: 'docs', extra: ['boa'] }, party: 1 }, // Kopf frei lassen, damit man sie erkennt
-  L15: { icon: '🎄', scene: ['xmasRoom', 'omaXmas'], music: 'deckhalls', len: 105, obstacles: { gift: 3, snowman: 2, smalltree: 2, candlebig: 2 }, items: ['eierlikoer', 'cookie2', 'wine'], quest: { item: 'cookie2', n: 12 }, hero: 'santa' },
+  L15: { icon: '🎄', scene: ['carolaXmas', 'omaXmas'], music: 'deckhalls', len: 105, obstacles: { gift: 3, snowman: 2, smalltree: 2, candlebig: 2 }, items: ['eierlikoer', 'cookie2', 'wine'], quest: { item: 'cookie2', n: 12 }, hero: 'santa' },
   L16: { icon: '🎡', scene: 'plaerrer', music: 'volksfest', len: 105, obstacles: { 'maß': 3, hayball: 2, carousel: 1, target: 2, dartboard: 2 }, items: ['brezn', 'lebherz', 'domsign'], quest: { item: 'domsign', n: 6 }, hero: 'lederhosen', party: 1, goalRain: '👶' },
   L17: { icon: '🏖️', scene: ['sicily', 'apulia'], music: 'mobile', len: 105, obstacles: { sandcastle: 2, crab: 2, gull: 3, wave: 2, vespa: 2 }, items: ['gelato', 'pizza', 'mussel', 'cocktail'], badItems: ['fig'], bad: 0.3, quest: { avoid: 'fig' }, hero: 'baywatch', figStory: 1 },
   L18: { icon: '🎭', scene: 'koeln', music: 'cancan', len: 105, obstacles: { confetti: 2, dancer: 2, clown: 2, flyball: 3 }, items: ['kamelle', 'struessjer', 'koelsch'], quest: { item: 'kamelle', n: 15 }, hero: 'flamingo', party: 1, outfit: { top: 'blazer', topColor: 'd', bottom: 'matrose', socks: 'none', shoes: 'docs', extra: ['tophat', 'sweep'] } }, // Kim als Schornsteinfegerin, Christoph als Flamingo

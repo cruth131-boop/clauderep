@@ -1190,13 +1190,22 @@ export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wav
     g.globalAlpha = 1;
     g.restore(); return;
   }
-  if (pet) { // kleiner Hund: Körper + Fotokopf
+  if (pet) { // kleiner Hund: Körper + Fotokopf (Fellfarbe & Accessoire je Hund aus der Config)
+    const ps = assets.config.petStyle?.[faceKey] || {};
     const hop = Math.abs(Math.sin(t * 8)) * 3;
     g.translate(0, -hop);
-    g.fillStyle = '#8d6e63'; roundRect(g, -16, -26, 30, 16, 8); g.fill();
+    g.fillStyle = ps.fur || '#8d6e63'; roundRect(g, -16, -26, 30, 16, 8); g.fill();
+    if (ps.fur2) { g.strokeStyle = ps.fur2; g.lineWidth = 1; for (let i = -14; i < 12; i += 3) { g.beginPath(); g.moveTo(i, -12); g.lineTo(i + 1, -6 - Math.abs(Math.sin(t * 8 + i)) * 2); g.stroke(); } g.fillStyle = ps.fur; }
     for (const lx of [-12, -4, 4, 10]) { g.fillRect(lx, -12, 4, 12); }
-    g.strokeStyle = '#8d6e63'; g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); g.moveTo(-15, -22); g.lineTo(-22, -32 + Math.sin(t * 14) * 4); g.stroke();
+    g.strokeStyle = ps.fur || '#8d6e63'; g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); g.moveTo(-15, -22); g.lineTo(-22, -32 + Math.sin(t * 14) * 4); g.stroke();
     drawFaceOn(g, faceKey, 'normal', 12, -14, 15);
+    if (ps.acc === 'xmasglasses') { // rote Partybrille mit Weihnachtsmütze (wie auf dem Foto)
+      g.save(); g.translate(13, -27);
+      g.strokeStyle = '#d32f2f'; g.lineWidth = 2.2; for (const ex of [-5, 5]) { g.beginPath(); g.ellipse(ex, 4, 4.6, 3.6, 0, 0, 7); g.stroke(); } g.beginPath(); g.moveTo(-0.6, 4); g.lineTo(0.6, 4); g.stroke();
+      g.fillStyle = '#d32f2f'; roundRect(g, -10, -6, 20, 7, 3); g.fill(); g.fillStyle = '#fff'; roundRect(g, -11, -1, 22, 3.5, 1.5); g.fill(); g.beginPath(); g.arc(9, -7, 2.4, 0, 7); g.fill();
+      g.fillStyle = '#2e7d32'; g.beginPath(); g.ellipse(-5, -4, 2.4, 1.4, 0.5, 0, 7); g.fill(); g.fillStyle = '#d32f2f'; g.beginPath(); g.arc(-3, -4, 1.2, 0, 7); g.fill();
+      g.restore();
+    }
     g.restore(); return;
   }
   // Körper etwas breiter (wie Kimis Comic-Körper), Kopf dabei unverzerrt lassen
