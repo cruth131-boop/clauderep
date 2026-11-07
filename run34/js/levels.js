@@ -1502,45 +1502,82 @@ export const SCENES = {
 
   // Wohnzimmer der Eltern: Fensterbank voller Pflanzen (Weihnachtsstern), Heizkörper, graubraunes Ecksofa mit Kopfstütze
   // & Recamiere, dunkle Holztruhe als Couchtisch, Vitrinenschrank, Schwingsessel, Laminat & Fliesen – plus Katzensachen
-  // Garten am Abend (nach Fotos): weiß verputztes Haus mit dunkelgrauem Sockel, dunkle Türen, Glas-Vordach,
-  // Wandlaternen an, Palmen & Yucca in Kübeln, Lavendel, Holzkiste & Milchkanne, Rasen, Gartenstühle mit kariertem Polster
+  // Garten am Abend (nach Fotos & Straßenansicht): Omas Fachwerkhaus aus rotem Backstein, daneben das weiße Haus
+  // mit dunkelgrauem Sockel & Vorgarten hinter Backsteinpfeiler-Zaun; dahinter der Garten zwischen Hütte und Hausseite
+  // vor der hohen Backsteinwand – Wandlaternen an, Palmen & Lavendel, Gartenstühle mit kariertem Polster
   eveGarden(g, V, off, t) {
     const gy = V.groundY;
     sky(g, V, '#3f4f8a', '#f2b27a');
     g.fillStyle = 'rgba(255,255,255,0.7)'; for (let i = 0; i < 12; i++) { g.beginPath(); g.arc((i * 131) % V.w, (i * 29) % 60 + 8, 0.9, 0, TAU); g.fill(); }
-    rep(V, off, 0.3, 420, (x, k) => {
-      const top = gy - 210;
-      g.fillStyle = '#ece8e0'; g.fillRect(x, top, 412, 210);
-      g.fillStyle = 'rgba(0,0,0,0.04)'; for (let i = 0; i < 60; i++) g.fillRect(x + (i * 67) % 410, top + (i * 41) % 200, 3, 2); // Rauputz
-      g.fillStyle = '#4a4f57'; g.fillRect(x, gy - 34, 412, 34); // Sockel
-      // Fenster oben mit Licht
-      for (const wx of [x + 40, x + 160, x + 300]) { g.fillStyle = '#3b4048'; g.fillRect(wx - 3, top + 16, 62, 44); g.fillStyle = '#ffd98a'; g.fillRect(wx, top + 19, 56, 38); g.fillStyle = '#3b4048'; g.fillRect(wx + 27, top + 19, 2, 38); }
-      // Terrassentür mit Licht, dunkle Haustür mit Glas-Vordach, Wandlaterne
-      g.fillStyle = '#3b4048'; g.fillRect(x + 40, gy - 120, 70, 120); g.fillStyle = '#ffcf7a'; g.fillRect(x + 44, gy - 116, 29, 116); g.fillRect(x + 77, gy - 116, 29, 116);
-      g.fillStyle = '#3a4048'; g.fillRect(x + 210, gy - 104, 38, 104); g.fillStyle = '#2f343b'; g.fillRect(x + 214, gy - 100, 30, 96);
-      g.fillStyle = '#3a4048'; g.fillRect(x + 280, gy - 120, 40, 120); g.fillStyle = '#ffe3a6'; g.fillRect(x + 285, gy - 114, 30, 70);
-      g.fillStyle = 'rgba(200,225,240,0.6)'; g.beginPath(); g.moveTo(x + 262, gy - 132); g.quadraticCurveTo(x + 300, gy - 150, x + 340, gy - 132); g.lineTo(x + 340, gy - 128); g.lineTo(x + 262, gy - 128); g.fill();
-      for (const lx of [x + 130, x + 262]) { g.fillStyle = '#222'; g.fillRect(lx, gy - 140, 8, 14); const lg = g.createRadialGradient(lx + 4, gy - 132, 1, lx + 4, gy - 132, 40); lg.addColorStop(0, 'rgba(255,220,140,0.75)'); lg.addColorStop(1, 'rgba(255,220,140,0)'); g.fillStyle = lg; g.beginPath(); g.arc(lx + 4, gy - 132, 40, 0, TAU); g.fill(); }
-      // Holzregal mit Töpfen & Milchkanne
-      g.fillStyle = '#9c7650'; g.fillRect(x + 345, gy - 60, 50, 40); g.fillStyle = '#7a5a3a'; g.fillRect(x + 345, gy - 42, 50, 3);
-      g.fillStyle = '#b0b6bb'; roundRect(g, x + 352, gy - 82, 14, 22, 3); g.fill(); g.fillRect(x + 355, gy - 86, 8, 4);
-      g.fillStyle = '#5d6a74'; g.fillRect(x + 372, gy - 74, 14, 14);
-      // Weinranke
-      g.strokeStyle = '#4f7a2c'; g.lineWidth = 2; g.beginPath(); g.moveTo(x + 405, gy - 34); g.quadraticCurveTo(x + 395, gy - 120, x + 410, gy - 200); g.stroke();
-      for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#5f9a3c' : '#6fab46'; g.beginPath(); g.arc(x + 398 + (i % 3) * 6, gy - 60 - i * 18, 9, 0, TAU); g.fill(); }
+    const lamp = (lx, ly, r = 40) => { g.fillStyle = '#222'; g.fillRect(lx, ly, 8, 14); const lg = g.createRadialGradient(lx + 4, ly + 8, 1, lx + 4, ly + 8, r); lg.addColorStop(0, 'rgba(255,220,140,0.75)'); lg.addColorStop(1, 'rgba(255,220,140,0)'); g.fillStyle = lg; g.beginPath(); g.arc(lx + 4, ly + 8, r, 0, TAU); g.fill(); };
+    const brick = (x, y, w, h, c1 = '#a4553c', c2 = 'rgba(0,0,0,0.12)') => { g.fillStyle = c1; g.fillRect(x, y, w, h); g.fillStyle = c2; for (let r = 0; r < h / 5; r++) { g.fillRect(x, y + r * 5, w, 0.8); for (let i = (r % 2) * 6; i < w; i += 12) g.fillRect(x + i, y + r * 5, 0.8, 5); } };
+    const SEG = 1180;
+    rep(V, off, 0.3, SEG, (x0) => {
+      // 1) Omas Haus: Backstein, Fachwerk-Giebel zur Straße, Ziegeldach, Schornstein
+      let x = x0;
+      g.fillStyle = '#b64a2e'; g.beginPath(); g.moveTo(x - 6, gy - 150); g.lineTo(x + 110, gy - 250); g.lineTo(x + 226, gy - 150); g.fill();
+      g.fillStyle = '#8f3a24'; g.fillRect(x + 150, gy - 238, 12, 26);
+      brick(x, gy - 150, 220, 150);
+      g.save(); g.beginPath(); g.moveTo(x + 4, gy - 152); g.lineTo(x + 110, gy - 244); g.lineTo(x + 216, gy - 152); g.closePath(); g.clip(); brick(x, gy - 250, 220, 100, '#b35d42'); g.restore();
+      g.strokeStyle = '#4a2c1e'; g.lineWidth = 4; // Fachwerk
+      g.beginPath(); g.moveTo(x + 4, gy - 152); g.lineTo(x + 110, gy - 244); g.lineTo(x + 216, gy - 152); g.moveTo(x + 4, gy - 152); g.lineTo(x + 216, gy - 152);
+      for (const fx of [40, 80, 140, 180]) { g.moveTo(x + fx, gy - 152); g.lineTo(x + fx, gy - 152 - (110 - Math.abs(110 - fx)) * 0.85); }
+      g.moveTo(x + 40, gy - 152); g.lineTo(x + 80, gy - 200); g.moveTo(x + 180, gy - 152); g.lineTo(x + 140, gy - 200); g.moveTo(x + 60, gy - 186); g.lineTo(x + 160, gy - 186);
+      g.moveTo(x + 4, gy - 100); g.lineTo(x + 216, gy - 100); for (const fx of [4, 60, 110, 160, 216]) { g.moveTo(x + fx, gy - 150); g.lineTo(x + fx, gy - 100); } g.moveTo(x + 4, gy - 150); g.lineTo(x + 60, gy - 100); g.moveTo(x + 216, gy - 150); g.lineTo(x + 160, gy - 100);
+      g.stroke();
+      for (const [wx, wy] of [[100, -228], [100, -140], [172, -90]]) { g.fillStyle = '#f2efe8'; g.fillRect(x + wx - 2, gy + wy - 2, 24, 34); g.fillStyle = '#ffd98a'; g.fillRect(x + wx, gy + wy, 20, 30); }
+      g.fillStyle = '#5a6068'; g.fillRect(x + 228, gy - 140, 3, 140); // Fallrohr
+      // Straßenlaterne
+      g.fillStyle = '#3a3f46'; g.fillRect(x + 236, gy - 190, 4, 190); g.beginPath(); g.moveTo(x + 238, gy - 190); g.quadraticCurveTo(x + 238, gy - 206, x + 222, gy - 204); g.lineTo(x + 222, gy - 200); g.fill();
+      g.fillStyle = '#2f3339'; g.beginPath(); g.ellipse(x + 220, gy - 198, 12, 4, 0, 0, TAU); g.fill(); lamp(x + 216, gy - 200, 60);
+      // 2) Das weiße Haus von vorn: Rauputz, dunkelgrauer Sockel, Rollläden, langes Satteldach, Glas-Vordach
+      x = x0 + 250;
+      g.fillStyle = '#5a4a44'; g.beginPath(); g.moveTo(x - 10, gy - 150); g.lineTo(x + 40, gy - 196); g.lineTo(x + 330, gy - 196); g.lineTo(x + 380, gy - 150); g.fill();
+      g.fillStyle = '#efebe4'; g.fillRect(x, gy - 150, 370, 150);
+      g.fillStyle = 'rgba(0,0,0,0.04)'; for (let i = 0; i < 50; i++) g.fillRect(x + (i * 73) % 368, gy - 148 + (i * 37) % 140, 3, 2);
+      g.fillStyle = '#4a4f57'; g.fillRect(x, gy - 30, 370, 30);
+      for (const [wx, wy, lit] of [[30, -132, 1], [120, -132, 0], [230, -132, 1], [310, -132, 1], [30, -82, 1], [300, -82, 0]]) { g.fillStyle = '#d7d8d6'; g.fillRect(x + wx, gy + wy, 34, 40); g.fillStyle = lit ? '#ffd98a' : '#5f6b74'; g.fillRect(x + wx + 3, gy + wy + 14, 28, 24); g.fillStyle = '#c9cbc8'; for (let r = 0; r < 4; r++) g.fillRect(x + wx + 3, gy + wy + 2 + r * 3, 28, 1.6); } // Rollläden
+      g.fillStyle = '#3a4048'; g.fillRect(x + 140, gy - 104, 34, 104); g.fillStyle = '#ffe3a6'; g.fillRect(x + 145, gy - 98, 24, 56);
+      g.fillStyle = 'rgba(200,225,240,0.6)'; g.beginPath(); g.moveTo(x + 124, gy - 116); g.quadraticCurveTo(x + 157, gy - 132, x + 190, gy - 116); g.lineTo(x + 190, gy - 112); g.lineTo(x + 124, gy - 112); g.fill(); lamp(x + 196, gy - 104);
+      g.fillStyle = '#b0b6bb'; g.beginPath(); g.ellipse(x + 260, gy - 110, 12, 14, 0.4, 0, TAU); g.fill(); // Sat-Schüssel
+      g.fillStyle = '#c45a2f'; g.beginPath(); g.ellipse(x + 260, gy - 110, 9, 11, 0.4, 0, TAU); g.fill();
+      // Vorgarten: Baum, Lavendelbusch, Terrasse mit Tischchen & Töpfen
+      g.fillStyle = '#6b5a45'; g.fillRect(x + 66, gy - 70, 6, 70); for (const [dx, dy, r, c] of [[0, -96, 30, '#5f9a3c'], [-22, -82, 20, '#6fab46'], [22, -80, 22, '#548c34']]) { g.fillStyle = c; g.beginPath(); g.arc(x + 69 + dx, gy + dy, r, 0, TAU); g.fill(); }
+      g.fillStyle = '#8aa58a'; g.beginPath(); g.arc(x + 108, gy - 16, 18, Math.PI, 0); g.fill(); g.fillStyle = '#9a7ad6'; for (let i = 0; i < 10; i++) { g.beginPath(); g.arc(x + 94 + i * 3, gy - 24 - (i % 3) * 5, 1.6, 0, TAU); g.fill(); }
+      for (const [tx, c] of [[200, '#c4502e'], [226, '#7a8a6a'], [330, '#c4502e']]) { g.fillStyle = c; g.fillRect(x + tx, gy - 16, 14, 16); g.fillStyle = '#5f9a3c'; g.beginPath(); g.arc(x + tx + 7, gy - 20, 9, 0, TAU); g.fill(); }
+      // Zaun: Backsteinpfeiler mit braunen Holzlatten
+      for (let i = 0; i < 9; i++) { const zx = x0 + 8 + i * 70; brick(zx, gy - 34, 12, 34, '#b05a3e'); g.fillStyle = '#8a7a6a'; g.fillRect(zx - 1, gy - 36, 14, 3); if (i < 8) { g.fillStyle = '#7a5a46'; for (let j = 0; j < 11; j++) g.fillRect(zx + 15 + j * 5, gy - 28, 3, 26); g.fillStyle = '#c8ccce'; g.fillRect(zx + 12, gy - 30, 58, 2); } }
+      // 3) Dahinter der Garten: hohe Backsteinwand, Hütte mit Wellblech & orangeroter Holzblende, Rückseite des weißen Hauses
+      x = x0 + 650;
+      brick(x, gy - 200, 520, 200, '#9c6b4e', 'rgba(0,0,0,0.1)');
+      g.fillStyle = '#efebe4'; g.fillRect(x + 20, gy - 170, 170, 170); g.fillStyle = '#4a4f57'; g.fillRect(x + 20, gy - 30, 170, 30);
+      g.fillStyle = '#5a4a44'; g.beginPath(); g.moveTo(x + 10, gy - 170); g.lineTo(x + 60, gy - 196); g.lineTo(x + 200, gy - 196); g.lineTo(x + 200, gy - 170); g.fill();
+      g.fillStyle = '#3b4048'; g.fillRect(x + 50, gy - 120, 70, 120); g.fillStyle = '#ffcf7a'; g.fillRect(x + 54, gy - 116, 29, 116); g.fillRect(x + 87, gy - 116, 29, 116);
+      for (const wx of [x + 40, x + 130]) { g.fillStyle = '#3b4048'; g.fillRect(wx - 3, gy - 160, 44, 30); g.fillStyle = '#ffd98a'; g.fillRect(wx, gy - 157, 38, 24); }
+      lamp(x + 140, gy - 120);
+      g.strokeStyle = '#4f7a2c'; g.lineWidth = 2; g.beginPath(); g.moveTo(x + 196, gy - 30); g.quadraticCurveTo(x + 186, gy - 110, x + 200, gy - 180); g.stroke(); for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#5f9a3c' : '#6fab46'; g.beginPath(); g.arc(x + 190 + (i % 3) * 6, gy - 50 - i * 16, 9, 0, TAU); g.fill(); } // Weinranke
+      // Hütte
+      const hx = x + 330;
+      g.fillStyle = '#f4f2ee'; g.fillRect(hx, gy - 80, 170, 80);
+      g.fillStyle = '#c45a2f'; g.fillRect(hx - 8, gy - 92, 186, 12); g.fillStyle = 'rgba(0,0,0,0.18)'; for (let i = 0; i < 186; i += 6) g.fillRect(hx - 8 + i, gy - 92, 1.2, 12);
+      g.fillStyle = '#3a3c40'; g.beginPath(); g.moveTo(hx - 14, gy - 90); g.lineTo(hx + 184, gy - 90); g.lineTo(hx + 176, gy - 102); g.lineTo(hx - 6, gy - 102); g.fill(); g.strokeStyle = 'rgba(255,255,255,0.15)'; g.lineWidth = 1; for (let i = 0; i < 190; i += 7) { g.beginPath(); g.moveTo(hx - 10 + i, gy - 101); g.lineTo(hx - 12 + i, gy - 91); g.stroke(); }
+      g.fillStyle = '#5c5048'; g.fillRect(hx + 40, gy - 66, 74, 46); g.fillStyle = '#d9b98a'; g.fillRect(hx + 44, gy - 62, 66, 38);
+      g.fillStyle = '#7a5a3a'; g.fillRect(hx + 120, gy - 40, 40, 6); g.fillRect(hx + 122, gy - 34, 4, 34); g.fillRect(hx + 154, gy - 34, 4, 34); // Bank
+      // Regal mit Töpfen zwischen Haus und Hütte
+      g.fillStyle = '#9aa0a5'; for (let r = 0; r < 4; r++) g.fillRect(x + 270, gy - 92 + r * 22, 40, 2); g.fillRect(x + 270, gy - 92, 2, 92); g.fillRect(x + 308, gy - 92, 2, 92);
+      for (let r = 0; r < 4; r++) for (let i = 0; i < 3; i++) { g.fillStyle = ['#c4502e', '#e9e4da', '#6d7a80'][(r + i) % 3]; g.fillRect(x + 274 + i * 12, gy - 100 + r * 22, 9, 8); }
     });
-    // Kübelpflanzen: Palmen, Yucca, Lavendel
-    rep(V, off, 0.5, 260, (x, k) => {
+    // vorne: Kübelpflanzen, Lavendel, Gartenstühle mit kariertem Polster
+    rep(V, off, 0.5, 300, (x, k) => {
       const px = x + 30;
       g.fillStyle = '#3d4248'; g.beginPath(); g.moveTo(px - 14, gy - 26); g.lineTo(px + 14, gy - 26); g.lineTo(px + 10, gy); g.lineTo(px - 10, gy); g.fill();
       for (let l = 0; l < 9; l++) { g.save(); g.translate(px, gy - 26); g.rotate(-1.5 + l * 0.37 + Math.sin(t + l) * 0.03); g.fillStyle = l % 2 ? '#4f8a3a' : '#64a14a'; g.beginPath(); g.ellipse(0, -26, 3.5, 28, 0, 0, TAU); g.fill(); g.restore(); }
-      const lx = x + 120; g.fillStyle = '#6d7a80'; g.fillRect(lx - 16, gy - 18, 32, 18);
+      const lx = x + 130; g.fillStyle = '#6d7a80'; g.fillRect(lx - 16, gy - 18, 32, 18);
       for (let i = 0; i < 14; i++) { const a = -2.6 + i * 0.16; g.strokeStyle = '#7d9a6a'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(lx, gy - 18); g.lineTo(lx + Math.cos(a) * 30, gy - 18 + Math.sin(a) * 30); g.stroke(); g.fillStyle = '#9a7ad6'; g.beginPath(); g.arc(lx + Math.cos(a) * 30, gy - 18 + Math.sin(a) * 30, 2.4, 0, TAU); g.fill(); }
-      // Gartenstuhl mit rot-grau kariertem Polster
-      const cx = x + 190;
-      g.fillStyle = '#3e2f28'; g.fillRect(cx, gy - 30, 46, 4); g.fillRect(cx + 2, gy - 26, 3, 26); g.fillRect(cx + 41, gy - 26, 3, 26);
-      g.fillStyle = '#b5313f'; g.fillRect(cx, gy - 36, 46, 7); g.save(); g.translate(cx + 4, gy - 34); g.rotate(-0.35); g.fillRect(-3, -40, 14, 40); g.fillStyle = 'rgba(70,70,80,0.55)'; for (let j = 4; j < 40; j += 9) g.fillRect(-3, -40 + j, 14, 2.5); g.restore();
-      g.fillStyle = 'rgba(70,70,80,0.55)'; for (let i = 4; i < 46; i += 12) g.fillRect(cx + i, gy - 36, 4, 7);
+      if (k % 2 === 0) { const cx = x + 210;
+        g.fillStyle = '#3e2f28'; g.fillRect(cx, gy - 30, 46, 4); g.fillRect(cx + 2, gy - 26, 3, 26); g.fillRect(cx + 41, gy - 26, 3, 26);
+        g.fillStyle = '#b5313f'; g.fillRect(cx, gy - 36, 46, 7); g.save(); g.translate(cx + 4, gy - 34); g.rotate(-0.35); g.fillRect(-3, -40, 14, 40); g.fillStyle = 'rgba(70,70,80,0.55)'; for (let j = 4; j < 40; j += 9) g.fillRect(-3, -40 + j, 14, 2.5); g.restore();
+        g.fillStyle = 'rgba(70,70,80,0.55)'; for (let i = 4; i < 46; i += 12) g.fillRect(cx + i, gy - 36, 4, 7); }
     });
     floor(g, V, '#5f9a3c', '#4f8a32', off, () => { g.fillStyle = 'rgba(0,0,0,0.08)'; rep(V, off, 1, 26, (x) => g.fillRect(x, gy + 6, 2, 40)); g.fillStyle = 'rgba(255,255,255,0.08)'; for (let r = 0; r < 4; r++) g.fillRect(0, gy + 10 + r * 12, V.w, 1); });
   },
