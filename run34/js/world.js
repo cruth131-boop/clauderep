@@ -89,6 +89,7 @@ export class Game {
     this.green = this.outfit.top === 'green' && mode !== 'horror';
     this.hour = new Date().getHours();
     this.boxSpawned = false; this.fipsT = 0; this.savedBiome = null;
+    this.fipsBoxRun = Math.random() < 0.33; // Fips' Geheimversteck nur ab und zu (Zufall pro Lauf)
     setCostumes(mode !== 'attract' && Array.isArray(this.lvP?.guests) ? Object.fromEntries(this.lvP.guests.filter((c) => c.costume).map((c) => [c.face, c.costume])) : {});
     if (mode !== 'attract') { setKidFaces(this.lvP?.kids); assets.kidMode = !!this.lvP?.kid; assets.kidFace = this.lvP?.kidFace || null; setCatStyle({ boots: this.lv?.catBoots }); } else { assets.kidMode = false; setCatStyle({}); }
     // Heidi versteckt sich im Geburtstags-Modus (und im Finale) hinter einem Busch -> Antippen = Pilzwald
@@ -176,7 +177,9 @@ export class Game {
     const n = q.n || (q.set ? q.set.length : 0);
     this.questEvery = n ? Math.max(1.6, (L.len * 0.78) / (n * 1.6)) : Infinity;
     this.questT = 3;
-    if (q.hidden) { this.questEvery = Infinity; this.ringAt = (P.events || []).some((e) => e.kind === 'detector') ? Infinity : 0.5; }
+    // Aufgaben-Items über die ganze Strecke (alle Hintergründe) verteilen: n + 30 % Reserve, von 5 % bis 92 % Fortschritt
+    this.questSpawns = n ? n + Math.ceil(n * 0.3) : 0; this.questStep = this.questSpawns ? 0.87 / this.questSpawns : 1; this.questNextAt = 0.05;
+    if (q.hidden) { this.questEvery = Infinity; this.questNextAt = Infinity; this.ringAt = (P.events || []).some((e) => e.kind === 'detector') ? Infinity : 0.5; }
     this.badItems = L.badItems || null;
     if (startAt > 0) {
       this.distance = this.lvTarget * startAt;
@@ -451,9 +454,8 @@ export class Game {
       }
     }
     if (!this.questDone && this.questItems.length && this.biome !== FIPSLAND) {
-      this.questT -= dt;
-      if (this.questT <= 0) {
-        this.questT = this.questEvery * rand(0.8, 1.2);
+      if (this.progress >= this.questNextAt) {
+        this.questNextAt = Math.max(this.questNextAt + this.questStep * rand(0.85, 1.15), this.progress + this.questStep * 0.5); // auch ab Checkpoint kein Item-Schwall
         let k;
         if (this.quest.set) { const miss = this.quest.set.filter((x) => !this.stats.items[x]); k = pick(miss.length ? miss : this.quest.set); }
         else k = pick(this.questItems);
@@ -499,14 +501,7 @@ export class Game {
     if (!this.lv || this.questDone) return;
     const qs = this.questStatus();
     if (qs && qs.done && !qs.fail && !this.quest.survive && !this.quest.avoid) {
-      this.questDone = true; sfx('fanfare');
-      const sp = this.speed * this.speedFactor, n = this.scenes?.length || 1, left = n - 1 - (this.sceneIdx || 0);
-      const rest = sp * Math.max(12, left * 7 + 5);
-      if (this.lvTarget - this.distance > rest) {
-        this.lvTarget = this.distance + rest;
-        // übrige Abschnitte gleichmäßig auf die Reststrecke verteilen (statt sie zu überspringen)
-        if (this.partBounds && left > 0) for (let j = this.sceneIdx + 1; j < n; j++) this.partBounds[j] = this.distance + (rest - sp * 5) * (j - this.sceneIdx) / (left + 1) + sp * 2;
-      }
+      this.questDone = true; sfx('fanfare'); // Level läuft danach normal bis zum Ziel weiter (alle Abschnitte & Gäste bleiben sichtbar)
       this.events.onToast?.('🎯 Quest geschafft! ⭐');
       this.fx.burst(this.p.x, this.screenY(80), { n: 36, type: 'confetti', speed: 260, size: 4, gravity: 300 });
     }
@@ -637,7 +632,7 @@ export class Game {
         else type = this.mode === 'birthday' ? 'tax' : 'candles';
       }
       if (this.hour === 6 && Math.random() < 0.3) type = 'alarm';
-      if (!this.boxSpawned && this.biome && this.t > 25 && Math.random() < 0.05) { this.boxSpawned = true; type = 'fipsbox'; }
+      if (!this.boxSpawned && this.fipsBoxRun && this.biome && this.t > 25 && Math.random() < 0.05) { this.boxSpawned = true; type = 'fipsbox'; }
       if (this.lv?.fipsBox && !this.boxSpawned && this.progress > 0.35) { this.boxSpawned = true; type = 'fipsbox'; }
       const ob = this.makeObstacle(type, V.w + 40);
       this.obstacles.push(ob);
@@ -647,7 +642,8 @@ export class Game {
       if (Math.random() < this.M.bad) {
         this.items.push(this.makeItem(pick(this.badItems || (this.horror ? ['fig', 'shrimp', 'spider', 'spider'] : ['fig', 'shrimp'])), gapX, pick([12, 12, 70])));
       } else if (Math.random() < this.M.items) {
-        const food = this.biome?.items || ['wine', 'pizza', 'burger', 'nachos'];
+        let food = this.biome?.items || ['wine', 'pizza', 'burger', 'nachos'];
+        if (this.lv && this.questItems?.length) { const f2 = food.filter((k) => !this.questItems.includes(k)); food = f2.length ? f2 : ['coin']; } // Aufgaben-Items nur verteilt über die Strecke, nicht zusätzlich als Futter
         const type2 = this.biome?.bonus && Math.random() < 0.55 ? this.biome.bonus : Math.random() < 0.07 ? 'egg' : pick(food);
         this.items.push(this.makeItem(type2, gapX, pick([24, 70, 115])));
       }
