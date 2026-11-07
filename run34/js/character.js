@@ -1086,6 +1086,14 @@ export function drawTwerkFall(g, x, footY, lt, o = {}) {
 // Karnevalskostüme für Gäste (Tiere, Clowns, Gemüse) – Gesicht bleibt immer frei
 // ---------------------------------------------------------------------------
 const COSTUME_OF = {};
+let GUEST_BOOTS = false; // Line-Dance: alle Gäste in Cowboystiefeln
+export function setGuestBoots(on) { GUEST_BOOTS = !!on; }
+function bootFoot(g, x, y, w = 13) { // Cowboystiefel: Schaft über den Knöchel, Absatz, Spitze, Ziernaht
+  g.fillStyle = '#8b5a2b'; roundRect(g, x + 1, y - 9, 8, 11, 2); g.fill();
+  g.fillStyle = '#7a4a22'; g.beginPath(); g.moveTo(x, y - 1); g.lineTo(x + w, y - 1); g.quadraticCurveTo(x + w + 3, y + 2, x + w - 1, y + 3); g.lineTo(x, y + 3); g.fill();
+  g.fillStyle = '#3e2410'; g.fillRect(x, y + 1, 4, 3);
+  g.strokeStyle = '#e0b060'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(x + 2, y - 7); g.quadraticCurveTo(x + 5, y - 4, x + 8, y - 7); g.stroke();
+}
 export function setCostumes(map) { for (const k of Object.keys(COSTUME_OF)) delete COSTUME_OF[k]; Object.assign(COSTUME_OF, map || {}); }
 export const GUEST_COSTUMES = {
   cow: { body: '#fafafa', legs: '#fafafa' },
@@ -1210,7 +1218,7 @@ export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wav
       const k = pt(0, -40, a, 20), f = pt(k[0], k[1], a - 0.5 - Math.max(0, -Math.sin(ph + off + 0.9)) * 0.9, 20);
       seg(g, 0, -40, k[0], k[1], 9, legC); seg(g, k[0], k[1], f[0], f[1], 8, legC);
       tstripe(0, -40, k[0], k[1], -1); tstripe(k[0], k[1], f[0], f[1], -1);
-      g.fillStyle = track ? '#f4f4f4' : '#222'; roundRect(g, f[0] - 5, f[1] - 3, 13, 6, 3); g.fill();
+      if (GUEST_BOOTS) bootFoot(g, f[0] - 5, f[1] - 3); else { g.fillStyle = track ? '#f4f4f4' : '#222'; roundRect(g, f[0] - 5, f[1] - 3, 13, 6, 3); g.fill(); }
     }
     g.fillStyle = color; roundRect(g, -13, -74, 26, 38, 8); g.fill();
     if (COS) costumeBody(g, costume, t);
@@ -1227,7 +1235,7 @@ export function drawPerson(g, x, footY, { faceKey, t = 0, color = '#5b7bd5', wav
   }
   seg(g, -5, -40, -6, -4, 9, legC); seg(g, 5, -40, 6, -4, 9, legC);
   tstripe(-5, -40, -6, -4, -1); tstripe(5, -40, 6, -4, 1);
-  g.fillStyle = '#222'; roundRect(g, -13, -6, 12, 6, 3); g.fill(); roundRect(g, 1, -6, 12, 6, 3); g.fill();
+  if (GUEST_BOOTS) { bootFoot(g, -13, -4, 12); bootFoot(g, 1, -4, 12); } else { g.fillStyle = '#222'; roundRect(g, -13, -6, 12, 6, 3); g.fill(); roundRect(g, 1, -6, 12, 6, 3); g.fill(); }
   g.fillStyle = oma ? '#8a5aa8' : color;
   if (oma) { g.beginPath(); g.moveTo(-14, -72); g.lineTo(14, -72); g.lineTo(18, -30); g.lineTo(-18, -30); g.closePath(); g.fill(); }
   else { roundRect(g, -13, -74, 26, 38, 8); g.fill(); }

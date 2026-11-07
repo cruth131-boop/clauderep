@@ -1502,6 +1502,109 @@ export const SCENES = {
 
   // Wohnzimmer der Eltern: Fensterbank voller Pflanzen (Weihnachtsstern), Heizkörper, graubraunes Ecksofa mit Kopfstütze
   // & Recamiere, dunkle Holztruhe als Couchtisch, Vitrinenschrank, Schwingsessel, Laminat & Fliesen – plus Katzensachen
+  // Westernstadt (nach Fotos): Holzhäuser mit hohen Fassaden & Schildern, überdachte Holzstege mit Streben,
+  // Bank mit ovalem Schild, rote Scheune mit Pony-Express-Bild, Backstein-Hotel mit Balkon, Fässer, Planwagen, Berge
+  westernTown(g, V, off, t, lv) {
+    const gy = V.groundY;
+    sky(g, V, '#4f9ad8', '#e8f2fb'); clouds(g, V, off, 0.9);
+    g.fillStyle = '#b9876a'; g.beginPath(); g.moveTo(0, gy - 70); for (let x = 0; x <= V.w + 10; x += 14) g.lineTo(x, gy - 90 - Math.abs(Math.sin((x + off * 0.05) * 0.008)) * 46 - Math.sin((x + off * 0.05) * 0.03) * 8); g.lineTo(V.w, gy - 70); g.fill();
+    const signs = S(lv, 'westernSigns', null) || ['GENERAL STORE', 'SALOON', 'SHERIFF', 'OLD WEST PHOTOS', 'BARBER', 'HOTEL'];
+    const woods = ['#8a5a3a', '#a46a42', '#6f4a33', '#b07848', '#7d6a58', '#9a4a32'];
+    const porch = (x, w, y, col) => { g.fillStyle = col; g.fillRect(x - 4, y, w + 8, 6); for (let i = 0; i <= w; i += 46) { g.fillStyle = '#5d3f2a'; g.fillRect(x + i, y + 6, 5, gy - y - 6); g.strokeStyle = '#5d3f2a'; g.lineWidth = 3; g.beginPath(); g.moveTo(x + i + 2, y + 24); g.lineTo(x + i + 18, y + 6); g.moveTo(x + i + 2, y + 24); g.lineTo(x + i - 14, y + 6); g.stroke(); } };
+    rep(V, off, 0.3, 190, (x, k) => {
+      const i = ((k % 6) + 6) % 6, w = 180, h = 120 + (k % 3) * 18, top = gy - h;
+      g.fillStyle = woods[i]; g.fillRect(x, top, w, h);
+      g.fillStyle = 'rgba(0,0,0,0.12)'; for (let r = 0; r < h; r += 7) g.fillRect(x, top + r, w, 1);
+      // Falsche Fassade mit Stufen/Bogen
+      g.fillStyle = woods[i]; if (k % 2) { g.beginPath(); g.moveTo(x + 20, top); g.lineTo(x + 20, top - 18); g.quadraticCurveTo(x + w / 2, top - 44, x + w - 20, top - 18); g.lineTo(x + w - 20, top); g.fill(); } else { g.fillRect(x + 14, top - 22, w - 28, 22); g.fillRect(x + 50, top - 34, w - 100, 12); }
+      g.fillStyle = '#efe3c4'; roundRect(g, x + 24, top + 8, w - 48, 22, 3); g.fill(); g.strokeStyle = '#3e2a1a'; g.lineWidth = 2; g.stroke();
+      g.fillStyle = '#5a1f12'; g.font = '900 12px Georgia, serif'; g.textAlign = 'center'; g.fillText(signs[i], x + w / 2, top + 24, w - 56);
+      // Fenster oben, Tür + Fenster unten
+      for (let j = 0; j < 3; j++) { g.fillStyle = '#3a2a20'; g.fillRect(x + 26 + j * 48, top + 38, 26, 30); g.fillStyle = '#c9dbe6'; g.fillRect(x + 29 + j * 48, top + 41, 20, 24); }
+      g.fillStyle = '#4a3020'; g.fillRect(x + 76, gy - 56, 30, 56); g.fillStyle = '#c9dbe6'; g.fillRect(x + 22, gy - 48, 40, 30); g.fillRect(x + 122, gy - 48, 40, 30);
+      porch(x, w, gy - 72, '#6d4a30');
+      g.fillStyle = '#a0763e'; g.fillRect(x, gy - 8, w, 8); // Holzsteg
+      if (k % 3 === 0) { g.fillStyle = '#6d4a2a'; roundRect(g, x + w - 14, gy - 26, 16, 22, 4); g.fill(); g.fillStyle = '#3a2a1a'; g.fillRect(x + w - 14, gy - 20, 16, 2); g.fillRect(x + w - 14, gy - 12, 16, 2); } // Fass
+      if (k % 4 === 1) { g.fillStyle = '#d7263d'; g.beginPath(); g.moveTo(x + w / 2, top - 46); g.lineTo(x + w / 2 + 22, top - 40); g.lineTo(x + w / 2, top - 34); g.fill(); g.fillStyle = '#555'; g.fillRect(x + w / 2 - 1, top - 50, 2, 20); } // Fahne
+    });
+    // Bank mit ovalem Schild „IN GOD WE TRUST“
+    once(V, off, 0.3, 1500, 700, (x) => {
+      const w = 230, top = gy - 170;
+      g.fillStyle = '#c96b3c'; g.fillRect(x, top, w, 170); g.fillStyle = 'rgba(0,0,0,0.1)'; for (let r = 0; r < 34; r++) g.fillRect(x, top + r * 5, w, 0.8);
+      g.fillStyle = '#2e6b3a'; g.fillRect(x - 6, top - 14, w + 12, 18); g.fillStyle = '#f2d27a'; g.font = '900 10px Georgia, serif'; g.textAlign = 'center'; g.fillText('IN GOD WE TRUST', x + w / 2, top - 1);
+      g.fillStyle = '#e8b04a'; g.beginPath(); g.ellipse(x + w / 2, top + 34, 64, 24, 0, 0, TAU); g.fill(); g.strokeStyle = '#2e6b3a'; g.lineWidth = 4; g.stroke();
+      g.fillStyle = '#4a1f0a'; g.font = '900 14px Georgia, serif'; g.fillText('NATIONAL', x + w / 2, top + 32); g.fillText('BANK', x + w / 2, top + 48);
+      for (const wx of [20, 180]) { g.fillStyle = '#2e6b3a'; g.fillRect(x + wx, gy - 70, 30, 70); g.fillStyle = '#c9dbe6'; g.fillRect(x + wx + 4, gy - 64, 22, 36); }
+      porch(x, w, gy - 82, '#2e6b3a');
+    });
+    // rote Scheune mit Pony-Express-Bild & Backstein-Hotel mit Balkon
+    once(V, off, 0.3, 1900, 1500, (x) => {
+      g.fillStyle = '#9e2f24'; g.fillRect(x, gy - 150, 200, 150); g.fillStyle = 'rgba(0,0,0,0.15)'; for (let i = 0; i < 200; i += 9) g.fillRect(x + i, gy - 150, 1.5, 150);
+      g.fillStyle = '#9e2f24'; g.beginPath(); g.moveTo(x - 6, gy - 150); g.lineTo(x + 100, gy - 196); g.lineTo(x + 206, gy - 150); g.fill();
+      g.fillStyle = '#e8c88a'; g.beginPath(); g.ellipse(x + 100, gy - 158, 50, 22, 0, 0, TAU); g.fill(); g.strokeStyle = '#5a1f12'; g.lineWidth = 2; g.stroke();
+      g.fillStyle = '#6b3a1a'; g.beginPath(); g.ellipse(x + 92, gy - 156, 18, 6, 0, 0, TAU); g.fill(); g.fillRect(x + 104, gy - 168, 6, 10); g.fillStyle = '#5a1f12'; g.font = '900 8px Georgia, serif'; g.textAlign = 'center'; g.fillText('PONY EXPRESS', x + 100, gy - 172);
+      porch(x, 200, gy - 70, '#7a2a20');
+      const hx = x + 240; g.fillStyle = '#a65a3c'; g.fillRect(hx, gy - 200, 170, 200); g.fillStyle = 'rgba(0,0,0,0.12)'; for (let r = 0; r < 40; r++) g.fillRect(hx, gy - 200 + r * 5, 170, 0.8);
+      g.fillStyle = '#5d3f2a'; g.fillRect(hx - 6, gy - 206, 182, 8);
+      for (let r = 0; r < 2; r++) for (let j = 0; j < 4; j++) { g.fillStyle = '#efe3c4'; g.fillRect(hx + 16 + j * 40, gy - 186 + r * 58, 20, 34); g.fillStyle = '#3a4a5a'; g.fillRect(hx + 19 + j * 40, gy - 183 + r * 58, 14, 28); }
+      g.fillStyle = '#2b2b2b'; g.fillRect(hx - 8, gy - 100, 186, 4); for (let i = 0; i < 186; i += 7) g.fillRect(hx - 8 + i, gy - 116, 1.5, 16); g.fillRect(hx - 8, gy - 118, 186, 3); // Balkon
+      for (let i = 0; i < 5; i++) { g.fillStyle = '#2b2b2b'; g.fillRect(hx + i * 42, gy - 96, 5, 96); }
+    });
+    // Planwagen & Tränke vorne
+    rep(V, off, 0.55, 640, (x) => {
+      g.fillStyle = '#f2ead6'; g.beginPath(); g.moveTo(x + 20, gy - 30); g.quadraticCurveTo(x + 55, gy - 80, x + 90, gy - 30); g.fill(); g.strokeStyle = '#c8bca4'; g.lineWidth = 1.5; for (let i = 1; i < 4; i++) { g.beginPath(); g.moveTo(x + 20 + i * 17.5, gy - 30); g.lineTo(x + 20 + i * 17.5, gy - 54 - (i === 2 ? 6 : 0)); g.stroke(); }
+      g.fillStyle = '#7a4a22'; g.fillRect(x + 14, gy - 32, 82, 12);
+      for (const wx of [x + 26, x + 84]) { g.strokeStyle = '#3e2410'; g.lineWidth = 2.5; g.beginPath(); g.arc(wx, gy - 12, 12, 0, TAU); g.stroke(); for (let s2 = 0; s2 < 6; s2++) { const a = s2 / 6 * TAU; g.beginPath(); g.moveTo(wx, gy - 12); g.lineTo(wx + Math.cos(a) * 12, gy - 12 + Math.sin(a) * 12); g.stroke(); } }
+      g.fillStyle = '#6d4a2a'; g.fillRect(x + 300, gy - 20, 60, 20); g.fillStyle = '#5aa0c8'; g.fillRect(x + 303, gy - 20, 54, 4); // Tränke
+      g.strokeStyle = '#5d3f2a'; g.lineWidth = 3; g.beginPath(); g.moveTo(x + 420, gy); g.lineTo(x + 420, gy - 26); g.lineTo(x + 500, gy - 26); g.lineTo(x + 500, gy); g.stroke(); // Pferdestange
+    });
+    floor(g, V, '#d9b98a', '#c4a273', off, () => { g.fillStyle = 'rgba(120,80,40,0.15)'; for (let i = 0; i < 26; i++) { const x = wrap(i * 53 - off, V.w + 40) - 20; g.beginPath(); g.ellipse(x, gy + 10 + (i % 4) * 9, 14, 2, 0, 0, TAU); g.fill(); } });
+  },
+  // Saloon innen (nach Foto): Holzwände, Wagenrad-Kronleuchter mit Laternen, Galerie mit Geländer & Treppe,
+  // Bartresen mit Flaschenregal & Spiegel, runde Tische mit Holzstühlen, Laternen, Ofenrohr, Steckbriefe
+  saloon(g, V, off, t, lv) {
+    const gy = V.groundY;
+    g.fillStyle = '#4a2f1c'; g.fillRect(0, 0, V.w, gy);
+    g.fillStyle = 'rgba(0,0,0,0.18)'; rep(V, off, 0.3, 22, (x) => g.fillRect(x, 0, 2, gy));
+    // Galerie oben mit Geländer
+    const gY = gy - 150;
+    g.fillStyle = '#3a2414'; g.fillRect(0, 0, V.w, gY - 40);
+    rep(V, off, 0.3, 120, (x) => { g.fillStyle = '#ffcf7a'; g.fillRect(x + 20, gY - 80, 26, 30); g.fillStyle = '#2a1a10'; g.fillRect(x + 32, gY - 80, 2, 30); g.fillStyle = '#5d3f2a'; g.fillRect(x + 60, gY - 90, 40, 50); g.fillStyle = '#4a2f1c'; g.fillRect(x + 64, gY - 86, 32, 42); }); // Türen oben
+    g.fillStyle = '#6d4a30'; g.fillRect(0, gY - 4, V.w, 8); g.fillRect(0, gY - 30, V.w, 4);
+    rep(V, off, 0.3, 14, (x) => { g.fillStyle = '#7d5638'; g.fillRect(x, gY - 26, 4, 22); });
+    rep(V, off, 0.3, 240, (x) => { g.fillStyle = '#5d3f2a'; g.fillRect(x + 40, gY, 10, gy - gY); }); // Stützpfosten
+    // Treppe
+    once(V, off, 0.3, 1100, 760, (x) => {
+      for (let i = 0; i < 12; i++) { g.fillStyle = i % 2 ? '#7a5234' : '#6d4a30'; g.fillRect(x + i * 14, gy - 12 - i * 12, 40, 12); }
+      g.strokeStyle = '#8a6040'; g.lineWidth = 3; g.beginPath(); g.moveTo(x + 6, gy - 40); g.lineTo(x + 176, gy - 182); g.stroke();
+      for (let i = 0; i < 12; i++) { g.fillStyle = '#8a6040'; g.fillRect(x + 8 + i * 14, gy - 40 - i * 12, 3, 28); }
+    });
+    // Wagenrad-Kronleuchter mit Laternen
+    rep(V, off, 0.22, 420, (x) => {
+      const cx = x + 200, cy = gY - 52 + Math.sin(t * 0.8 + x) * 1;
+      g.strokeStyle = '#2a1a10'; g.lineWidth = 2; g.beginPath(); g.moveTo(cx, 0); g.lineTo(cx, cy - 6); g.stroke(); for (const s2 of [-1, 1]) { g.beginPath(); g.moveTo(cx, cy - 26); g.lineTo(cx + s2 * 36, cy); g.stroke(); }
+      g.strokeStyle = '#6b4a2a'; g.lineWidth = 4; g.beginPath(); g.ellipse(cx, cy, 44, 9, 0, 0, TAU); g.stroke(); g.lineWidth = 1.5; for (let s2 = 0; s2 < 8; s2++) { const a = s2 / 8 * TAU; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * 44, cy + Math.sin(a) * 9); g.stroke(); }
+      for (let s2 = 0; s2 < 6; s2++) { const a = s2 / 6 * TAU, lx = cx + Math.cos(a) * 44, ly = cy + Math.sin(a) * 9; g.fillStyle = '#2a1a10'; g.fillRect(lx - 3, ly + 2, 6, 10); const lg = g.createRadialGradient(lx, ly + 7, 1, lx, ly + 7, 22); lg.addColorStop(0, 'rgba(255,210,120,0.95)'); lg.addColorStop(1, 'rgba(255,210,120,0)'); g.fillStyle = lg; g.beginPath(); g.arc(lx, ly + 7, 22, 0, TAU); g.fill(); }
+    });
+    // Bartresen mit Flaschenregal & Spiegel
+    rep(V, off, 0.4, 520, (x) => {
+      g.fillStyle = '#3a2414'; g.fillRect(x + 20, gy - 130, 300, 70);
+      g.fillStyle = 'rgba(200,220,230,0.25)'; g.fillRect(x + 120, gy - 124, 100, 40); g.strokeStyle = '#c9a24a'; g.lineWidth = 2; g.strokeRect(x + 120, gy - 124, 100, 40);
+      for (let r = 0; r < 2; r++) { g.fillStyle = '#5d3f2a'; g.fillRect(x + 24, gy - 98 + r * 20 - 20, 92, 3); g.fillRect(x + 224, gy - 98 + r * 20 - 20, 92, 3); for (let i = 0; i < 8; i++) for (const bx of [x + 28, x + 228]) { g.fillStyle = ['#2e7d32', '#8d6e63', '#c9a24a', '#6a1b1b'][(i + r) % 4]; g.fillRect(bx + i * 11, gy - 112 + r * 20 - 20, 6, 14); } }
+      g.fillStyle = '#6d4228'; g.fillRect(x, gy - 50, 340, 50); g.fillStyle = '#8a5a36'; g.fillRect(x - 6, gy - 56, 352, 8);
+      g.fillStyle = 'rgba(0,0,0,0.2)'; for (let i = 20; i < 340; i += 56) g.fillRect(x + i, gy - 46, 40, 40);
+      g.fillStyle = '#efe3c4'; g.fillRect(x + 360, gy - 120, 30, 38); g.fillStyle = '#5a1f12'; g.font = '900 6px Georgia, serif'; g.textAlign = 'center'; g.fillText('WANTED', x + 375, gy - 112); g.fillStyle = '#8a6a4a'; g.fillRect(x + 366, gy - 108, 18, 16); // Steckbrief
+      g.fillStyle = '#222'; g.fillRect(x + 440, 0, 8, gy - 60); g.fillStyle = '#2a2a2a'; roundRect(g, x + 426, gy - 62, 36, 62, 6); g.fill(); g.fillStyle = 'rgba(255,120,40,0.6)'; g.fillRect(x + 434, gy - 36, 20, 12); // Ofen
+    });
+    // runde Tische mit Holzstühlen
+    rep(V, off, 0.6, 300, (x) => {
+      const tx = x + 120;
+      for (const s2 of [-1, 1]) { g.fillStyle = '#5d3f2a'; g.fillRect(tx + s2 * 38 - 4, gy - 42, 4, 42); g.fillRect(tx + s2 * 38 - 12, gy - 22, 20, 4); g.fillRect(tx + s2 * 38 - 12, gy - 22, 3, 22); g.fillRect(tx + s2 * 38 + 5, gy - 22, 3, 22); for (let j = 0; j < 4; j++) g.fillRect(tx + s2 * 38 - 10 + j * 5, gy - 42, 2, 20); }
+      g.fillStyle = '#7a5234'; g.beginPath(); g.ellipse(tx, gy - 30, 30, 6, 0, 0, TAU); g.fill(); g.fillStyle = '#5d3f2a'; g.fillRect(tx - 3, gy - 30, 6, 30); g.fillRect(tx - 14, gy - 3, 28, 3);
+      g.fillStyle = '#c9a24a'; g.fillRect(tx - 6, gy - 42, 5, 10); g.fillStyle = 'rgba(255,240,200,0.7)'; g.fillRect(tx + 4, gy - 40, 4, 8);
+    });
+    floor(g, V, '#7a5234', '#5d3f2a', off, () => { g.fillStyle = 'rgba(0,0,0,0.18)'; rep(V, off, 1, 30, (x) => g.fillRect(x, gy + 3, 2, 60)); for (let r = 0; r < 4; r++) { g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(0, gy + 10 + r * 12, V.w, 1); } });
+  },
   // Garten am Abend (nach Fotos & Straßenansicht): Omas Fachwerkhaus aus rotem Backstein, daneben das weiße Haus
   // mit dunkelgrauem Sockel & Vorgarten hinter Backsteinpfeiler-Zaun; dahinter der Garten zwischen Hütte und Hausseite
   // vor der hohen Backsteinwand – Wandlaternen an, Palmen & Lavendel, Gartenstühle mit kariertem Polster
@@ -2047,7 +2150,7 @@ export const LEVELS = {
   L32: { icon: '🍷', scene: ['mainzMarkt', 'rheinufer'], music: 'minuet', len: 120, obstacles: { pigeon: 3, flowerpot: 2, umbrella: 2, bike: 2 }, items: ['wine2', 'cheese2', 'weck'], quest: { items: ['wine2', 'cheese2', 'weck'], n: 10 }, hero: 'winzer' },
   L33: { icon: '🌸', scene: 'bluetenfest', music: 'spring', len: 120, obstacles: { hayball: 3, bench: 2, flowerpot: 2, carousel: 1, bembel: 2 }, items: ['blossom', 'los'], quest: { item: 'gerippter', n: 10 }, hero: 'flowers', party: 1 },
   L34: { icon: '🦃', scene: 'xmasRustler', music: 'wewish', len: 105, obstacles: { teddy: 2, toytrain: 2, gift: 2, rocking: 2, weizen: 1 }, items: ['turkey', 'cookie2', 'wine'], quest: { face: 1, n: 5 }, hero: 'elf' },
-  L35: { icon: '🌵', scene: 'western', music: 'susanna', len: 120, obstacles: { hayball: 2, tumbleweed: 3, cactus: 2, bull: 2, facefly: 2 }, items: ['cowboyhat', 'burger2', 'hotdog'], quest: { survive: 1 }, hero: 'cowboy', party: 1 },
+  L35: { icon: '🌵', scene: ['westernTown', 'saloon'], music: 'susanna', len: 120, obstacles: { hayball: 2, tumbleweed: 3, cactus: 2, bull: 2, facefly: 2 }, obstacles2: { barstool: 3, bottle: 2, hayball: 1, facefly: 1 }, items: ['cowboyhat', 'burger2', 'hotdog'], quest: { survive: 1 }, hero: 'cowboy', party: 1, guestBoots: 1, outfit: { shoes: 'cowboy', socks: 'none', extra: ['cowboyhat'] } }, // Westernstadt → Saloon, alle in Cowboystiefeln
   L36: { icon: '🏡', scene: ['homeKitchen', 'homeGarden'], world: 'kitchen', world2: 'garden', music: 'run', len: 150, obstacles: { mop: 3, pot: 2, flour: 2, stinklaundry: 3 }, obstacles2: { wheelbarrow: 3, flowerpot: 2, gnome: 2 }, items: ['pizza', 'wine'], quest: { survive: 1 }, hero: 'chef', checkpoint: 1 },
   L37: { icon: '🏰', scene: ['edinburgh', 'highlands'], music: 'auldlang', len: 120, obstacles: { sheep: 3, wall: 2, rain: 2, nessie: 1, leftcar: 3 }, items: ['shortbread', 'whisky'], quest: { item: 'shortbread', n: 10 }, hero: 'kilt' },
   L38: { icon: '🎂', scene: 'birthday', music: 'finaleBday', len: 150, obstacles: { wool: 1, bobbycar: 1, schoolbag: 1, shirtrack: 1, invoice: 1, cone: 1, barstool: 1, books: 1, laser: 1, gift: 1, 'maß': 1, gull: 1, dice: 1, discoball: 1, jeep: 1, taxi: 1, kettle: 1, hayball: 1, pan: 1, bembel: 1, slot: 1, cactus: 1, mop: 1, sheep: 1 }, items: ['candle'], quest: { item: 'candle', n: 34 }, hero: 'tux', checkpoint: 1, party: 1, finale: 1 },
