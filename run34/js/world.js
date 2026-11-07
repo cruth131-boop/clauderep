@@ -1,5 +1,5 @@
 // Spiellogik: Physik, Hindernisse, Items, Power-ups, Cameos, Hintergründe.
-import { drawCharacter, drawCat, drawPerson, drawHero, drawFan, drawRollatorOma, star, roundRect, setKidFaces, setCatStyle, drawTwerkFall, setCostumes, drawPersonBack, setGuestBoots } from './character.js';
+import { drawCharacter, drawCat, drawPerson, drawHero, drawFan, drawRollatorOma, star, roundRect, setKidFaces, setCatStyle, drawTwerkFall, setCostumes, drawPersonBack, setGuestBoots, drawArmchairSitter } from './character.js';
 import { assets, getFace } from './assets.js';
 import { Particles } from './fx.js';
 import { sfx } from './audio.js';
@@ -93,11 +93,11 @@ export class Game {
     setGuestBoots(mode !== 'attract' && !!this.lv?.guestBoots);
     setCostumes(mode !== 'attract' && Array.isArray(this.lvP?.guests) ? Object.fromEntries(this.lvP.guests.filter((c) => c.costume).map((c) => [c.face, c.costume])) : {});
     if (mode !== 'attract') { setKidFaces(this.lvP?.kids); assets.kidMode = !!this.lvP?.kid; assets.kidFace = this.lvP?.kidFace || null; setCatStyle({ boots: this.lv?.catBoots, kitten: this.lv?.kitten }); } else { assets.kidMode = false; setCatStyle({}); }
-    // Heidi versteckt sich im Geburtstags-Modus (und im Finale) hinter einem Busch -> Antippen = Pilzwald
-    this.heidiOn = mode === 'birthday' || level === 'L38'; this.heidiPeek = null; this.nextHeidi = rand(12, 55); this.heidiDone = false; // nur ein einziger Auftritt pro Lauf, Zeitpunkt zufällig
+    // Mama versteckt sich im Geburtstags-Modus (und im Finale) hinter einem Busch -> Antippen = Pilzwald
+    this.momOn = mode === 'birthday' || level === 'L38'; this.momPeek = null; this.nextMom = rand(12, 55); this.momDone = false; // nur ein einziger Auftritt pro Lauf, Zeitpunkt zufällig
     this.miniDone = false;
-    // Running Gag: Heidi jagt Hagen mit dem Wischmopp zum Aufräumen (einmal pro Lauf, zufälliger Zeitpunkt)
-    this.nextClean = ['birthday', 'endless', 'level'].includes(mode) && !this.horror && !this.lv?.noFamily && !this.lvP?.kid ? rand(22, 55) : Infinity; this.cleanDone = false;
+    // Running Gag: Mama jagt Papa mit dem Wischmopp zum Aufräumen (einmal pro Lauf, zufälliger Zeitpunkt)
+    this.nextClean = this.lv?.cleanChase ? rand(14, 40) : Infinity; this.cleanDone = false; // nur in Leveln mit cleanChase (bei den Eltern / bei Oma)
     this.omaRide = null; this.nextOma = ['birthday', 'endless', 'roadtrip'].includes(mode) ? rand(26, 34) : Infinity;
     this.hero = null; this.nextHero = ['birthday', 'endless', 'roadtrip', 'horror'].includes(mode) ? rand(16, 24) : Infinity;
     this.prevBiome = null; this.biomeFade = 1; this.nextBiomeAt = 60;
@@ -243,9 +243,9 @@ export class Game {
 
   tryTap(x, y) {
     const V = this.V;
-    const h = this.heidiPeek;
+    const h = this.momPeek;
     if (h && this.state === 'run' && Math.abs(x - h.x) < 48 && y > V.groundY - 150 && y < V.groundY + 10) {
-      this.heidiPeek = null; this.heidiDone = true;
+      this.momPeek = null; this.momDone = true;
       this.flash = 0.8; sfx('power');
       this.fx.burst(h.x, V.groundY - 70, { n: 34, colors: ['#4caf50', '#ff4f6d', '#fff', '#ffd23f'], speed: 240 });
       this.events.onToast?.(this.cfg.forestToast || '🍄 Geheimer Pilzwald! Fang die Pilze!');
@@ -420,14 +420,15 @@ export class Game {
     this.items = this.items.filter((it) => it.x > -60 && !it.taken);
     for (const c of this.cameos) { c.x -= dx + (c.vx || 0) * dt; c.t += dt; }
     this.cameos = this.cameos.filter((c) => c.x > -80);
-    if (!this.cleanDone && this.state === 'run' && (this.nextClean -= dt) <= 0) {
+    if (!this.cleanDone && this.state === 'run' && !(this.lv?.cleanChase === 2 && (this.sceneIdx || 0) < 1) && (this.nextClean -= dt) <= 0) { // cleanChase 2 = erst im zweiten Teil
       this.cleanDone = true;
-      const cc = this.cfg.cleanChase || {}, run = cc.runner || this.cfg.chaser?.face, ch = cc.chaser || this.cfg.family?.fan?.face;
+      const cc = this.cfg.cleanChase || {}, ch = cc.chaser || this.cfg.family?.fan?.face;
+      const run = (this.lvP?.kid && cc.runnerKid && assets.images[cc.runnerKid] ? cc.runnerKid : null) || cc.runner || this.cfg.chaser?.face;
       if (run && ch && run !== assets.player && ch !== assets.player) this.cameos.push({ cleanChase: true, face: run, chaser: ch, x: this.V.w + 70, t: 0, vx: 40, said: false, line: pick(cc.lines || ['Aufräumen!! 🧹', 'Die Spülmaschine räumt sich nicht von selbst aus!', 'Erst putzen, dann Fernsehen!', 'Wer hat hier gekrümelt?!', 'Staubsaugen – JETZT! 🧽']), reply: pick(cc.replies || ['Ich muss noch… äh… weg! 💨', 'Gleich, Schatz!', 'Hilfeee! 😱']) });
     }
-    if (this.heidiOn && !this.heidiDone && this.state === 'run' && !this.horror) {
-      if (this.heidiPeek) { const h = this.heidiPeek; h.x -= dx * 0.55; h.t += dt; if (h.x < -70) { this.heidiPeek = null; this.heidiDone = true; } }
-      else if ((this.nextHeidi -= dt) <= 0) this.heidiPeek = { x: this.V.w + 60, t: 0 };
+    if (this.momOn && !this.momDone && this.state === 'run' && !this.horror) {
+      if (this.momPeek) { const h = this.momPeek; h.x -= dx * 0.55; h.t += dt; if (h.x < -70) { this.momPeek = null; this.momDone = true; } }
+      else if ((this.nextMom -= dt) <= 0) this.momPeek = { x: this.V.w + 60, t: 0 };
     }
     if (this.rockets.length) this.updateRockets(dt, dx);
     for (const b of this.booms) { b.t += dt; b.x -= dx; }
@@ -471,7 +472,7 @@ export class Game {
       const it = this.makeItem('blackring', V.w + 40, pick([20, 104])); it.quest = true; this.items.push(it);
       this.events.onToast?.('💍 Da glitzert was im Gras…');
     }
-    // Dennis-Auftritt (wild schießend durchs Bild)
+    // Wilder Auftritt (wild schießend durchs Bild)
     if (this.ramp) this.updateRamp(dt);
     else if ((this.rampT -= dt) <= 0) { const r = this.lvP.rampage; this.rampT = rand(...(r.every || [16, 22])); this.ramp = { x: V.w + 60, dir: -1, turns: 0, t: 0, face: r.face, lines: r.lines || ['YEEEEHA!'], shotT: 0, bullets: [] }; }
     // Hypno-Dreh im geheimen Level
@@ -882,7 +883,7 @@ export class Game {
     }
   }
 
-  // Oma Inge rast auf der Rollator-Rakete vorbei und lässt Graupensuppe (= Herz) fallen
+  // Oma rast auf der Rollator-Rakete vorbei und lässt Graupensuppe (= Herz) fallen
   updateOma(dt) {
     const p = this.p, V = this.V;
     if (!this.omaRide) {
@@ -1243,7 +1244,7 @@ export class Game {
         g.restore();
       }
     } else drawBackground(g, V, this.M.theme, this.bgOffset, this.t, night);
-    if (this.heidiPeek) this.drawHeidiPeek(g);
+    if (this.momPeek) this.drawMomPeek(g);
     for (const c of this.cameos) this.drawCameo(g, c);
     if (this.lv) this.drawGoalArch(g);
     if (this.story) drawStoryBack(g, this, this.story);
@@ -1440,9 +1441,9 @@ export class Game {
     if (Math.floor(t / 2.8) !== this.fipsSayN) { this.fipsSayN = Math.floor(t / 2.8); if (this.fipsSayN % 2 === 0) this.fx.text(p.x + 60, V.groundY - 90, pick(this.cfg.catLines || ['Miau!']), { color: '#ffb36b', size: 16 }); }
   }
 
-  // Heidi lugt hinter einem Busch hervor und winkt
-  drawHeidiPeek(g) {
-    const V = this.V, h = this.heidiPeek, by = V.groundY - 4;
+  // Mama lugt hinter einem Busch hervor und winkt
+  drawMomPeek(g) {
+    const V = this.V, h = this.momPeek, by = V.groundY - 4;
     const up = Math.max(0, Math.sin(h.t * 1.6)) ** 0.6, peek = 18 + up * 34;
     g.save(); g.beginPath(); g.rect(h.x - 70, 0, 140, by - 6); g.clip();
     drawPerson(g, h.x, by + 60 - peek, { faceKey: this.cfg.family?.fan?.face, t: this.t, color: '#d55b8f', scale: CAMEO_SCALE * 0.9 });
@@ -1457,22 +1458,8 @@ export class Game {
     const V = this.V;
     if (c.mini && !this.miniDone) { g.globalAlpha = 0.6 + Math.sin(c.t * 6) * 0.4; emoji(g, '👟', c.x + 22, V.groundY - 150, 18); emoji(g, '✨', c.x - 20, V.groundY - 140, 14); g.globalAlpha = 1; }
     if (c.armchair) { // sitzt im Sessel und will mehr Eierlikör – aus dem Waffelbecher
-      const gy = V.groundY, ax = c.x;
-      g.fillStyle = '#c4501f'; roundRect(g, ax - 30, gy - 92, 60, 60, 10); g.fill(); // Rückenlehne
-      g.save(); g.beginPath(); g.rect(ax - 60, 0, 120, gy - 34); g.clip();
-      drawPerson(g, ax, gy - 16, { faceKey: c.face, t: c.t, color: '#8fb4e8', scale: CAMEO_SCALE * 0.95, wave: false, expr: 'happy' });
-      g.restore();
-      g.fillStyle = 'rgba(255,255,255,0.85)'; for (let i = 0; i < 12; i++) { g.beginPath(); g.arc(ax - 9 + (i % 4) * 6, gy - 82 + Math.floor(i / 4) * 5, 0.9, 0, 7); g.fill(); } // Strass-Muster
-      g.fillStyle = '#d9662b'; roundRect(g, ax - 38, gy - 40, 76, 28, 8); g.fill(); roundRect(g, ax - 44, gy - 62, 16, 52, 6); g.fill(); roundRect(g, ax + 28, gy - 62, 16, 52, 6); g.fill(); // Sitz & Armlehnen
-      g.fillStyle = 'rgba(255,214,120,0.5)'; for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(ax - 30 + i * 12, gy - 28 + (i % 2) * 6, 2.4, 0, 7); g.fill(); }
-      g.fillStyle = '#7a3a14'; g.fillRect(ax - 40, gy - 12, 6, 12); g.fillRect(ax + 34, gy - 12, 6, 12);
-      // Waffel-Shotbecher mit Eierlikör, wird zum Mund gehoben
-      const lift = Math.max(0, Math.sin(c.t * 1.6)) * 14, wx = ax + 18, wy = gy - 66 - lift;
-      g.fillStyle = '#c98a3b'; g.beginPath(); g.moveTo(wx - 6, wy - 10); g.lineTo(wx + 6, wy - 10); g.lineTo(wx + 4, wy + 4); g.lineTo(wx - 4, wy + 4); g.closePath(); g.fill();
-      g.strokeStyle = '#9c6a2a'; g.lineWidth = 0.8; for (let k = -4; k <= 4; k += 3) { g.beginPath(); g.moveTo(wx + k - 2, wy - 10); g.lineTo(wx + k + 2, wy + 4); g.moveTo(wx + k + 2, wy - 10); g.lineTo(wx + k - 2, wy + 4); g.stroke(); }
-      g.fillStyle = '#f6d64a'; g.beginPath(); g.ellipse(wx, wy - 10, 6, 2, 0, 0, 7); g.fill();
-      g.fillStyle = '#f3c4a2'; g.beginPath(); g.arc(wx, wy + 3, 3.5, 0, 7); g.fill();
-      if (c.said) { const k = Math.floor(c.t / 2.4) % 2; if (k === 0) speech(g, ax - 4, gy - 150, c.line); }
+      drawArmchairSitter(g, c.x, V.groundY, { faceKey: c.face, t: c.t, scale: CAMEO_SCALE });
+      if (c.said && Math.floor(c.t / 2.4) % 2 === 0) speech(g, c.x - 4, V.groundY - 150, c.line);
       return;
     }
     if (c.pee) { // steht mit dem Rücken zu uns an der Litfaßsäule und pinkelt 🙈
@@ -1492,7 +1479,7 @@ export class Game {
       if (c.said && c.sayT < 2 && c.line) speech(g, c.x + 12, V.groundY - 154, c.line);
       return;
     }
-    if (c.cleanChase) { // Hagen flüchtet, Heidi mit Wischmopp + Seifenblasen hinterher
+    if (c.cleanChase) { // Papa flüchtet, Mama mit Wischmopp + Seifenblasen hinterher
       const gap = 70 + Math.sin(c.t * 3) * 8, gy = V.groundY - 6;
       g.save(); g.translate(c.x, 0); g.scale(-1, 1); g.translate(-c.x, 0);
       drawPerson(g, c.x, gy, { faceKey: c.face, t: c.t * 1.6, color: '#1f7a3a', scale: CAMEO_SCALE, run: true, expr: 'shock', suit: 'track' });

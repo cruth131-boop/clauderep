@@ -564,7 +564,7 @@ export const SCENES = {
     floor(g, V, '#5d6d5f', '#3e4a40', off, () => { g.strokeStyle = 'rgba(0,0,0,0.2)'; rep(V, off, 1, 50, (x) => g.strokeRect(x, gy + 2, 50, 50)); });
   },
 
-  // Fahrschule: Hanauer Stadtstraße mit Ampeln und Fahrschulauto
+  // Fahrschule: Stadtstraße mit Ampeln und Fahrschulauto
   driving(g, V, off, t) {
     const gy = V.groundY;
     sky(g, V, '#9fd3f5', '#f2f9ff'); clouds(g, V, off);
@@ -771,10 +771,10 @@ export const SCENES = {
     floor(g, V, '#0b0b12', '#2a2a3a', off, () => { rep(V, off, 1, 30, (x, k) => { g.fillStyle = `hsla(${(hue + k * 40) % 360},90%,60%,0.35)`; g.fillRect(x + 1, gy + 3, 28, 6); }); });
   },
 
-  // Weihnachten bei Carola: Wohnzimmer mit Baum, Kamin, Fenster mit Schnee
-  // Weihnachten bei Carola (nach Foto): gelbe Wände, orange Blumen-Leinwände, orange gemustertes Sofa, Regal mit
+  // Weihnachten: Wohnzimmer mit Baum, Kamin, Fenster mit Schnee
+  // Weihnachten in der Wohnung der Tante (nach Foto): gelbe Wände, orange Blumen-Leinwände, orange gemustertes Sofa, Regal mit
   // Weidenkörben, orange Vorhänge, heller Laminatboden mit Fußmatte – dazu Baum, Lichterkette und Eierlikör auf dem Tisch
-  carolaXmas(g, V, off, t) {
+  xmasFlat(g, V, off, t) {
     const gy = V.groundY;
     g.fillStyle = '#f2d24a'; g.fillRect(0, 0, V.w, gy);
     g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(0, 0, V.w, 20);
@@ -2233,7 +2233,7 @@ export const COSTUMES = {
 // Level-Definitionen (Spielmechanik). Reihenfolge & Texte: config.levels
 // ---------------------------------------------------------------------------
 export const LEVELS = {
-  L1: { icon: '👵', scene: 'omaRoom', music: 'augustin', len: 60, obstacles: { wool: 3, teapot: 2, slipper: 3, couch: 1, griess: 2 }, items: ['cookie', 'milchschnitte'], quest: { item: 'milchschnitte', n: 12 }, hero: 'classic', speed: 0.92 },
+  L1: { icon: '👵', scene: 'omaRoom', music: 'augustin', len: 60, obstacles: { wool: 3, teapot: 2, slipper: 3, couch: 1, griess: 2 }, items: ['cookie', 'milchschnitte'], quest: { item: 'milchschnitte', n: 12 }, hero: 'classic', speed: 0.92 , cleanChase: 1 },
   L2: { icon: '🛝', scene: 'kidStreet', music: 'entchen', len: 60, obstacles: { bobbycar: 3, football: 3, bucket: 2 }, items: ['brause', 'wassereis'], quest: { item: 'wassereis', n: 10 }, hero: 'kid', speed: 0.92 },
   L3: { icon: '🎒', scene: 'school', music: 'haenschen', len: 75, obstacles: { schoolbag: 3, trafficlight: 2, puddle: 3 }, items: ['sweets', 'cookie'], quest: { item: 'sweets', n: 10 }, hero: 'schooltuete', speed: 0.94 },
   L4: { icon: '🛍️', scene: ['mallOut', 'mall'], music: 'elise', len: 90, obstacles: { shirtrack: 3, sale: 2, shopbag: 2, shirt: 2 }, items: ['shopbag2', 'coffee'], quest: { item: 'shopbag2', n: 8 }, hero: 'fan' },
@@ -2241,13 +2241,13 @@ export const LEVELS = {
   L6: { icon: '💸', scene: 'bank', music: 'entertainer', len: 75, obstacles: { invoice: 3, piggy: 2, tax: 2, chartfly: 2 }, items: ['coin', 'money'], quest: { item: 'money', n: 20 }, hero: 'banker', goalRain: '💸' },
   L7: { icon: '🚗', scene: 'driving', music: 'tell', len: 90, obstacles: { cone: 3, blitzer: 2, bike: 2, car: 2 }, items: ['voucher'], quest: { item: 'voucher', n: 8 }, hero: 'racer' },
   L8: { icon: '🍹', scene: 'chococino', music: 'habanera', len: 90, obstacles: { barstool: 3, bottle: 2, trays: 2 }, items: ['bluelagoon', 'bluelagoon', 'cocktail', 'cupid'], quest: { item: 'cupid', n: 10 }, hero: 'barkeeper', goalHearts: 1 },
-  L9: { icon: '🐱', scene: ['parentsFlat', 'eveGarden'], music: 'turca', len: 100, obstacles: { log: 3, wool: 3, tp: 2 }, obstacles2: { flowerpot: 3, wool: 2, gnome: 1 }, items: ['treat'], quest: { item: 'treat', n: 15 }, hero: 'catears', fipsBox: 1, kitten: 1 }, // Baby-Fips, Garten am Abend
+  L9: { icon: '🐱', scene: ['parentsFlat', 'eveGarden'], music: 'turca', len: 100, obstacles: { log: 3, wool: 3, tp: 2 }, obstacles2: { flowerpot: 3, wool: 2, gnome: 1 }, items: ['treat'], quest: { item: 'treat', n: 15 }, hero: 'catears', fipsBox: 1, kitten: 1 , cleanChase: 1 }, // Baby-Fips, Garten am Abend
   L10: { icon: '📚', scene: 'hola', music: 'mountain', len: 150, obstacles: { books: 3, alarm: 2, ice4: 3, grade6: 1 }, items: ['coffee', 'cheatnote'], quest: { survive: 1 }, hero: 'tutor', checkpoint: 1 },
   L11: { icon: '🎓', scene: 'uni', music: 'ode', len: 90, obstacles: { bench: 2, tray: 3, books: 2 }, items: ['fries2', 'coffee'], quest: { item: 'fries2', n: 10 }, hero: 'graduate' },
   L12: { icon: '⚖️', scene: 'wiesbaden', music: 'toccata', len: 105, obstacles: { folders: 2, barstool: 2, paragraph: 3, facewalk: 1 }, items: ['redbull', 'koelsch', 'akte'], quest: { item: 'akte', n: 8 }, hero: 'angel' },
   L13: { icon: '👻', scene: 'horror', music: 'horror', len: 90, horror: 1, obstacles: { shirt: 2, flyshirt: 3, ghost: 2, stink: 3, rille: 2, fish: 2, merz: 2 }, items: ['candle'], bad: 0.45, quest: { survive: 1 }, hero: 'zombie' },
   L14: { icon: '🪩', scene: 'cocoon', music: 'techno', len: 105, obstacles: { speaker: 3, laser: 3, fog: 2, bouncer: 1 }, items: ['glow', 'water'], quest: { item: 'glow', n: 12 }, hero: 'raver', outfit: { top: 'glitter', topColor: 'f', bottom: 'tutu', socks: 'ringel', shoes: 'docs', extra: ['boa'] }, party: 1 }, // Kopf frei lassen, damit man sie erkennt
-  L15: { icon: '🎄', scene: ['carolaXmas', 'omaXmas'], music: 'deckhalls', len: 105, obstacles: { gift: 3, snowman: 2, smalltree: 2, candlebig: 2 }, items: ['eierlikoer', 'cookie2', 'wine'], quest: { item: 'cookie2', n: 12 }, hero: 'santa' },
+  L15: { icon: '🎄', scene: ['xmasFlat', 'omaXmas'], music: 'deckhalls', len: 105, obstacles: { gift: 3, snowman: 2, smalltree: 2, candlebig: 2 }, items: ['eierlikoer', 'cookie2', 'wine'], quest: { item: 'cookie2', n: 12 }, hero: 'santa' , cleanChase: 2 },
   L16: { icon: '🎡', scene: 'plaerrer', music: 'volksfest', len: 105, obstacles: { 'maß': 3, hayball: 2, carousel: 1, target: 2, dartboard: 2 }, items: ['brezn', 'lebherz', 'domsign'], quest: { item: 'domsign', n: 6 }, hero: 'lederhosen', party: 1, goalRain: '👶' },
   L17: { icon: '🏖️', scene: ['sicily', 'apulia'], music: 'mobile', len: 105, obstacles: { sandcastle: 2, crab: 2, gull: 3, wave: 2, vespa: 2 }, items: ['gelato', 'pizza', 'mussel', 'cocktail'], badItems: ['fig'], bad: 0.3, quest: { avoid: 'fig' }, hero: 'baywatch', figStory: 1 },
   L18: { icon: '🎭', scene: 'koeln', music: 'cancan', len: 105, obstacles: { confetti: 2, dancer: 2, clown: 2, flyball: 3 }, items: ['kamelle', 'struessjer', 'koelsch'], quest: { item: 'kamelle', n: 15 }, hero: 'flamingo', party: 1, outfit: { top: 'blazer', topColor: 'd', bottom: 'matrose', socks: 'none', shoes: 'docs', extra: ['tophat', 'sweep'] } }, // Kim als Schornsteinfegerin, Christoph als Flamingo

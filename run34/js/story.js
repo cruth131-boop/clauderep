@@ -2,7 +2,7 @@
 // Designregeln: eine Geste pro Spiel, per animierter Hand gezeigt statt erklärt, 6–12 s, kein Scheitern
 // (nur mehr oder weniger Bonuspunkte), viel Feedback, eine Überraschung pro Spiel. Einspieler: zeigen statt erzählen.
 // Die Ereignisse selbst (wer, was, Texte) stehen in der privaten Config: config.levels[i].events.
-import { drawPerson, drawCat, drawHero, drawRollatorOma, roundRect, drawTwerkFall, drawFaceOn } from './character.js';
+import { drawPerson, drawCat, drawHero, drawRollatorOma, roundRect, drawTwerkFall, drawFaceOn, drawArmchairSitter, drawWaffleCup } from './character.js';
 const TAU = Math.PI * 2;
 import { emoji } from './emoji.js';
 import { assets } from './assets.js';
@@ -87,7 +87,7 @@ export function startStory(game, ev) {
 }
 
 // ---------------------------------------------------------------------------
-// Pilzwald: Heidi (per Finger gesteuert) fängt Pilze, die vor ihr weghüpfen
+// Pilzwald: Mama (per Finger gesteuert) fängt Pilze, die vor ihr weghüpfen
 function newMush(V, s, far = true) {
   let x; do { x = rand(40, V.w - 40); } while (far && Math.abs(x - s.hx) < 160);
   return { x, y: 0, vx: 0, vy: 0, hop: rand(0.3, 1.2), gold: Math.random() < 0.15, born: s.t, squash: 0 };
@@ -172,7 +172,7 @@ function drawMushrooms(g, game, s) {
   g.fillStyle = grd; g.fillRect(0, gy - 2, V.w, V.h - gy + 2);
   for (let i = 0; i < 26; i++) { const x = (i * 71.3) % V.w, y = gy + 6 + ((i * 37) % 30); g.fillStyle = ['#c46a2b', '#e0a43a', '#8d5524'][i % 3]; g.beginPath(); g.ellipse(x, y, 5, 2.4, i, 0, 7); g.fill(); }
   for (let i = 0; i < 7; i++) emoji(g, '🌿', (i * 131 + 40) % V.w, gy - 8, 22);
-  // Pilze & Heidi
+  // Pilze & Mama
   for (const m of s.mush) drawMushroom(g, m.x, gy - m.y, m, s.t + m.born);
   const moving = Math.abs(s.target - s.hx) > 4 && s.phase === 'play';
   g.save(); if (s.dir < 0) { g.translate(s.hx, 0); g.scale(-1, 1); g.translate(-s.hx, 0); }
@@ -859,13 +859,17 @@ const OBJ_UPD = {
 
 // Szenen-Objekte am Boden
 const OBJ_DRAW = {
-  lounger(g, game, s, a, x, y) { // Gartenliege mit rot-grau kariertem Polster: Hagen liegt drauf, Baby-Fips schläft auf seinem Bauch
+  armchair(g, game, s, a, x, y) { // Gast im Sessel mit Waffelbecher; beim Anstoßen (toastAt) hebt er den Becher hoch
+    const ta = s.ev.toastAt, lift = ta != null && s.t > ta - 0.3 && s.t < ta + 1.2 ? 1 : null;
+    drawArmchairSitter(g, x, y + 6, { faceKey: a.face, t: s.t, scale: 1.05, lift });
+  },
+  lounger(g, game, s, a, x, y) { // Gartenliege mit rot-grau kariertem Polster: Papa liegt drauf, Baby-Fips schläft auf seinem Bauch
     const t = s.t, w = 150;
     g.fillStyle = '#3e2f28'; g.fillRect(x - w / 2, y - 26, w, 6); for (const lx of [x - w / 2 + 6, x + w / 2 - 10]) g.fillRect(lx, y - 22, 5, 22);
     const plaid = (px, py, pw, ph) => { g.fillStyle = '#b5313f'; g.fillRect(px, py, pw, ph); g.fillStyle = 'rgba(70,70,80,0.55)'; for (let i = 4; i < pw; i += 14) g.fillRect(px + i, py, 5, ph); for (let j = 3; j < ph; j += 9) g.fillRect(px, py + j, pw, 3); g.fillStyle = 'rgba(255,255,255,0.45)'; for (let i = 10; i < pw; i += 14) g.fillRect(px + i, py, 1.2, ph); };
     plaid(x - w / 2, y - 34, w, 10); // Liegefläche
     g.save(); g.translate(x - w / 2 + 8, y - 32); g.rotate(-0.55); plaid(-4, -44, 26, 44); g.restore(); // Rückenlehne
-    // Hagen liegt (Körper grün, Beine nach rechts), Kopf links auf der Lehne
+    // Papa liegt (Körper grün, Beine nach rechts), Kopf links auf der Lehne
     g.fillStyle = '#1f7a3a'; roundRect(g, x - 52, y - 50, 62, 18, 8); g.fill();
     g.fillStyle = '#333a4a'; roundRect(g, x + 6, y - 46, 62, 12, 6); g.fill();
     g.fillStyle = '#222'; roundRect(g, x + 64, y - 50, 8, 16, 3); g.fill();
@@ -1160,6 +1164,11 @@ export function drawStory(g, game, s) {
   if (s.kind === 'scene') {
     const kx = game.p.x, ky = gy - game.p.y;
     if (ev.kimiProp) emoji(g, ev.kimiProp, kx + 18, ky - 70, 24);
+    if (ev.kimiCup) { // Waffelbecher mit Eierlikör; beim Anstoßen nach vorn gestreckt + Klirren
+      const ta = ev.toastAt, k = ta != null ? clamp(1 - Math.abs(s.t - ta) / 0.6, 0, 1) : 0;
+      drawWaffleCup(g, kx + 22 + k * 26, ky - 66 - k * 10, 1.25);
+      if (ta != null && s.t > ta && s.t < ta + 0.9) { g.fillStyle = '#fff59d'; for (let i = 0; i < 6; i++) { const a2 = i / 6 * TAU + s.t * 6; g.beginPath(); g.arc(kx + 52 + Math.cos(a2) * 10, ky - 82 + Math.sin(a2) * 10, 2, 0, TAU); g.fill(); } if (!s.clinked) { s.clinked = true; sfx('wine'); } }
+    }
     if (ev.kimiHat) emoji(g, ev.kimiHat, kx + 2, ky - 132, 30);
     if (ev.kimiFx === 'zzz') for (let i = 0; i < 3; i++) { const k = (s.t * 0.6 + i / 3) % 1; g.globalAlpha = 1 - k; emoji(g, '💤', kx + 20 + k * 30, ky - 90 - k * 50, 14 + k * 10); g.globalAlpha = 1; }
     for (const [st, en, txt] of ev.kimiSays || []) if (s.t >= st && s.t <= en) bubble(g, kx + 8, ky - 140, txt, '#c2185b');

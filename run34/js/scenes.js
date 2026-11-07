@@ -130,7 +130,7 @@ export class LoseScene {
       const k = ease(t / 0.35), h = S * 0.5 * (0.6 + 0.4 * k), sh = t < 0.6 ? Math.sin(t * 60) * 6 * (1 - t / 0.6) : 0;
       drawFaceAt(g, 'katha_shock', 'normal', cx + sh, cy, h, Math.sin(t * 3) * 0.04);
       g.fillStyle = '#ffd23f'; g.font = `900 ${Math.round(h * 0.22)}px ui-rounded, system-ui, sans-serif`; g.textAlign = 'center'; for (let i = 0; i < 3; i++) { const a = -0.5 + i * 0.5; g.fillText('!', cx + h * 0.55 + i * h * 0.12, cy - h * 0.25 + Math.sin(t * 12 + i) * 4 + i * 6); }
-      caption(g, V, assets.config.kathaShockLine || 'Katha ist geschockt! 😱', cy + h * 0.62, 22, '#ffd23f');
+      caption(g, V, assets.config.kathaShockLine || 'Die beste Freundin ist geschockt! 😱', cy + h * 0.62, 22, '#ffd23f');
     } else if (this.kind === 'sadface') {
       const h = S * 0.5;
       drawFaceAt(g, 'her', 'sad', cx, cy + Math.sin(t * 2) * 3, h);

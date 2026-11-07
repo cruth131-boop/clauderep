@@ -1138,6 +1138,29 @@ function costumeHead(g, k, t, back = false) {
   if (k === 'banana') { g.fillStyle = '#ffe135'; g.beginPath(); g.moveTo(-6, top + 2); g.quadraticCurveTo(0, top - 8, 6, top + 2); g.fill(); g.fillStyle = '#6d4c1a'; g.fillRect(-2, top - 14, 4, 9); }
   if (k === 'flamingo') { g.strokeStyle = '#ff8fb1'; g.lineWidth = 4; g.beginPath(); g.moveTo(6, top + 2); g.bezierCurveTo(18, top - 10, -6, top - 18, 6, top - 30); g.stroke(); g.fillStyle = '#ff8fb1'; g.beginPath(); g.arc(7, top - 31, 5, 0, 7); g.fill(); g.fillStyle = '#fff3e0'; g.beginPath(); g.moveTo(10, top - 32); g.lineTo(17, top - 29); g.lineTo(11, top - 28); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.moveTo(15, top - 30); g.lineTo(18, top - 27); g.lineTo(14, top - 27.5); g.fill(); g.beginPath(); g.arc(7, top - 32.5, 1, 0, 7); g.fill(); }
 }
+
+/** Waffel-Shotbecher mit Eierlikör (Mitte oben = x, y). */
+export function drawWaffleCup(g, wx, wy, s = 1) {
+  g.save(); g.translate(wx, wy); g.scale(s, s);
+  g.fillStyle = '#c98a3b'; g.beginPath(); g.moveTo(-6, -10); g.lineTo(6, -10); g.lineTo(4, 4); g.lineTo(-4, 4); g.closePath(); g.fill();
+  g.strokeStyle = '#9c6a2a'; g.lineWidth = 0.8; for (let k = -4; k <= 4; k += 3) { g.beginPath(); g.moveTo(k - 2, -10); g.lineTo(k + 2, 4); g.moveTo(k + 2, -10); g.lineTo(k - 2, 4); g.stroke(); }
+  g.fillStyle = '#f6d64a'; g.beginPath(); g.ellipse(0, -10, 6, 2, 0, 0, 7); g.fill();
+  g.restore();
+}
+/** Jemand sitzt im orange gemusterten Sessel und hebt immer wieder den Waffelbecher (lift 0..1 optional). */
+export function drawArmchairSitter(g, ax, gy, { faceKey, t = 0, scale = 1, color = '#8fb4e8', lift = null } = {}) {
+  g.fillStyle = '#c4501f'; roundRect(g, ax - 30, gy - 92, 60, 60, 10); g.fill();
+  g.save(); g.beginPath(); g.rect(ax - 60, 0, 120, gy - 34); g.clip();
+  drawPerson(g, ax, gy - 16, { faceKey, t, color, scale: scale * 0.95, wave: false, expr: 'happy' });
+  g.restore();
+  g.fillStyle = 'rgba(255,255,255,0.85)'; for (let i = 0; i < 12; i++) { g.beginPath(); g.arc(ax - 9 + (i % 4) * 6, gy - 82 + Math.floor(i / 4) * 5, 0.9, 0, 7); g.fill(); }
+  g.fillStyle = '#d9662b'; roundRect(g, ax - 38, gy - 40, 76, 28, 8); g.fill(); roundRect(g, ax - 44, gy - 62, 16, 52, 6); g.fill(); roundRect(g, ax + 28, gy - 62, 16, 52, 6); g.fill();
+  g.fillStyle = 'rgba(255,214,120,0.5)'; for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(ax - 30 + i * 12, gy - 28 + (i % 2) * 6, 2.4, 0, 7); g.fill(); }
+  g.fillStyle = '#7a3a14'; g.fillRect(ax - 40, gy - 12, 6, 12); g.fillRect(ax + 34, gy - 12, 6, 12);
+  const up = lift == null ? Math.max(0, Math.sin(t * 1.6)) : lift, wx = ax + 18, wy = gy - 66 - up * 14;
+  drawWaffleCup(g, wx, wy);
+  g.fillStyle = SKIN; g.beginPath(); g.arc(wx, wy + 3, 3.5, 0, 7); g.fill();
+}
 /** Gast von hinten (Rücken zur Kamera), z.B. beim Pinkeln an der Wand. */
 export function drawPersonBack(g, x, footY, { scale = 1, color = '#5b7bd5', costume = null, hair = '#5a3d2b', t = 0, pee = false } = {}) {
   const C = GUEST_COSTUMES[costume];
@@ -1436,7 +1459,7 @@ export function drawFan(g, x, footY, { faceKey, t = 0, color = '#d55b8f', scale 
 }
 
 // ---------------------------------------------------------------------------
-// Oma Inge auf der Rollator-Rakete
+// Oma auf der Rollator-Rakete
 // ---------------------------------------------------------------------------
 export function drawRollatorOma(g, x, footY, { t = 0, scale = 1 }) {
   g.save(); g.translate(x, footY); g.scale(scale, scale);
