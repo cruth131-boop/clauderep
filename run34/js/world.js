@@ -419,7 +419,7 @@ export class Game {
     }
     this.items = this.items.filter((it) => it.x > -60 && !it.taken);
     for (const c of this.cameos) { c.x -= dx + (c.vx || 0) * dt; c.t += dt; }
-    this.cameos = this.cameos.filter((c) => c.x > -80);
+    this.cameos = this.cameos.filter((c) => c.x > -80 && !(c.flee && c.x > this.V.w + 120));
     if (!this.cleanDone && this.state === 'run' && !(this.lv?.cleanChase === 2 && (this.sceneIdx || 0) < 1) && (this.nextClean -= dt) <= 0) { // cleanChase 2 = erst im zweiten Teil
       this.cleanDone = true;
       const cc = this.cfg.cleanChase || {}, ch = cc.chaser || this.cfg.family?.fan?.face;
@@ -739,12 +739,30 @@ export class Game {
       if (this.lvP?.chaserRescue && c.t > 2.2 && !c.rescue && !this.hero && this.state === 'run') { c.rescue = true; this.hero = { ph: 'in', t: 0, x: -110, y: 120, punch: 0, target: 'chase' }; sfx('launch'); }
       const target = c.t < 4.2 || c.rescue ? p.x - 78 + Math.sin(c.t * 2.2) * 14 : -120;
       c.x += (target - c.x) * Math.min(1, dt * (c.t < 4.2 ? 1.8 : 0.9));
-      if (c.t > 4.2 && !c.gaveUp && !c.rescue) { c.gaveUp = true; if (this.state === 'run') { this.stats.chases++; this.events.onChase?.(); } this.fx.text(c.x + 10, V.groundY - 95, 'Puh…', { color: '#fff', size: 14 }); }
+      for (const cm of this.cameos) if (cm.herd) { const tx = p.x + 70 + cm.herdIdx * 46; cm.x += (tx - cm.x) * Math.min(1, dt * 2.4) + this.speed * this.speedFactor * dt; } // vor den Chefs hergetrieben
+      if (c.t > 4.2 && !c.gaveUp && !c.rescue) { c.gaveUp = true; if (this.state === 'run') { this.stats.chases++; this.events.onChase?.(); } this.fx.text(c.x + 10, V.groundY - 95, 'Puh…', { color: '#fff', size: 14 }); for (const cm of this.cameos) if (cm.herd) { cm.herd = false; cm.line = 'Puh… 😮‍💨'; cm.sayT = 0; } }
       if (c.t > 7) this.chase = null;
       }
     } else if (active && this.cfg.chaser && !this.horror && !this.hero && !this.omaRide) {
       this.nextChase -= dt;
-      if (this.nextChase <= 0) { this.nextChase = this.lv ? freqT(this.lvP.freq?.chaser) : rand(22, 32); const ch = this.lvP?.chaser || this.cfg.chaser; this.chase = { x: -60, t: 0, face: ch.face, line: ch.line, suit: ch.suit, emoji: ch.emoji, color: ch.color }; }
+      if (this.nextChase <= 0) {
+        this.nextChase = this.lv ? freqT(this.lvP.freq?.chaser) : rand(22, 32); const ch = this.lvP?.chaser || this.cfg.chaser; this.chase = { x: -60, t: 0, face: ch.face, line: ch.line, suit: ch.suit, emoji: ch.emoji, color: ch.color };
+        const bc = this.lvP?.bossChase; // mehrere Chefs jagen alle vor sich her; manche entkommen nach rechts
+        if (bc) {
+          this.chase.faces = bc.faces; this.chase.lines = bc.lines; this.chase.color = bc.color || '#2b2d42';
+          let n = 0;
+          for (const cm of this.cameos) {
+            if (cm.pet || cm.sleep || cm.x < -20 || cm.x > V.w + 40 || (bc.faces || []).includes(cm.face)) continue;
+            if ((bc.escape || []).includes(cm.face)) { cm.flee = true; cm.vx = -560; cm.line = bc.escapeLine || 'Nichts wie weg! 💨'; cm.said = true; cm.sayT = 0; }
+            else { cm.herd = true; cm.herdIdx = n++; cm.line = pick(bc.herdLines || ['Hilfeee!', 'Nicht noch ein Projekt! 😱']); cm.said = true; cm.sayT = 0; }
+          }
+          // niemand im Bild? Dann rennen zwei Kollegen mit ins Bild (einer davon evtl. ein Entkommer)
+          if (!this.cameos.some((cm) => cm.herd || cm.flee)) {
+            const pool = shuffle((this.levelGuests || []).filter((cg) => cg.face && !cg.pet && !(bc.faces || []).includes(cg.face))).slice(0, 2);
+            pool.forEach((cg, i) => { const esc = (bc.escape || []).includes(cg.face); this.cameos.push({ ...cg, x: -40 - i * 50, t: 0, said: true, sayT: 0, color: pick(['#5b7bd5', '#d55b8f', '#3ea37a']), herd: !esc, flee: esc, vx: esc ? -560 : 0, herdIdx: n++, line: esc ? (bc.escapeLine || 'Nichts wie weg! 💨') : pick(bc.herdLines || ['Hilfeee!']) }); });
+          }
+        }
+      }
     }
     // Fips flitzt durchs Bild, überholt und springt wieder raus
     if (this.dash) {
@@ -1260,9 +1278,13 @@ export class Game {
       const c = this.chase;
       g.save();
       if (c.knock) { const cy = V.groundY - 50 - (c.ky || 0); g.translate(c.x, cy); g.rotate(c.rot || 0); g.translate(-c.x, -cy); g.translate(0, -(c.ky || 0)); }
-      drawPerson(g, c.x, V.groundY, { faceKey: c.face, t: this.t, color: c.color || (c.face === this.cfg.chaser?.face ? '#5b7bd5' : '#2b2d42'), scale: CAMEO_SCALE, run: !c.knock, expr: c.knock ? 'sad' : 'happy', suit: c.suit, emojiHead: c.emoji });
+      if (c.faces) c.faces.forEach((f, i) => drawPerson(g, c.x - i * 52, V.groundY - Math.abs(Math.sin(this.t * 9 + i)) * 3, { faceKey: f, t: this.t + i * 0.3, color: c.color, scale: CAMEO_SCALE, run: !c.knock, expr: c.knock ? 'sad' : 'happy' }));
+      else drawPerson(g, c.x, V.groundY, { faceKey: c.face, t: this.t, color: c.color || (c.face === this.cfg.chaser?.face ? '#5b7bd5' : '#2b2d42'), scale: CAMEO_SCALE, run: !c.knock, expr: c.knock ? 'sad' : 'happy', suit: c.suit, emojiHead: c.emoji });
       g.restore();
-      if (!c.knock && c.t > 0.6 && (c.t < 4.2 || c.rescue)) speech(g, c.x - 4, V.groundY - 142, c.line || 'Payback!');
+      if (!c.knock && c.t > 0.6 && (c.t < 4.2 || c.rescue)) {
+        if (c.faces) { const i = Math.floor(c.t / 1.1) % c.faces.length; speech(g, c.x - i * 52 - 4, V.groundY - 142, c.lines?.[i] || c.line || 'Deadline!'); }
+        else speech(g, c.x - 4, V.groundY - 142, c.line || 'Payback!');
+      }
     }
 
     const p = this.p;
@@ -1457,6 +1479,14 @@ export class Game {
   drawCameo(g, c) {
     const V = this.V;
     if (c.mini && !this.miniDone) { g.globalAlpha = 0.6 + Math.sin(c.t * 6) * 0.4; emoji(g, '👟', c.x + 22, V.groundY - 150, 18); emoji(g, '✨', c.x - 20, V.groundY - 140, 14); g.globalAlpha = 1; }
+    if (c.herd || c.flee) { // rennt vor den Chefs weg (flee = schneller als alle, raus nach rechts)
+      g.save(); g.translate(c.x, 0); g.scale(-1, 1); g.translate(-c.x, 0); // Blick nach rechts (weg von den Chefs)
+      drawPerson(g, c.x, V.groundY - 6 - Math.abs(Math.sin(c.t * 10)) * 4, { faceKey: c.face, t: c.t * 1.6, color: c.color, scale: CAMEO_SCALE, run: true, expr: c.flee ? 'happy' : 'shock' });
+      g.restore();
+      if (c.flee && Math.random() < 0.3) this.fx.list.push({ x: c.x - 16, y: V.groundY - 8, vx: -40, vy: -rand(10, 30), life: 0.5, max: 0.5, color: 'rgba(220,210,190,0.8)', size: 4, gravity: -10, type: 'smoke', rot: 0, vr: 0, drag: 1 });
+      if (c.sayT < 2.2 && c.line) speech(g, c.x + 6, V.groundY - 150 - ((c.herdIdx || 0) % 2) * 28, c.line);
+      return;
+    }
     if (c.armchair) { // sitzt im Sessel und will mehr Eierlikör – aus dem Waffelbecher
       drawArmchairSitter(g, c.x, V.groundY, { faceKey: c.face, t: c.t, scale: CAMEO_SCALE });
       if (c.said && Math.floor(c.t / 2.4) % 2 === 0) speech(g, c.x - 4, V.groundY - 150, c.line);

@@ -22,6 +22,7 @@ function label(g, text, x, y, size = 8, col = '#fff', bg = '#c0392b') {
 //   fly: fliegt (Ducken/Springen), move: Eigengeschwindigkeit, stack: übereinander, lab: Schild, spin: rollt
 // ---------------------------------------------------------------------------
 const EO = {
+  kalo: ['K', 80, { draw: 'word', word: 'KALO', col: '#e53935', w: 80 }], merck: ['M', 96, { draw: 'word', word: 'MERCK', col: '#0f69af', w: 96 }],
   gator: ['🐊', 64, { draw: 'gator', move: 45 }], knee: ['🪵', 34, { draw: 'knee' }], mosquito: ['🦟', 24, { fly: 1 }],
   wool: ['🧶', 28, { spin: 1, move: 40 }], teapot: ['🫖', 30], slipper: ['🩴', 26], couch: ['🛋️', 40], pillows: ['🛏️', 36],
   bobbycar: ['🚗', 32, { move: 70, flip: 1 }], football: ['⚽', 24, { spin: 1, move: 110 }], bucket: ['🪣', 26],
@@ -93,6 +94,13 @@ export function drawSmoker(g, x, y, s = 1, t = 0) {
   g.restore();
 }
 const CUSTOM = {
+  word(g, x, b, o, op) { // großes Wort als Hindernis (Blockbuchstaben mit Schatten)
+    const w = op?.w || 80, word = op?.word || 'WORT';
+    g.fillStyle = 'rgba(0,0,0,0.25)'; g.font = '900 30px ui-rounded, system-ui, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    g.fillText(word, x + 3, b + 1, w);
+    g.fillStyle = op?.col || '#e53935'; g.fillText(word, x, b - 2, w);
+    g.lineWidth = 1.5; g.strokeStyle = 'rgba(255,255,255,0.6)'; g.strokeText(word, x, b - 2, w);
+  },
   gator(g, x, b, o) { // Alligator kriecht heran und schnappt
     const snap = Math.max(0, Math.sin(o.t * 5)) * 0.45, wig = Math.sin(o.t * 8) * 2;
     g.fillStyle = 'rgba(0,0,0,0.2)'; g.beginPath(); g.ellipse(x + 34, b - 1, 32, 3, 0, 0, TAU); g.fill();
@@ -180,11 +188,12 @@ for (const [key, [ch, size, op = {}]] of Object.entries(EO)) {
       if (op.draw === 'parade') { o.w = 140; o.rects[0] = { x: 6, w: 126, y0: 0, y1: 22 }; }
       if (op.draw === 'puddle') { o.rects[0] = { x: 6, w: size - 12, y0: 0, y1: 6 }; }
       if (op.draw === 'facewalk') { o.rects[0] = { x: 4, w: 24, y0: 0, y1: 62 }; }
+      if (op.draw === 'word') { o.w = op.w; o.rects[0] = { x: 2, w: op.w - 4, y0: 0, y1: 24 }; }
       if (op.draw === 'gator') { o.w = 86; o.rects[0] = { x: 2, w: 66, y0: 0, y1: 15 }; }
       if (op.draw === 'knee') { o.rects[0] = { x: 2, w: 30, y0: 0, y1: 26 }; }
     },
     draw: (g, x, b, o) => {
-      if (op.draw && CUSTOM[op.draw]) { CUSTOM[op.draw](g, x, b, o); return; }
+      if (op.draw && CUSTOM[op.draw]) { CUSTOM[op.draw](g, x, b, o, op); return; }
       if (fly) {
         const y = b - 13;
         if (op.text) { g.font = `900 ${size}px Georgia, serif`; g.textAlign = 'center'; g.fillStyle = op.text; g.fillText(ch, x + 19, y + size * 0.35); return; }
@@ -2258,7 +2267,7 @@ export const LEVELS = {
   L23: { icon: '🥕', scene: 'hanauMarkt', world: 'market', music: 'nachtmusik', len: 105, obstacles: { fruitcrate: 3, flowers: 2, basket: 2, cheese: 2, pigeon: 3 }, items: ['apple', 'sausage'], quest: { item: 'sausage', n: 6 }, hero: 'crier' },
   L24: { icon: '🍲', scene: ['gulaschKitchen', 'bbq'], music: 'hungarian', len: 105, obstacles: { creuset: 3, pepperbox: 2, flour: 2 }, obstacles2: { smoker: 3, logs: 2, smoke: 2 }, items: ['gulasch', 'paprika'], items2: ['gulasch', 'sausage', 'steak'], quest: { item: 'gulasch', n: 10 }, hero: 'grill' },
   L25: { icon: '🍕', scene: 'pizzaGlitter', music: 'bday30', len: 120, obstacles: { pizzatower: 3, speaker: 2, bottle: 3, confetti: 2 }, items: ['pizza', 'glitter'], quest: { item: 'glitter', n: 30 }, hero: 'glitter', party: 1, glitterRush: 1, glitterGuests: 1, outfit: { top: 'glitter', topColor: 'f', bottom: 'tutu', extra: ['party'] } },
-  L26: { icon: '💼', scene: 'agency', world: 'office', music: 'bumblebee', len: 120, obstacles: { chair: 3, boss: 2, folders: 3, paper: 3 }, items: ['coffee', 'mimisoup'], quest: { survive: 1 }, hero: 'business' },
+  L26: { icon: '💼', scene: 'agency', world: 'office', music: 'bumblebee', len: 120, obstacles: { chair: 3, kalo: 2, merck: 2, folders: 3, paper: 3 }, items: ['coffee', 'mimisoup'], quest: { survive: 1 }, hero: 'business' },
   L39: { icon: '🦁', scene: ['capetown', 'franschhoek', 'capebeach'], partIntro: [null, 'winebarrel', 'parade'], music: 'kapstadt', len: 130, obstacles: { minibus: 2, baboon: 2, boulder: 2 }, obstacles2: { winebarrel: 3, grapecrate: 2, baboon: 1 }, obstacles3: { parade: 2, boulder: 2, surfboard: 1, penguin: 1 }, items: ['protea', 'rooibos'], items2: ['protea', 'wine2', 'grapes'], items3: ['protea', 'wine2'], quest: { item: 'protea', n: 8 }, hero: 'baywatch', goalHearts: 1, fireworks: 1 },
   L27: { icon: '💍', scene: 'barn', music: 'punk', len: 150, obstacles: { hayball: 3, bench: 2, dancers: 2, bouquet: 3 }, items: ['ring', 'confetti2', 'weddingcake'], quest: { items: ['ring', 'confetti2'], n: 10 }, hero: 'groom', checkpoint: 1, party: 1, fireworks: 1, goalHearts: 1 },
   L28: { icon: '🧅', scene: 'inn', music: 'polka', len: 105, obstacles: { pan: 3, waiter: 2, bubble: 3, pubtable: 1 }, items: ['schnitzel', 'fries2', 'onion'], quest: { item: 'onion', n: 12 }, hero: 'waiter' },
