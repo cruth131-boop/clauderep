@@ -163,6 +163,7 @@ export function drawCharacter(g, x, footY, opt) {
   if (extras.has('scarf')) drawScarfTail(g, neck, t);
   if (extras.has('tote')) drawTote(g, shoulder, hip, P.lean, t);
   drawGroup(g, armPieces(shoulder, P.arms[0], top, topCol, 0.8));
+  if (o.bottom === 'gown') drawGown(g, hip, P.lean, t, phase, false);
   drawGroup(g, legPieces(hip, legPts[1], o, 0.8));
   if (o.bottom === 'tutu') drawTutu(g, hip, P.lean, t, false);
   g.save(); g.translate(hip[0], hip[1]); g.rotate(P.lean);
@@ -170,6 +171,7 @@ export function drawCharacter(g, x, footY, opt) {
   g.restore();
   drawGroup(g, legPieces(hip, legPts[0], o, 1));
   if (o.bottom === 'tutu') drawTutu(g, hip, P.lean, t, true);
+  if (o.bottom === 'gown') drawGown(g, hip, P.lean, t, phase, true);
   if (extras.has('apron')) { g.save(); g.translate(hip[0], hip[1]); g.rotate(P.lean); drawGroup(g, [apronPiece()]); g.restore(); }
   drawHead(g, neck, P.lean, expr, faceKey, extras, t, opt);
   if (extras.has('scarf')) drawScarfWrap(g, neck, P.lean);
@@ -182,7 +184,7 @@ export function drawCharacter(g, x, footY, opt) {
 // ---------------------------------------------------------------------------
 const DENIM = { jeans: '#42649e', latz: '#6a8fc8' };
 // Oberteile mit fester Farbe (Farbwahl ausgeblendet)
-export const FIXED_TOP = { princess: '#f58dc2', green: '#3fae3a', pyjama: '#7fcf8e', vans: '#1d1d24', carhartt: '#a86e34', track: '#1f7a3a' };
+export const FIXED_TOP = { bride: '#fbf8f1', princess: '#f58dc2', green: '#3fae3a', pyjama: '#7fcf8e', vans: '#1d1d24', carhartt: '#a86e34', track: '#1f7a3a' };
 const TRACK = '#1f7a3a';
 const PJ = '#7fcf8e', DK_BROWN = '#5b4630', BOOT = '#8a5a30';
 /** Drei feine Streifen längs eines Segments (Trainingsanzug). */
@@ -192,7 +194,7 @@ function legPieces(H, L, o, f) {
   const { k: K, a: A, sh } = L;
   const P = [];
   const b = o.bottom;
-  const bare = b === 'culotte' || b === 'tutu' || b === 'pyshorts';
+  const bare = b === 'culotte' || b === 'tutu' || b === 'pyshorts' || b === 'gown';
   const trackL = b === 'trackpants';
   P.push(cap(H, K, 11, 9.6, SKIN, f, (g) => {
     g.fillStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.arc(K[0] + 1, K[1] - 1, 2.2, 0, 7); g.fill();
@@ -524,6 +526,16 @@ function torsoPieces(o, topCol, extras) {
       },
     });
     for (const sx of [-6.5, 4.5]) P.push({ path: (g) => { g.rect(sx, -36.5, 2.4, 9); }, fill: shade(topCol, 0.9) });
+  } else if (top === 'bride') { // Brautkleid-Oberteil: Herz-Ausschnitt, Spitze, Satinband
+    P.push({
+      path: (g) => bodyPath(g, -29, -1, { topCurve: (g, xb, xf) => { g.quadraticCurveTo(-1, -32, 3, -28); g.quadraticCurveTo(7, -31, xf, -27.5); } }),
+      fill: (g) => hGrad(g, topCol),
+      detail: (g) => {
+        g.strokeStyle = 'rgba(200,190,170,0.7)'; g.lineWidth = 0.6; for (let i = 0; i < 10; i++) { g.beginPath(); g.arc(-8 + (i % 5) * 4.6, -24 + Math.floor(i / 5) * 6, 1.6, 0, 7); g.stroke(); } // Spitze
+        g.fillStyle = 'rgba(255,255,255,0.9)'; for (const [sx, sy] of [[-5, -18], [3, -21], [8, -15], [-1, -12]]) { g.beginPath(); g.arc(sx, sy, 0.9, 0, 7); g.fill(); } // Perlen
+        g.fillStyle = '#efe6d4'; g.fillRect(-11, -6, 24, 3.5); g.fillStyle = '#e8d9b8'; g.beginPath(); g.arc(9, -4.2, 2.4, 0, 7); g.fill(); // Satinband mit Schleife
+      },
+    });
   } else if (top === 'princess') {
     P.push({
       path: (g) => bodyPath(g, -29, -3, { topCurve: (g, xb, xf) => { g.quadraticCurveTo(-1, -32, 3, -28); g.quadraticCurveTo(7, -31, xf, -27.5); } }),
@@ -717,6 +729,30 @@ function drawTote(g, shoulder, hip, lean, t) {
   }]);
 }
 
+// Langer, schwingender Brautrock bis zu den Knöcheln (hinten + vorne), mit Spitzensaum
+function drawGown(g, hip, lean, t, phase, front) {
+  g.save(); g.translate(hip[0], hip[1] - 3); g.rotate(lean * 0.6);
+  const len = L_THIGH + L_SHIN - 4, sw = Math.sin(phase * 2) * 4, n = 10;
+  const top = 11, hem = front ? 24 : 28;
+  g.beginPath(); g.moveTo(-top, 0); g.lineTo(top, 0);
+  g.quadraticCurveTo(hem * 0.7 + sw, len * 0.5, hem + sw, len);
+  for (let i = n; i >= 0; i--) { const x = -hem + sw * 0.5 + (2 * hem) * i / n; g.quadraticCurveTo(x + hem / n, len + 3 + Math.sin(t * 6 + i) * 0.8, x, len + (i % 2 ? 0 : 2)); }
+  g.quadraticCurveTo(-hem * 0.7, len * 0.5, -top, 0); g.closePath();
+  const gr = g.createLinearGradient(-hem, 0, hem, 0); gr.addColorStop(0, front ? '#f2ede2' : '#e2dccf'); gr.addColorStop(0.5, front ? '#ffffff' : '#ece6da'); gr.addColorStop(1, front ? '#efe9dd' : '#ddd6c8');
+  g.fillStyle = gr; g.fill(); g.strokeStyle = 'rgba(170,160,140,0.6)'; g.lineWidth = 0.8; g.stroke();
+  if (front) {
+    g.strokeStyle = 'rgba(190,180,160,0.45)'; g.lineWidth = 0.7; for (const fx of [-8, 0, 8]) { g.beginPath(); g.moveTo(fx * 0.5, 2); g.quadraticCurveTo(fx + sw * 0.3, len * 0.5, fx * 1.6 + sw * 0.6, len); g.stroke(); } // Falten
+    g.strokeStyle = 'rgba(200,190,170,0.75)'; for (let i = 0; i < 9; i++) { g.beginPath(); g.arc(-hem + 4 + i * (2 * hem - 8) / 8 + sw * 0.5, len - 1, 1.8, 0, Math.PI); g.stroke(); } // Spitzensaum
+  }
+  g.restore();
+}
+function drawVeil(g, w, h, t) { // Schleier: vom Haarkranz nach hinten fallend, Gesicht bleibt frei
+  const y = -h * 0.33, sw = Math.sin(t * 3) * 3;
+  g.fillStyle = 'rgba(255,255,255,0.55)'; g.strokeStyle = 'rgba(220,215,205,0.8)'; g.lineWidth = 0.8;
+  g.beginPath(); g.moveTo(-w * 0.1, y); g.quadraticCurveTo(-w * 0.9, y + h * 0.2, -w * 1.1 + sw, y + h * 1.25); g.lineTo(-w * 0.55 + sw, y + h * 1.3); g.quadraticCurveTo(-w * 0.55, y + h * 0.5, -w * 0.38, y + h * 0.15); g.closePath(); g.fill(); g.stroke();
+  for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#ffffff' : '#f7e6ee'; g.beginPath(); g.arc(-w * 0.38 + i * w * 0.15, y - 1 - Math.sin(i / 5 * Math.PI) * 3, 3, 0, 7); g.fill(); } // Blütenkranz
+  g.fillStyle = '#9ccc65'; for (let i = 0; i < 5; i++) { g.beginPath(); g.ellipse(-w * 0.3 + i * w * 0.15, y + 1, 2.4, 1.2, 0.4, 0, 7); g.fill(); }
+}
 function drawTutu(g, hip, lean, t, front) {
   g.save(); g.translate(hip[0], hip[1] - 4); g.rotate(lean);
   const layers = front ? [['rgba(255,182,214,0.92)', 15, 6], ['rgba(255,210,232,0.9)', 13, 4.5], ['rgba(255,236,246,0.85)', 11, 3]] : [['#e5689f', 17, 8]];
@@ -816,6 +852,7 @@ function drawHead(g, neck, lean, expr, faceKey, extras, t, opt = {}) {
   if (extras.has('beanie')) drawBeanie(g, w, h);
   if (extras.has('cowboyhat')) drawCowboyHat(g, w, h);
   if (extras.has('tophat')) drawTopHat(g, w, h);
+  if (extras.has('veil')) drawVeil(g, w, h, t);
   if (extras.has('sweep')) drawSweepGear(g, w, h, t);
   g.restore();
 }

@@ -52,7 +52,8 @@ export class Game {
     this.lvId = level;
     this.horror = mode === 'horror' || !!this.lv?.horror;
     this.GRAV = this.lv?.lowGrav ? GRAV0 * 0.42 : GRAV0; this.JUMP_V = this.lv?.lowGrav ? JUMP_V0 * 0.86 : JUMP_V0;
-    this.outfit = this.horror ? { ...outfit, top: 'green', topColor: 'a' } : this.lv?.outfit ? { ...outfit, ...this.lv.outfit } : outfit;
+    const lvOutfit = this.lv?.outfit && !(this.lv.brideOnly && assets.player) ? this.lv.outfit : null; // Brautkleid nur für Kim, nicht für Gäste-Profile
+    this.outfit = this.horror ? { ...outfit, top: 'green', topColor: 'a' } : lvOutfit ? { ...outfit, ...lvOutfit } : outfit;
     this.events = events;
     this.mercy = mode === 'birthday' ? mercy : 0;
     this.speedFactor = (this.mercy >= 1 ? 0.85 : 1) * (mode === 'attract' ? 1 : PACE); // etwas gemütlicheres Grundtempo
