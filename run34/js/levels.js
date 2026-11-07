@@ -1214,23 +1214,95 @@ export const SCENES = {
   },
 
   // Marktplatz: barockes Rathaus mit Denkmal davor, Wochenmarkt-Stände
+  // Wochenmarkt auf dem Marktplatz (nach Fotos): rotes Sandstein-Rathaus mit Schiefer-Mansarddach, Gauben,
+  // goldenem Giebelwappen und Uhrturm-Laterne, davor das Brüder-Denkmal; Häuserzeilen mit orangeroten Dächern,
+  // Platanen und dichte, bunte Marktstände mit gestreiften Schirmen, Erdbeeren, Gemüse und Blumen
   hanauMarkt(g, V, off, t) {
     const gy = V.groundY;
-    sky(g, V, '#9fd3f5', '#fff3de'); clouds(g, V, off, 0.8);
-    once(V, off, 0.2, 1300, 500, (x) => {
-      g.fillStyle = '#e9dcc5'; g.fillRect(x, gy - 170, 280, 170); g.fillStyle = '#b35a3c'; g.fillRect(x, gy - 170, 280, 6);
-      g.fillStyle = '#7a4a3a'; g.beginPath(); g.moveTo(x - 8, gy - 170); g.lineTo(x + 30, gy - 210); g.lineTo(x + 250, gy - 210); g.lineTo(x + 288, gy - 170); g.fill();
-      g.fillStyle = '#d4b890'; g.fillRect(x + 110, gy - 250, 60, 80); g.beginPath(); g.moveTo(x + 104, gy - 250); g.quadraticCurveTo(x + 140, gy - 300, x + 176, gy - 250); g.fill(); g.fillStyle = '#2e4a3a'; g.beginPath(); g.moveTo(x + 128, gy - 282); g.lineTo(x + 140, gy - 315); g.lineTo(x + 152, gy - 282); g.fill();
-      g.fillStyle = '#fff'; g.beginPath(); g.arc(x + 140, gy - 225, 12, 0, TAU); g.fill(); g.strokeStyle = '#222'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + 140, gy - 225); g.lineTo(x + 140, gy - 233); g.moveTo(x + 140, gy - 225); g.lineTo(x + 146, gy - 222); g.stroke();
-      for (let r = 0; r < 2; r++) for (let i = 0; i < 7; i++) { g.fillStyle = '#b8956a'; g.fillRect(x + 14 + i * 38, gy - 156 + r * 56, 24, 40); g.fillStyle = '#8ab4d6'; g.fillRect(x + 17 + i * 38, gy - 153 + r * 56, 18, 34); }
-      g.fillStyle = '#6d4c41'; g.beginPath(); g.moveTo(x + 125, gy); g.lineTo(x + 125, gy - 40); g.arc(x + 140, gy - 40, 15, Math.PI, 0); g.lineTo(x + 155, gy); g.fill();
-      // Brüder-Grimm-Denkmal
-      const mx = x + 140; g.fillStyle = '#b0a89a'; g.fillRect(mx - 26, gy - 70, 52, 70); g.fillRect(mx - 32, gy - 76, 64, 8); g.fillRect(mx - 34, gy - 8, 68, 8);
-      g.fillStyle = '#4d6b5a'; for (const dx of [-11, 11]) { roundRect(g, mx + dx - 8, gy - 124, 16, 48, 5); g.fill(); g.beginPath(); g.arc(mx + dx, gy - 132, 8, 0, TAU); g.fill(); }
-      g.fillRect(mx - 3, gy - 112, 6, 20);
+    sky(g, V, '#8fc3ea', '#eef4f8'); clouds(g, V, off, 0.85);
+    // Häuserzeilen am Platzrand
+    rep(V, off, 0.12, 120, (x, k) => {
+      const modern = k % 3 === 2, h = modern ? 78 : 66;
+      g.fillStyle = modern ? '#c9ced3' : '#f1ece2'; g.fillRect(x, gy - 40 - h, 118, h);
+      g.fillStyle = modern ? '#6d7680' : '#c4502e'; g.beginPath(); g.moveTo(x - 2, gy - 40 - h); g.lineTo(x + 12, gy - 64 - h); g.lineTo(x + 106, gy - 64 - h); g.lineTo(x + 120, gy - 40 - h); g.fill();
+      g.fillStyle = '#f6f1e8'; for (let i = 0; i < 4; i++) { g.fillRect(x + 12 + i * 26, gy - 62 - h, 12, 12); g.fillStyle = '#555'; g.fillRect(x + 15 + i * 26, gy - 59 - h, 6, 8); g.fillStyle = '#f6f1e8'; } // Gauben
+      g.fillStyle = modern ? '#7c8791' : '#4a5560'; for (let r = 0; r < (modern ? 3 : 2); r++) for (let i = 0; i < 6; i++) g.fillRect(x + 8 + i * 18, gy - 32 - h + r * 22, 10, 13);
     });
-    rep(V, off, 0.55, 170, (x, k) => { const [c1, c2] = [['#e53935', '#fff'], ['#43a047', '#fff'], ['#1e88e5', '#fff'], ['#fb8c00', '#fff']][((k % 4) + 4) % 4]; g.fillStyle = '#795548'; g.fillRect(x + 4, gy - 62, 4, 62); g.fillRect(x + 112, gy - 62, 4, 62); for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? c2 : c1; g.beginPath(); g.moveTo(x + i * 15, gy - 78); g.lineTo(x + (i + 1) * 15, gy - 78); g.lineTo(x + (i + 1) * 15, gy - 62); g.quadraticCurveTo(x + i * 15 + 7.5, gy - 56, x + i * 15, gy - 62); g.fill(); } g.fillStyle = '#a1887f'; g.fillRect(x, gy - 30, 120, 6); for (let i = 0; i < 9; i++) { g.fillStyle = ['#e53935', '#fdd835', '#43a047', '#fb8c00', '#8e24aa'][(i + k) % 5]; g.beginPath(); g.arc(x + 8 + i * 13, gy - 34, 5, 0, TAU); g.fill(); } });
-    cobble(g, V, off);
+    g.fillStyle = '#b39079'; g.fillRect(0, gy - 40, V.w, 40); // Platz hinter den Ständen
+    // Rathaus (verkleinert, damit Turm & Wetterfahne ins Bild passen)
+    const RS = 0.64;
+    once(V, off, 0.2, 1500, 560, (x) => {
+      const w = 330, h = 150, top = gy - 30 - h, cx = x + w / 2;
+      g.save(); g.translate(x, gy - 30); g.scale(RS, RS); g.translate(-x, -(gy - 30));
+      // Laterne mit Uhr, Glockenstube, Haube und Wetterfahne
+      g.fillStyle = '#3b3d44'; g.fillRect(cx - 18, top - 120, 36, 40);
+      g.fillStyle = '#f3efe4'; g.beginPath(); g.arc(cx, top - 100, 11, 0, TAU); g.fill(); g.strokeStyle = '#222'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(cx, top - 100); g.lineTo(cx, top - 108); g.moveTo(cx, top - 100); g.lineTo(cx + 6, top - 97); g.stroke();
+      g.fillStyle = '#34363c'; g.fillRect(cx - 14, top - 150, 28, 30); g.fillStyle = '#1b1c20'; for (const dx of [-8, 3]) { g.beginPath(); g.moveTo(cx + dx, top - 124); g.lineTo(cx + dx, top - 140); g.arc(cx + dx + 2.5, top - 140, 2.5, Math.PI, 0); g.lineTo(cx + dx + 5, top - 124); g.fill(); }
+      g.fillStyle = '#2f3136'; g.beginPath(); g.moveTo(cx - 16, top - 150); g.quadraticCurveTo(cx, top - 176, cx + 16, top - 150); g.fill();
+      g.fillRect(cx - 1.5, top - 196, 3, 24); g.fillStyle = '#d4a017'; g.beginPath(); g.arc(cx, top - 182, 3, 0, TAU); g.fill(); g.beginPath(); g.moveTo(cx, top - 198); g.lineTo(cx + 12, top - 194); g.lineTo(cx, top - 190); g.fill();
+      // Schiefer-Mansarddach mit zwei Gaubenreihen
+      g.fillStyle = '#4a4d55'; g.beginPath(); g.moveTo(x - 6, top); g.lineTo(x + 18, top - 54); g.lineTo(x + 50, top - 82); g.lineTo(x + w - 50, top - 82); g.lineTo(x + w - 18, top - 54); g.lineTo(x + w + 6, top); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,0.08)'; g.lineWidth = 1; for (let i = 0; i < 12; i++) { g.beginPath(); g.moveTo(x + 10, top - 6 - i * 6); g.lineTo(x + w - 10, top - 6 - i * 6); g.stroke(); }
+      for (let i = 0; i < 6; i++) { const dx = x + 26 + i * 52 + (i > 2 ? 16 : 0); if (Math.abs(dx + 12 - cx) < 40) continue; g.fillStyle = '#c45a42'; g.fillRect(dx, top - 40, 24, 26); g.beginPath(); g.arc(dx + 12, top - 40, 12, Math.PI, 0); g.fill(); g.fillStyle = '#e8eef2'; g.fillRect(dx + 5, top - 38, 14, 20); }
+      for (const dx of [x + 70, x + 130, x + w - 130, x + w - 70]) { g.fillStyle = '#e9e4da'; g.beginPath(); g.ellipse(dx, top - 66, 6, 5, 0, 0, TAU); g.fill(); g.fillStyle = '#3a3c42'; g.beginPath(); g.ellipse(dx, top - 66, 3, 2.5, 0, 0, TAU); g.fill(); } // Ochsenaugen
+      // Sandsteinfassade
+      g.fillStyle = '#b8614a'; g.fillRect(x, top, w, h);
+      g.fillStyle = 'rgba(0,0,0,0.06)'; for (let r = 0; r < 15; r++) g.fillRect(x, top + r * 10, w, 1);
+      g.fillStyle = '#a5523d'; g.fillRect(cx - 52, top - 6, 104, h + 6); // Mittelrisalit
+      g.fillStyle = '#b8614a'; g.beginPath(); g.moveTo(cx - 60, top); g.lineTo(cx, top - 34); g.lineTo(cx + 60, top); g.fill();
+      g.strokeStyle = '#8f4433'; g.lineWidth = 2; g.stroke();
+      g.fillStyle = '#d4a017'; g.beginPath(); g.ellipse(cx, top - 13, 13, 9, 0, 0, TAU); g.fill(); g.fillStyle = '#c62828'; g.beginPath(); g.ellipse(cx, top - 13, 6, 5, 0, 0, TAU); g.fill(); // Wappen
+      g.strokeStyle = '#d4a017'; g.lineWidth = 1.4; for (const s2 of [-1, 1]) { g.beginPath(); g.moveTo(cx + s2 * 13, top - 13); g.quadraticCurveTo(cx + s2 * 26, top - 20, cx + s2 * 34, top - 8); g.stroke(); }
+      g.fillStyle = '#c7735c'; g.fillRect(x, top + h * 0.62, w, 3); g.fillRect(x, top + h * 0.3, w, 2);
+      for (let r = 0; r < 2; r++) for (let i = 0; i < 10; i++) { const wx = x + 12 + i * 32, wy = top + 10 + r * 46; g.fillStyle = '#f4efe6'; g.fillRect(wx, wy, 18, 30); g.fillStyle = '#7f9db3'; g.fillRect(wx + 2, wy + 2, 14, 26); g.fillStyle = '#f4efe6'; g.fillRect(wx + 8, wy + 2, 1.5, 26); g.fillRect(wx + 2, wy + 12, 14, 1.5); }
+      for (let i = 0; i < 10; i++) { const wx = x + 12 + i * 32, wy = top + h * 0.66; g.fillStyle = '#8f4433'; g.beginPath(); g.moveTo(wx, top + h); g.lineTo(wx, wy + 8); g.arc(wx + 9, wy + 8, 9, Math.PI, 0); g.lineTo(wx + 18, top + h); g.fill(); g.fillStyle = '#5c6b78'; g.fillRect(wx + 2, wy + 9, 14, top + h - wy - 9); }
+      g.fillStyle = '#2a2b30'; g.fillRect(cx - 30, top + 48, 60, 3); for (let i = 0; i < 10; i++) g.fillRect(cx - 30 + i * 6.6, top + 40, 1.4, 8); // Balkongitter
+      g.restore();
+    });
+    // Platanen
+    rep(V, off, 0.32, 210, (x, k) => { const tx = x + 40; g.fillStyle = '#8a7a62'; g.fillRect(tx - 4, gy - 76, 8, 46); for (const [dx, dy, r, c] of [[0, -100, 34, '#5f9a3c'], [-24, -86, 24, '#6fab46'], [24, -84, 26, '#548c34'], [0, -124, 22, '#79b54e']]) { g.fillStyle = c; g.beginPath(); g.arc(tx + dx, gy + dy, r, 0, TAU); g.fill(); } });
+    // Denkmal vor dem Rathaus: hoher Sockel ragt über die Marktschirme, ein Bruder steht, einer sitzt
+    once(V, off, 0.2, 1500, 560, (x) => {
+      const mx = x + 165 * RS, mb = gy - 58, S2 = 0.78;
+      g.save(); g.translate(mx, mb); g.scale(S2, S2); g.translate(-mx, -mb);
+      g.fillStyle = '#8f8a80'; g.fillRect(mx - 34, mb - 8, 68, 8); g.fillStyle = '#a39e93'; g.fillRect(mx - 26, mb - 62, 52, 54); g.fillStyle = '#8f8a80'; g.fillRect(mx - 30, mb - 68, 60, 8);
+      g.strokeStyle = 'rgba(0,0,0,0.2)'; g.strokeRect(mx - 18, mb - 52, 36, 34);
+      const br = '#4f6f5f', br2 = '#3f5a4c';
+      g.fillStyle = br; roundRect(g, mx - 20, mb - 128, 18, 60, 6); g.fill(); g.beginPath(); g.arc(mx - 11, mb - 136, 7.5, 0, TAU); g.fill(); // stehend
+      g.strokeStyle = br; g.lineWidth = 5; g.beginPath(); g.moveTo(mx - 6, mb - 118); g.lineTo(mx + 6, mb - 102); g.stroke();
+      g.fillStyle = br2; roundRect(g, mx + 2, mb - 108, 18, 26, 6); g.fill(); g.fillRect(mx + 2, mb - 86, 22, 10); g.fillRect(mx + 18, mb - 86, 6, 18); g.beginPath(); g.arc(mx + 11, mb - 115, 7, 0, TAU); g.fill(); // sitzend
+      g.fillStyle = '#e8e0c8'; g.fillRect(mx + 4, mb - 96, 10, 6); // Buch
+      g.restore();
+      g.fillStyle = '#a39e93'; g.fillRect(mx - 22, mb, 44, 60); // Sockel nach unten verlängert
+    });
+    // dichte, bunte Marktstände
+    const aw = [['#d32f2f', '#fff'], ['#f57c00', '#f57c00'], ['#00897b', '#e0f2f1'], ['#fbc02d', '#fff8e1'], ['#e53935', '#ffcdd2'], ['#fafafa', '#e0e0e0']];
+    rep(V, off, 0.55, 150, (x, k) => {
+      const [c1, c2] = aw[((k % 6) + 6) % 6], sx = x + 6;
+      g.fillStyle = '#6d4c41'; g.fillRect(sx + 6, gy - 66, 3, 66); g.fillRect(sx + 122, gy - 66, 3, 66);
+      if (k % 3 === 0) { // großer gestreifter Marktschirm
+        for (let i = 0; i < 10; i++) { g.fillStyle = i % 2 ? c2 : c1; g.beginPath(); g.moveTo(sx + 65, gy - 104); g.lineTo(sx + i * 13, gy - 70); g.lineTo(sx + (i + 1) * 13, gy - 70); g.fill(); }
+        g.fillStyle = '#5d4037'; g.fillRect(sx + 64, gy - 104, 2, 104);
+      } else {
+        g.fillStyle = c1; g.beginPath(); g.moveTo(sx - 2, gy - 66); g.lineTo(sx + 10, gy - 88); g.lineTo(sx + 120, gy - 88); g.lineTo(sx + 132, gy - 66); g.fill();
+        g.fillStyle = c2; for (let i = 0; i < 9; i++) if (i % 2) g.fillRect(sx + 6 + i * 13, gy - 86, 13, 18);
+        for (let i = 0; i < 9; i++) { g.fillStyle = i % 2 ? c2 : c1; g.beginPath(); g.moveTo(sx + i * 14.6, gy - 66); g.lineTo(sx + (i + 1) * 14.6, gy - 66); g.quadraticCurveTo(sx + i * 14.6 + 7.3, gy - 58, sx + i * 14.6, gy - 66); g.fill(); }
+      }
+      // Auslage
+      g.fillStyle = '#a1887f'; g.fillRect(sx, gy - 34, 132, 6); g.fillStyle = '#8d6e63'; g.fillRect(sx + 4, gy - 28, 124, 28);
+      const kind = ((k % 4) + 4) % 4;
+      for (let i = 0; i < 6; i++) {
+        const bx = sx + 4 + i * 21, by = gy - 46;
+        g.fillStyle = '#d7b98a'; g.fillRect(bx, by, 19, 12); // Kiste/Schale
+        if (kind === 0) { g.fillStyle = '#e53935'; for (let j = 0; j < 5; j++) { g.beginPath(); g.arc(bx + 3 + j * 3.4, by + 2, 2.4, 0, TAU); g.fill(); } g.fillStyle = '#2e7d32'; for (let j = 0; j < 5; j++) g.fillRect(bx + 2.5 + j * 3.4, by - 1.5, 1.2, 1.4); } // Erdbeeren
+        if (kind === 1) { g.fillStyle = ['#43a047', '#fb8c00', '#e53935', '#7cb342', '#fdd835', '#8e24aa'][i]; for (let j = 0; j < 4; j++) { g.beginPath(); g.arc(bx + 4 + j * 4, by + 1, 3.4, 0, TAU); g.fill(); } } // Gemüse
+        if (kind === 2) { for (let j = 0; j < 3; j++) { g.fillStyle = ['#e91e63', '#ffd23f', '#ab47bc', '#ff7043', '#fff'][(i + j) % 5]; g.beginPath(); g.arc(bx + 4 + j * 6, by - 4 - (j % 2) * 3, 3.6, 0, TAU); g.fill(); } g.fillStyle = '#558b2f'; g.fillRect(bx + 3, by - 2, 14, 3); } // Blumen
+        if (kind === 3) { g.fillStyle = ['#f9a825', '#ffe082', '#d84315'][i % 3]; g.beginPath(); g.arc(bx + 9.5, by + 1, 7, Math.PI, 0); g.fill(); } // Käse/Brot
+      }
+      g.fillStyle = 'rgba(40,30,40,0.55)'; for (const vx of [sx + 40, sx + 92]) { g.beginPath(); g.arc(vx, gy - 60, 6, 0, TAU); g.fill(); g.fillRect(vx - 7, gy - 54, 14, 20); } // Händler
+    });
+    // Marktplatz-Pflaster (rötlich)
+    floor(g, V, '#a8826c', '#8c6a58', off, () => { g.strokeStyle = 'rgba(0,0,0,0.12)'; g.lineWidth = 1; rep(V, off, 1, 18, (x) => { for (let r = 0; r < 4; r++) g.strokeRect(x + (r % 2) * 9, gy + 4 + r * 9, 18, 9); }); });
   },
 
   // Gulasch & BBQ: Garten mit Gulaschkessel überm Feuer, Grill und Rauch
