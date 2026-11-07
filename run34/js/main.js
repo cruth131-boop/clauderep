@@ -744,22 +744,12 @@ async function boot() {
 }
 // ----------------------------------------------------------------- Gäste-Profile
 const guestName = (f) => (f === 'him' ? assets.config.partnerName || 'Christoph' : assets.config.guestNames?.[f] || f);
-const PROF_STORE = 'br.profiles';
-const profStore = () => { try { return JSON.parse(localStorage.getItem(PROF_STORE) || '{}'); } catch { return {}; } };
-const authed = () => { try { return sessionStorage.getItem('br.auth') === PROFILE; } catch { return false; } };
-async function pwHash(pw, saltB64) {
-  const salt = saltB64 ? Uint8Array.from(atob(saltB64), (c) => c.charCodeAt(0)) : crypto.getRandomValues(new Uint8Array(16));
-  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
-  const bits = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 120000, hash: 'SHA-256' }, base, 256));
-  return { salt: btoa(String.fromCharCode(...salt)), hash: btoa(String.fromCharCode(...bits)) };
-}
 function switchProfile(face) {
-  try { if (face) localStorage.setItem('br.profile', face); else localStorage.removeItem('br.profile'); sessionStorage.setItem('br.auth', face || ''); } catch {}
+  try { if (face) localStorage.setItem('br.profile', face); else localStorage.removeItem('br.profile'); localStorage.removeItem('br.profiles'); } catch {}
   location.reload();
 }
 function afterUnlock() {
   if (accessType() === 'guest' && !PROFILE) { showProfiles(false); return; }
-  if (GUEST && !authed()) { showProfilePw(PROFILE); return; }
   playIntro();
 }
 function faceSrc(f) { const nm = assets.config.faceMap?.[f]?.normal || f; return (assets.images[nm] || assets.images[f])?.src || ''; }
@@ -767,10 +757,9 @@ let profCancelable = false;
 function showProfiles(cancelable = true) {
   game = null; scene = null; setHud(false); screen = 'profiles'; profCancelable = cancelable;
   const faces = ['him', ...(assets.config.allGuests || [])].filter((f) => assets.images[f] || assets.images[assets.config.faceMap?.[f]?.normal]);
-  const st = profStore();
   const tiles = [];
   if (accessType() === 'main') tiles.push(`<button class="prof-tile kimi" data-face=""><img src="${faceSrc('kimi') || assets.images.her_front?.src || ''}" alt=""><span>${assets.config.name || 'Kimi'}</span></button>`);
-  for (const f of faces) tiles.push(`<button class="prof-tile" data-face="${f}"><img src="${faceSrc(f)}" alt=""><span>${guestName(f)}</span>${st[f] ? '<span class="lock">🔒</span>' : ''}</button>`);
+  for (const f of faces) tiles.push(`<button class="prof-tile" data-face="${f}"><img src="${faceSrc(f)}" alt=""><span>${guestName(f)}</span></button>`);
   $('prof-grid').innerHTML = tiles.join('');
   $('btn-prof-cancel').classList.toggle('hidden', !cancelable);
   show('scr-profiles');
@@ -779,38 +768,9 @@ $('prof-grid').addEventListener('click', (e) => {
   const t = e.target.closest('.prof-tile'); if (!t) return;
   initAudio(); sfx('tap');
   const f = t.dataset.face;
-  if (!f) { switchProfile(''); return; } // zurück zu Kim (nur auf Kims Gerät)
-  showProfilePw(f);
+  switchProfile(f); // '' = zurück zu Kim (nur auf Kims Gerät)
 });
 $('btn-prof-cancel').addEventListener('click', () => (profCancelable ? toMenu() : null));
-let ppFace = null;
-function showProfilePw(f) {
-  ppFace = f; screen = 'profpw';
-  const has = !!profStore()[f];
-  $('pp-face').src = faceSrc(f);
-  $('pp-title').textContent = `Hallo ${guestName(f)}! 👋`;
-  $('pp-text').textContent = has ? 'Gib dein Passwort ein.' : 'Leg dir ein eigenes Passwort fest (mind. 4 Zeichen). Es wird nur auf diesem Handy gespeichert.';
-  $('pp-pw2').classList.toggle('hidden', has);
-  $('pp-pw').value = ''; $('pp-pw2').value = ''; $('pp-error').classList.add('hidden');
-  $('pp-go').textContent = has ? "Los geht's" : 'Passwort speichern';
-  show('scr-profpw'); setTimeout(() => $('pp-pw').focus(), 50);
-}
-$('pp-other').addEventListener('click', () => showProfiles(!!PROFILE || accessType() === 'main'));
-$('pp-form').addEventListener('submit', async (e) => {
-  e.preventDefault(); initAudio();
-  const pw = $('pp-pw').value.trim(), st = profStore(), f = ppFace;
-  const err = (m) => { $('pp-error').textContent = m; $('pp-error').classList.remove('hidden'); sfx('no'); };
-  if (st[f]) {
-    const h = await pwHash(pw, st[f].salt);
-    if (h.hash !== st[f].hash) { err('Falsches Passwort. 🙃'); $('pp-pw').select(); return; }
-  } else {
-    if (pw.length < 4) { err('Bitte mindestens 4 Zeichen.'); return; }
-    if (pw !== $('pp-pw2').value.trim()) { err('Die beiden Passwörter sind nicht gleich.'); return; }
-    st[f] = await pwHash(pw); try { localStorage.setItem(PROF_STORE, JSON.stringify(st)); } catch {}
-  }
-  if (f === PROFILE) { try { sessionStorage.setItem('br.auth', f); } catch {} playIntro(); return; }
-  switchProfile(f);
-});
 $('btn-who').addEventListener('click', () => { initAudio(); showProfiles(true); });
 // Intro nach dem Entsperren (Reißverschluss, Retro-Kimi, Titel); nach dem Sieg mit Party
 function playIntro() {
