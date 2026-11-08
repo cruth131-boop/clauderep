@@ -586,7 +586,9 @@ export class Game {
     this.fireCd -= dt;
     if (input.fire && this.fireCd <= 0) {
       this.fireCd = 0.22;
-      this.rockets.push({ x: p.x + this.facing * 28, y: p.y + (p.duck ? 30 : 42), vx: this.facing * 720, t: 0 });
+      const low = p.duck && p.y < 1; // Rakete startet an der Mündung des Raketenwerfers (siehe drawLauncher)
+      this.rockets.push({ x: p.x + this.facing * 34, y: p.y + (low ? 59 : 77), vx: this.facing * 720, t: 0 });
+      this.fx.burst(p.x + this.facing * 34, this.screenY(p.y + (low ? 59 : 77)), { n: 8, colors: ['#ffd23f', '#ff7b39', '#fff'], speed: 120, size: 2.5 }); // Mündungsfeuer
       sfx('launch');
     }
   }
@@ -1317,7 +1319,7 @@ export class Game {
         pose, phase: p.phase, outfit: this.story?.outfitNow || this.outfit, expr: this.lvP?.kid && p.expr !== 'sad' ? 'child' : p.expr, scale: CHAR_SCALE * (this.strongT > 0 ? 1 + 0.22 * Math.min(1, this.strongT * 3) : 1) * (this.lvP?.kid ? 0.86 : 1), t: this.t, swell: p.swell, headScale: this.eggT > 0 ? 1.9 : this.lvP?.kid ? 1.15 : 0,
         rot: this.state === 'dying' ? -Math.min(1.2, this.deadT * 4) : 0,
       });
-      if (this.god) drawLauncher(g, p.x, V.groundY - p.y - (p.duck && p.y < 1 ? 56 : 86), this.t);
+      if (this.god) drawLauncher(g, p.x, V.groundY - p.y - (p.duck && p.y < 1 ? 56 : 74), this.t);
       if (flip) g.restore();
       if (this.hammer > 0 && this.state === 'run') drawTineco(g, p.x + 38, V.groundY - p.y, this.t, this.hammer < 1.5, 0.82, 0.46);
     }
